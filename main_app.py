@@ -10,6 +10,7 @@ Responsibilities:
 - Provide the empty work area (task list — to be implemented)
 """
 
+import asyncio
 import flet as ft
 from config_manager import save_config
 
@@ -54,21 +55,20 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             pass
 
     # ── Track window position ────────────────────────────────────
-    # prevent_close lets us intercept the close event, save state,
-    # then destroy the window cleanly.
-    page.window.prevent_close = True
-
-    def on_window_event(e) -> None:
-        event_type = e.type if hasattr(e, "type") else str(e)
-        if event_type == "move":
-            # Keep config in sync with the current monitor position
+    # Save position to disk as soon as the user stops dragging the window
+    # (MOVED fires once at end of drag). No prevent_close needed: the
+    # window closes instantly via the OS mechanism.
+    async def on_window_event(e) -> None:
+        event_type = e.type
+        if event_type == ft.WindowEventType.MOVE:
+            # Keep config in sync while dragging (in-memory only)
             config["window_x"] = page.window.left
             config["window_y"] = page.window.top
-        elif event_type == "close":
+        elif event_type == ft.WindowEventType.MOVED:
+            # Drag ended — persist position to disk
             config["window_x"] = page.window.left
             config["window_y"] = page.window.top
-            save_config(config)
-            page.window.destroy()
+            await asyncio.to_thread(save_config, config)
 
     page.window.on_event = on_window_event
 
@@ -162,12 +162,63 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             tooltip="",
         )
 
+    # ── Output path dialog ───────────────────────────────────────
+    def show_output_path(_) -> None:
+        path_field = ft.TextField(
+            label="Output folder",
+            value=config.get("OutputPath", ""),
+            expand=True,
+        )
+        dir_picker = ft.FilePicker()
+
+        async def browse(_) -> None:
+            path = await dir_picker.get_directory_path(dialog_title="Select Output Folder")
+            if path:
+                path_field.value = path
+                page.update()
+
+        dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Row(
+                [ft.Icon(ft.Icons.FOLDER_OPEN, color=ft.Colors.BLUE_400),
+                 ft.Text("Output Path", weight=ft.FontWeight.BOLD)],
+                spacing=10,
+            ),
+            content=ft.Row(
+                [path_field,
+                 ft.IconButton(icon=ft.Icons.FOLDER_OPEN, tooltip="Browse…", on_click=browse)],
+                width=400,
+            ),
+            actions=[
+                ft.TextButton("Cancel", on_click=lambda _: close_dlg(dlg)),
+                ft.FilledButton(
+                    "Save",
+                    on_click=lambda _: (
+                        config.update({"OutputPath": path_field.value}),
+                        save_config(config),
+                        close_dlg(dlg),
+                    ),
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.overlay.append(dlg)
+        dlg.open = True
+        page.update()
+
     # ── Top app bar (modern title bar + toolbar) ─────────────────
     def toggle_theme(_) -> None:
         is_light = page.theme_mode == ft.ThemeMode.LIGHT
         page.theme_mode = ft.ThemeMode.DARK if is_light else ft.ThemeMode.LIGHT
         config["Theme"] = "Dark" if page.theme_mode == ft.ThemeMode.DARK else "Light"
+        save_config(config)
         page.update()
+
+    async def exit_app(_) -> None:
+        config["window_x"] = page.window.left
+        config["window_y"] = page.window.top
+        save_config(config)
+        await page.window.close()
 
     app_bar = ft.AppBar(
         leading=ft.Icon(ft.Icons.HISTORY_EDU, color=ft.Colors.BLUE_400),
@@ -181,11 +232,16 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             _popup(ft.Icons.FOLDER_OUTLINED, "File", [
                 ft.PopupMenuItem(
                     content=ft.Row([ft.Icon(ft.Icons.EXIT_TO_APP, size=16), ft.Text("Exit")], spacing=8),
-                    on_click=lambda _: page.window.close(),
+                    on_click=exit_app,
                 ),
             ]),
             # ── Settings menu ────────────────────────────────────
             _popup(ft.Icons.SETTINGS_OUTLINED, "Settings", [
+                ft.PopupMenuItem(
+                    content=ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN, size=16), ft.Text("Output Path…")], spacing=8),
+                    on_click=show_output_path,
+                ),
+                ft.PopupMenuItem(),  # divider
                 ft.PopupMenuItem(
                     content=ft.Row([ft.Icon(ft.Icons.TUNE, size=16), ft.Text("Preferences…")], spacing=8),
                     on_click=lambda _: None,  # TODO

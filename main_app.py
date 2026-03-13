@@ -150,16 +150,12 @@ def show_main_app(page: ft.Page, config: dict) -> None:
     def _popup(icon, label, items) -> ft.PopupMenuButton:
         return ft.PopupMenuButton(
             content=ft.Container(
-                content=ft.Row(
-                    [ft.Icon(icon, size=16), ft.Text(label, size=13)],
-                    spacing=6,
-                    tight=True,
-                ),
-                padding=ft.Padding(left=14, right=10, top=6, bottom=6),
+                content=ft.Icon(icon, size=20),
+                padding=ft.Padding(left=10, right=10, top=6, bottom=6),
                 border_radius=6,
             ),
             items=items,
-            tooltip="",
+            tooltip=label,
         )
 
     # ── Output path dialog ───────────────────────────────────────────────────
@@ -224,33 +220,90 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         save_config(config)
         await page.window.close()
 
+    # ── Tracker state ────────────────────────────────────────────
+    _state = {"tracker": config.get("StartWith", "TaskTracker")}
+
+    def _build_work_placeholder(tracker: str) -> ft.Column:
+        if tracker == "TaskTracker":
+            icon, label = ft.Icons.LIST_ALT, "Task Tracker"
+        else:
+            icon, label = ft.Icons.BRUSH, "Design Tracker"
+        return ft.Column(
+            [
+                ft.Icon(icon, size=72, color=ft.Colors.GREY_400),
+                ft.Text(
+                    f"{label} — coming soon",
+                    size=18,
+                    color=ft.Colors.GREY_500,
+                    weight=ft.FontWeight.W_300,
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=16,
+        )
+
+    work_area = ft.Container(
+        content=_build_work_placeholder(_state["tracker"]),
+        expand=True,
+    )
+
+    # ── Tracker slider (placed in AppBar) ────────────────────────
+    _switch_label = ft.Text(
+        "Task Tracker" if _state["tracker"] == "TaskTracker" else "Design Tracker",
+        size=12,
+        weight=ft.FontWeight.W_500,
+        width=112,
+    )
+
+    def _on_slider_change(e) -> None:
+        _switch_label.value = "Design Tracker" if e.control.value >= 0.5 else "Task Tracker"
+        page.update()
+
+    def _on_slider_end(e) -> None:
+        key = "DesignTracker" if e.control.value >= 0.5 else "TaskTracker"
+        _state["tracker"] = key
+        config["StartWith"] = key
+        save_config(config)
+        work_area.content = _build_work_placeholder(key)
+        page.update()
+
+    _tracker_slider = ft.Slider(
+        min=0, max=1, divisions=1,
+        value=0 if _state["tracker"] == "TaskTracker" else 1,
+        width=80,
+        on_change=_on_slider_change,
+        on_change_end=_on_slider_end,
+    )
+
     app_bar = ft.AppBar(
-        leading=ft.Icon(ft.Icons.HISTORY_EDU, color=ft.Colors.BLUE_400),
-        leading_width=48,
-        title=ft.Text("Memento", weight=ft.FontWeight.BOLD, size=18),
+        leading=ft.Container(
+            content=ft.Row(
+                [_tracker_slider, _switch_label],
+                spacing=2,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+            padding=ft.padding.only(left=8),
+        ),
+        leading_width=220,
+        title=None,
         center_title=False,
         bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
         elevation=0,
         actions=[
-            # ── File menu ────────────────────────────────────────
-            _popup(ft.Icons.FOLDER_OUTLINED, "File", [
-                ft.PopupMenuItem(
-                    content=ft.Row([ft.Icon(ft.Icons.EXIT_TO_APP, size=16), ft.Text("Exit")], spacing=8),
-                    on_click=exit_app,
-                ),
-            ]),
             # ── Settings menu ────────────────────────────────────
             _popup(ft.Icons.SETTINGS_OUTLINED, "Settings", [
                 ft.PopupMenuItem(
                     content=ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN, size=16), ft.Text("Output Path…")], spacing=8),
                     on_click=show_output_path,
                 ),
-                ft.PopupMenuItem(),  # divider
-                ft.PopupMenuItem(
-                    content=ft.Row([ft.Icon(ft.Icons.TUNE, size=16), ft.Text("Preferences…")], spacing=8),
-                    on_click=lambda _: None,  # TODO
-                ),
             ]),
+            # ── Theme toggle ─────────────────────────────────────
+            ft.IconButton(
+                icon=ft.Icons.DARK_MODE if page.theme_mode == ft.ThemeMode.LIGHT else ft.Icons.LIGHT_MODE,
+                tooltip="Toggle theme",
+                on_click=toggle_theme,
+            ),
             # ── Help menu ────────────────────────────────────────
             _popup(ft.Icons.HELP_OUTLINE, "Help", [
                 ft.PopupMenuItem(
@@ -263,35 +316,9 @@ def show_main_app(page: ft.Page, config: dict) -> None:
                 ),
             ]),
             ft.Container(width=4),
-            # ── Theme toggle ─────────────────────────────────────
-            ft.IconButton(
-                icon=ft.Icons.DARK_MODE if page.theme_mode == ft.ThemeMode.LIGHT else ft.Icons.LIGHT_MODE,
-                tooltip="Toggle theme",
-                on_click=toggle_theme,
-            ),
-            ft.Container(width=4),
         ],
     )
     page.appbar = app_bar
-
-    # ── Work area placeholder ────────────────────────────────────
-    work_area = ft.Container(
-        content=ft.Column(
-            [
-                ft.Icon(ft.Icons.LIST_ALT, size=72, color=ft.Colors.GREY_400),
-                ft.Text(
-                    "Work area — coming soon",
-                    size=18,
-                    color=ft.Colors.GREY_500,
-                    weight=ft.FontWeight.W_300,
-                ),
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=16,
-        ),
-        expand=True,
-    )
 
     # ── Assemble final layout ────────────────────────────────────
     page.controls.clear()

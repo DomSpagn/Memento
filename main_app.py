@@ -162,40 +162,29 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             tooltip="",
         )
 
-    # ── Output path dialog ───────────────────────────────────────
+    # ── Output path dialog ───────────────────────────────────────────────────
     def show_output_path(_) -> None:
         from pathlib import Path as _Path
 
-        task_field = ft.TextField(
-            label="Task Tracker Output Path",
-            value=config.get("TaskTrackerPath", ""),
-            expand=True,
-        )
-        design_field = ft.TextField(
-            label="Design Tracker Output Path",
-            value=config.get("DesignTrackerPath", ""),
+        path_field = ft.TextField(
+            label="Output Path",
+            value=config.get("OutputPath", ""),
             expand=True,
         )
         dir_picker = ft.FilePicker()
 
-        async def browse_task(_) -> None:
-            path = await dir_picker.get_directory_path(dialog_title="Select Task Tracker Output Folder")
+        async def browse(_) -> None:
+            path = await dir_picker.get_directory_path(dialog_title="Select Output Folder")
             if path:
-                task_field.value = path
+                path_field.value = path
                 page.update()
 
-        async def browse_design(_) -> None:
-            path = await dir_picker.get_directory_path(dialog_title="Select Design Tracker Output Folder")
-            if path:
-                design_field.value = path
-                page.update()
-
-        def save_paths(_) -> None:
-            for key, field in (("TaskTrackerPath", task_field), ("DesignTrackerPath", design_field)):
-                config[key] = field.value
-                p = _Path(field.value)
-                (p / "db").mkdir(parents=True, exist_ok=True)
-                (p / "attachments").mkdir(parents=True, exist_ok=True)
+        def save_path(_) -> None:
+            config["OutputPath"] = path_field.value
+            root = _Path(path_field.value) / "Memento"
+            for tracker in ("TaskTracker", "DesignTracker"):
+                for sub in ("db", "attachments"):
+                    (root / tracker / sub).mkdir(parents=True, exist_ok=True)
             save_config(config)
             close_dlg(dlg)
 
@@ -203,21 +192,17 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             modal=True,
             title=ft.Row(
                 [ft.Icon(ft.Icons.FOLDER_OPEN, color=ft.Colors.BLUE_400),
-                 ft.Text("Output Paths", weight=ft.FontWeight.BOLD)],
+                 ft.Text("Output Path", weight=ft.FontWeight.BOLD)],
                 spacing=10,
             ),
-            content=ft.Column(
-                [
-                    ft.Row([task_field,   ft.IconButton(icon=ft.Icons.FOLDER_OPEN, tooltip="Browse…", on_click=browse_task)]),
-                    ft.Row([design_field, ft.IconButton(icon=ft.Icons.FOLDER_OPEN, tooltip="Browse…", on_click=browse_design)]),
-                ],
-                spacing=10,
+            content=ft.Row(
+                [path_field,
+                 ft.IconButton(icon=ft.Icons.FOLDER_OPEN, tooltip="Browse…", on_click=browse)],
                 width=460,
-                tight=True,
             ),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda _: close_dlg(dlg)),
-                ft.FilledButton("Save", on_click=save_paths),
+                ft.FilledButton("Save", on_click=save_path),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )

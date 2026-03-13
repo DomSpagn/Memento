@@ -23,11 +23,21 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
 
     # ── File picker (directory selection for step 2) ─────────────
     dir_picker = ft.FilePicker()
+    # NOTE: do NOT add to page.overlay – in Flet 0.80+ get_directory_path
+    # is a coroutine that returns the path directly, no overlay needed.
 
     # ── Step 1 – Theme ───────────────────────────────────────────
+    def on_theme_change(e):
+        config.update({"Theme": e.data})
+        page.theme_mode = (
+            ft.ThemeMode.LIGHT if e.data == "Light"
+            else ft.ThemeMode.DARK
+        )
+        page.update()
+
     theme_radio = ft.RadioGroup(
         value="Dark",
-        on_change=lambda e: config.update({"Theme": e.data}),
+        on_change=on_theme_change,
         content=ft.Column(
             [
                 ft.Radio(value="Dark",  label="Dark Mode  🌙"),
@@ -59,13 +69,12 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
         on_change=lambda e: config.update({"OutputPath": e.data}),
     )
 
-    def on_dir_result(e) -> None:
-        if e.path:
-            config["OutputPath"] = e.path
-            path_field.value = e.path
+    async def browse_clicked(_) -> None:
+        path = await dir_picker.get_directory_path(dialog_title="Select Output Folder")
+        if path:
+            config["OutputPath"] = path
+            path_field.value = path
             page.update()
-
-    dir_picker.on_result = on_dir_result
 
     step_2 = ft.Column(
         [
@@ -82,9 +91,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
                     ft.IconButton(
                         icon=ft.Icons.FOLDER_OPEN,
                         tooltip="Browse…",
-                        on_click=lambda _: dir_picker.get_directory_path(
-                            dialog_title="Select Output Folder"
-                        ),
+                        on_click=browse_clicked,
                     ),
                 ]
             ),
@@ -117,12 +124,6 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
     def on_next(_) -> None:
         cur = state["step"]
         if cur < len(steps) - 1:
-            if cur == 0:
-                # Apply live theme preview when leaving step 1
-                page.theme_mode = (
-                    ft.ThemeMode.LIGHT if config["Theme"] == "Light"
-                    else ft.ThemeMode.DARK
-                )
             navigate_to(cur + 1)
 
     def on_back(_)   -> None: navigate_to(state["step"] - 1)
@@ -174,7 +175,6 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
     )
 
     page.controls.clear()
-    page.overlay.append(dir_picker)
     page.add(
         ft.Column(
             [card],

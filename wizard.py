@@ -117,7 +117,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
             fit=ft.BoxFit.FILL,
             expand=True,
         ),
-        width=240, height=180,
+        width=200, height=150,
         border=ft.border.all(2, ft.Colors.BLUE_400),
         border_radius=10,
         padding=0,
@@ -131,7 +131,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
             fit=ft.BoxFit.FILL,
             expand=True,
         ),
-        width=240, height=180,
+        width=200, height=150,
         border=ft.border.all(2, ft.Colors.with_opacity(0.25, ft.Colors.GREY)),
         border_radius=10,
         padding=0,
@@ -193,7 +193,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
     btn_finish   = ft.ElevatedButton("Finish  ✓", visible=False)
 
     # Container that swaps step content on navigation
-    content_area = ft.Container(content=steps[0], height=400)
+    content_area = ft.Container(content=steps[0], expand=True)
 
     def navigate_to(step: int) -> None:
         state["step"]        = step
@@ -261,11 +261,26 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
                 ),
             ],
             spacing=16,
-            width=560,
+            expand=True,
         ),
         padding=40,
         border_radius=14,
+        expand=True,
+        margin=ft.margin.symmetric(horizontal=40, vertical=30),
     )
+
+    def _on_resize(e=None) -> None:
+        w = page.window.width or 800
+        img_w = max(110, min(240, int((w - 160) / 2)))
+        img_h = int(img_w * 0.75)
+        task_card.width    = img_w
+        task_card.height   = img_h
+        design_card.width  = img_w
+        design_card.height = img_h
+        page.update()
+
+    page.on_resize = _on_resize
+    _on_resize()
 
     page.controls.clear()
     page.add(

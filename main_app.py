@@ -164,41 +164,60 @@ def show_main_app(page: ft.Page, config: dict) -> None:
 
     # ── Output path dialog ───────────────────────────────────────
     def show_output_path(_) -> None:
-        path_field = ft.TextField(
-            label="Output folder",
-            value=config.get("OutputPath", ""),
+        from pathlib import Path as _Path
+
+        task_field = ft.TextField(
+            label="Task Tracker Output Path",
+            value=config.get("TaskTrackerPath", ""),
+            expand=True,
+        )
+        design_field = ft.TextField(
+            label="Design Tracker Output Path",
+            value=config.get("DesignTrackerPath", ""),
             expand=True,
         )
         dir_picker = ft.FilePicker()
 
-        async def browse(_) -> None:
-            path = await dir_picker.get_directory_path(dialog_title="Select Output Folder")
+        async def browse_task(_) -> None:
+            path = await dir_picker.get_directory_path(dialog_title="Select Task Tracker Output Folder")
             if path:
-                path_field.value = path
+                task_field.value = path
                 page.update()
+
+        async def browse_design(_) -> None:
+            path = await dir_picker.get_directory_path(dialog_title="Select Design Tracker Output Folder")
+            if path:
+                design_field.value = path
+                page.update()
+
+        def save_paths(_) -> None:
+            for key, field in (("TaskTrackerPath", task_field), ("DesignTrackerPath", design_field)):
+                config[key] = field.value
+                p = _Path(field.value)
+                (p / "db").mkdir(parents=True, exist_ok=True)
+                (p / "attachments").mkdir(parents=True, exist_ok=True)
+            save_config(config)
+            close_dlg(dlg)
 
         dlg = ft.AlertDialog(
             modal=True,
             title=ft.Row(
                 [ft.Icon(ft.Icons.FOLDER_OPEN, color=ft.Colors.BLUE_400),
-                 ft.Text("Output Path", weight=ft.FontWeight.BOLD)],
+                 ft.Text("Output Paths", weight=ft.FontWeight.BOLD)],
                 spacing=10,
             ),
-            content=ft.Row(
-                [path_field,
-                 ft.IconButton(icon=ft.Icons.FOLDER_OPEN, tooltip="Browse…", on_click=browse)],
-                width=400,
+            content=ft.Column(
+                [
+                    ft.Row([task_field,   ft.IconButton(icon=ft.Icons.FOLDER_OPEN, tooltip="Browse…", on_click=browse_task)]),
+                    ft.Row([design_field, ft.IconButton(icon=ft.Icons.FOLDER_OPEN, tooltip="Browse…", on_click=browse_design)]),
+                ],
+                spacing=10,
+                width=460,
+                tight=True,
             ),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda _: close_dlg(dlg)),
-                ft.FilledButton(
-                    "Save",
-                    on_click=lambda _: (
-                        config.update({"OutputPath": path_field.value}),
-                        save_config(config),
-                        close_dlg(dlg),
-                    ),
-                ),
+                ft.FilledButton("Save", on_click=save_paths),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )

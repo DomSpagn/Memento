@@ -17,7 +17,8 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
 
     config: dict = {
         "Theme": "Dark",
-        "OutputPath": str(Path.home() / "Documents" / "Memento"),
+        "TaskTrackerPath": str(Path.home() / "Documents" / "MemTaskTracker"),
+        "DesignTrackerPath": str(Path.home() / "Documents" / "MemDesignTracker"),
     }
     state: dict = {"step": 0}
 
@@ -61,24 +62,37 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
         spacing=10,
     )
 
-    # ── Step 2 – Output folder ───────────────────────────────────
-    path_field = ft.TextField(
-        label="Output folder",
-        value=config["OutputPath"],
+    # ── Step 2 – Output folders ──────────────────────────────────
+    task_field = ft.TextField(
+        label="Task Tracker Output Path",
+        value=config["TaskTrackerPath"],
         expand=True,
-        on_change=lambda e: config.update({"OutputPath": e.data}),
+        on_change=lambda e: config.update({"TaskTrackerPath": e.data}),
+    )
+    design_field = ft.TextField(
+        label="Design Tracker Output Path",
+        value=config["DesignTrackerPath"],
+        expand=True,
+        on_change=lambda e: config.update({"DesignTrackerPath": e.data}),
     )
 
-    async def browse_clicked(_) -> None:
-        path = await dir_picker.get_directory_path(dialog_title="Select Output Folder")
+    async def browse_task(_) -> None:
+        path = await dir_picker.get_directory_path(dialog_title="Select Task Tracker Output Folder")
         if path:
-            config["OutputPath"] = path
-            path_field.value = path
+            config["TaskTrackerPath"] = path
+            task_field.value = path
+            page.update()
+
+    async def browse_design(_) -> None:
+        path = await dir_picker.get_directory_path(dialog_title="Select Design Tracker Output Folder")
+        if path:
+            config["DesignTrackerPath"] = path
+            design_field.value = path
             page.update()
 
     step_2 = ft.Column(
         [
-            ft.Text("Output Folder", size=20, weight=ft.FontWeight.BOLD),
+            ft.Text("Output Folders", size=20, weight=ft.FontWeight.BOLD),
             ft.Text(
                 "Step 2 of 2  —  Select where Memento will save its files",
                 size=12,
@@ -87,11 +101,21 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
             ft.Divider(height=16),
             ft.Row(
                 [
-                    path_field,
+                    task_field,
                     ft.IconButton(
                         icon=ft.Icons.FOLDER_OPEN,
                         tooltip="Browse…",
-                        on_click=browse_clicked,
+                        on_click=browse_task,
+                    ),
+                ]
+            ),
+            ft.Row(
+                [
+                    design_field,
+                    ft.IconButton(
+                        icon=ft.Icons.FOLDER_OPEN,
+                        tooltip="Browse…",
+                        on_click=browse_design,
                     ),
                 ]
             ),
@@ -109,7 +133,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
     btn_finish   = ft.ElevatedButton("Finish  ✓", visible=False)
 
     # Container that swaps step content on navigation
-    content_area = ft.Container(content=steps[0], height=250)
+    content_area = ft.Container(content=steps[0], height=300)
 
     def navigate_to(step: int) -> None:
         state["step"]        = step
@@ -127,7 +151,15 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
             navigate_to(cur + 1)
 
     def on_back(_)   -> None: navigate_to(state["step"] - 1)
-    def on_finish(_) -> None: on_complete(config)
+    def _create_tracker_dirs(base: str) -> None:
+        p = Path(base)
+        (p / "db").mkdir(parents=True, exist_ok=True)
+        (p / "attachments").mkdir(parents=True, exist_ok=True)
+
+    def on_finish(_) -> None:
+        _create_tracker_dirs(config["TaskTrackerPath"])
+        _create_tracker_dirs(config["DesignTrackerPath"])
+        on_complete(config)
 
     btn_back.on_click   = on_back
     btn_next.on_click   = on_next

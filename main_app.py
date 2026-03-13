@@ -248,44 +248,32 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         expand=True,
     )
 
-    # ── Tracker slider (placed in AppBar) ────────────────────────
-    _switch_label = ft.Text(
-        "Task Tracker" if _state["tracker"] == "TaskTracker" else "Design Tracker",
-        size=12,
-        weight=ft.FontWeight.W_500,
-        width=112,
-    )
-
-    def _on_slider_change(e) -> None:
-        _switch_label.value = "Design Tracker" if e.control.value >= 0.5 else "Task Tracker"
-        page.update()
-
-    def _on_slider_end(e) -> None:
-        key = "DesignTracker" if e.control.value >= 0.5 else "TaskTracker"
+    # ── Tracker segmented button (placed in AppBar) ──────────────
+    def _on_segment_change(e) -> None:
+        key = "DesignTracker" if e.control.selected_index == 1 else "TaskTracker"
         _state["tracker"] = key
         config["StartWith"] = key
         save_config(config)
         work_area.content = _build_work_placeholder(key)
         page.update()
 
-    _tracker_slider = ft.Slider(
-        min=0, max=1, divisions=1,
-        value=0 if _state["tracker"] == "TaskTracker" else 1,
-        width=80,
-        on_change=_on_slider_change,
-        on_change_end=_on_slider_end,
+    _tracker_seg = ft.CupertinoSlidingSegmentedButton(
+        selected_index=0 if _state["tracker"] == "TaskTracker" else 1,
+        on_change=_on_segment_change,
+        thumb_color=ft.Colors.BLUE_400,
+        controls=[
+            ft.Text("Task Tracker",   size=12),
+            ft.Text("Design Tracker", size=12),
+        ],
     )
 
     app_bar = ft.AppBar(
         leading=ft.Container(
-            content=ft.Row(
-                [_tracker_slider, _switch_label],
-                spacing=2,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            ),
+            content=_tracker_seg,
             padding=ft.padding.only(left=8),
+            alignment=ft.Alignment(-1, 0),
         ),
-        leading_width=220,
+        leading_width=260,
         title=None,
         center_title=False,
         bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,

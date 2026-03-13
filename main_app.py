@@ -131,52 +131,88 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         dlg.open = True
         page.update()
 
-    # ── Menu bar ─────────────────────────────────────────────────
-    menu_bar = ft.MenuBar(
-        controls=[
-            # ── File ─────────────────────────────────────────────
-            ft.SubmenuButton(
-                content=ft.Text("File"),
-                controls=[
-                    ft.MenuItemButton(
-                        content=ft.Text("Exit"),
-                        leading=ft.Icon(ft.Icons.EXIT_TO_APP),
-                        # Triggers the "close" window event which saves config
-                        on_click=lambda _: page.window.close(),
-                    ),
-                ],
+    # ── Popup menu helpers ───────────────────────────────────────
+    def _menu_btn(icon, label, on_click) -> ft.TextButton:
+        return ft.TextButton(
+            content=ft.Row(
+                [ft.Icon(icon, size=16), ft.Text(label, size=13)],
+                spacing=6,
+                tight=True,
             ),
+            style=ft.ButtonStyle(
+                padding=ft.Padding(left=12, right=12, top=8, bottom=8),
+                overlay_color=ft.Colors.with_opacity(0.08, ft.Colors.PRIMARY),
+                shape=ft.RoundedRectangleBorder(radius=4),
+            ),
+            on_click=on_click,
+        )
 
-            # ── Settings ─────────────────────────────────────────
-            ft.SubmenuButton(
-                content=ft.Text("Settings"),
-                controls=[
-                    ft.MenuItemButton(
-                        content=ft.Text("Preferences…"),
-                        leading=ft.Icon(ft.Icons.SETTINGS),
-                        on_click=lambda _: None,   # TODO: implement preferences dialog
-                    ),
-                ],
+    def _popup(icon, label, items) -> ft.PopupMenuButton:
+        return ft.PopupMenuButton(
+            content=ft.Container(
+                content=ft.Row(
+                    [ft.Icon(icon, size=16), ft.Text(label, size=13)],
+                    spacing=6,
+                    tight=True,
+                ),
+                padding=ft.Padding(left=14, right=10, top=6, bottom=6),
+                border_radius=6,
             ),
+            items=items,
+            tooltip="",
+        )
 
-            # ── Help ─────────────────────────────────────────────
-            ft.SubmenuButton(
-                content=ft.Text("Help"),
-                controls=[
-                    ft.MenuItemButton(
-                        content=ft.Text("About"),
-                        leading=ft.Icon(ft.Icons.INFO),
-                        on_click=show_about,
-                    ),
-                    ft.MenuItemButton(
-                        content=ft.Text("User Manual"),
-                        leading=ft.Icon(ft.Icons.MENU_BOOK),
-                        on_click=show_manual,
-                    ),
-                ],
+    # ── Top app bar (modern title bar + toolbar) ─────────────────
+    def toggle_theme(_) -> None:
+        is_light = page.theme_mode == ft.ThemeMode.LIGHT
+        page.theme_mode = ft.ThemeMode.DARK if is_light else ft.ThemeMode.LIGHT
+        config["Theme"] = "Dark" if page.theme_mode == ft.ThemeMode.DARK else "Light"
+        page.update()
+
+    app_bar = ft.AppBar(
+        leading=ft.Icon(ft.Icons.HISTORY_EDU, color=ft.Colors.BLUE_400),
+        leading_width=48,
+        title=ft.Text("Memento", weight=ft.FontWeight.BOLD, size=18),
+        center_title=False,
+        bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
+        elevation=0,
+        actions=[
+            # ── File menu ────────────────────────────────────────
+            _popup(ft.Icons.FOLDER_OUTLINED, "File", [
+                ft.PopupMenuItem(
+                    content=ft.Row([ft.Icon(ft.Icons.EXIT_TO_APP, size=16), ft.Text("Exit")], spacing=8),
+                    on_click=lambda _: page.window.close(),
+                ),
+            ]),
+            # ── Settings menu ────────────────────────────────────
+            _popup(ft.Icons.SETTINGS_OUTLINED, "Settings", [
+                ft.PopupMenuItem(
+                    content=ft.Row([ft.Icon(ft.Icons.TUNE, size=16), ft.Text("Preferences…")], spacing=8),
+                    on_click=lambda _: None,  # TODO
+                ),
+            ]),
+            # ── Help menu ────────────────────────────────────────
+            _popup(ft.Icons.HELP_OUTLINE, "Help", [
+                ft.PopupMenuItem(
+                    content=ft.Row([ft.Icon(ft.Icons.INFO_OUTLINE, size=16), ft.Text("About")], spacing=8),
+                    on_click=show_about,
+                ),
+                ft.PopupMenuItem(
+                    content=ft.Row([ft.Icon(ft.Icons.MENU_BOOK, size=16), ft.Text("User Manual")], spacing=8),
+                    on_click=show_manual,
+                ),
+            ]),
+            ft.Container(width=4),
+            # ── Theme toggle ─────────────────────────────────────
+            ft.IconButton(
+                icon=ft.Icons.DARK_MODE if page.theme_mode == ft.ThemeMode.LIGHT else ft.Icons.LIGHT_MODE,
+                tooltip="Toggle theme",
+                on_click=toggle_theme,
             ),
+            ft.Container(width=4),
         ],
     )
+    page.appbar = app_bar
 
     # ── Work area placeholder ────────────────────────────────────
     work_area = ft.Container(
@@ -199,15 +235,5 @@ def show_main_app(page: ft.Page, config: dict) -> None:
 
     # ── Assemble final layout ────────────────────────────────────
     page.controls.clear()
-    page.add(
-        ft.Column(
-            [
-                menu_bar,
-                ft.Divider(height=1, thickness=1),
-                work_area,
-            ],
-            spacing=0,
-            expand=True,
-        )
-    )
+    page.add(work_area)
     page.update()

@@ -13,6 +13,7 @@ Responsibilities:
 import asyncio
 import flet as ft
 from config_manager import save_config
+from task_tracker import build_task_tracker
 
 APP_VERSION = "v1.0"
 BUILD_DATE  = "13/03/2026"
@@ -220,31 +221,46 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         save_config(config)
         await page.window.close()
 
+    # ── Task Tracker toolbar buttons (centred in AppBar) ──────────
+    _task_add_btn  = ft.IconButton(icon=ft.Icons.ADD_TASK,       tooltip="New Task",    icon_size=22, icon_color=ft.Colors.GREEN_400)
+    _task_edit_btn = ft.IconButton(icon=ft.Icons.EDIT_NOTE,      tooltip="Edit Task",   icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.BLUE_400),  disabled=True)
+    _task_del_btn  = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, tooltip="Delete Task", icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.RED_400),   disabled=True)
+    _task_actions  = ft.Row(
+        [_task_add_btn, _task_edit_btn, _task_del_btn],
+        spacing=0,
+        tight=True,
+    )
+
     # ── Tracker state ────────────────────────────────────────────
     _state = {"tracker": config.get("StartWith", "TaskTracker")}
+    _task_actions.visible = _state["tracker"] == "TaskTracker"
 
-    def _build_work_placeholder(tracker: str) -> ft.Column:
+    def _build_tracker_view(tracker: str):
+        _task_actions.visible = tracker == "TaskTracker"
         if tracker == "TaskTracker":
-            icon, label = ft.Icons.LIST_ALT, "Task Tracker"
-        else:
-            icon, label = ft.Icons.BRUSH, "Design Tracker"
-        return ft.Column(
-            [
-                ft.Icon(icon, size=72, color=ft.Colors.GREY_400),
-                ft.Text(
-                    f"{label} — coming soon",
-                    size=18,
-                    color=ft.Colors.GREY_500,
-                    weight=ft.FontWeight.W_300,
-                ),
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=16,
+            return build_task_tracker(page, config, _task_add_btn, _task_edit_btn, _task_del_btn)
+        # DesignTracker placeholder
+        return ft.Container(
+            content=ft.Column(
+                [
+                    ft.Icon(ft.Icons.BRUSH, size=72, color=ft.Colors.GREY_400),
+                    ft.Text(
+                        "Design Tracker — coming soon",
+                        size=18,
+                        color=ft.Colors.GREY_500,
+                        weight=ft.FontWeight.W_300,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=16,
+            ),
+            expand=True,
+            alignment=ft.Alignment(0, 0),
         )
 
     work_area = ft.Container(
-        content=_build_work_placeholder(_state["tracker"]),
+        content=_build_tracker_view(_state["tracker"]),
         expand=True,
     )
 
@@ -254,7 +270,7 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         _state["tracker"] = key
         config["StartWith"] = key
         save_config(config)
-        work_area.content = _build_work_placeholder(key)
+        work_area.content = _build_tracker_view(key)
         page.update()
 
     _tracker_seg = ft.CupertinoSlidingSegmentedButton(
@@ -274,8 +290,8 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             alignment=ft.Alignment(-1, 0),
         ),
         leading_width=260,
-        title=None,
-        center_title=False,
+        title=_task_actions,
+        center_title=True,
         bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
         elevation=0,
         actions=[

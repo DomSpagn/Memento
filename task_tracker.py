@@ -77,6 +77,7 @@ def build_task_tracker(page: ft.Page, config: dict,
         palette = {
             "Open":        (ft.Colors.BLUE_100,   ft.Colors.BLUE_900),
             "In Progress": (ft.Colors.ORANGE_100, ft.Colors.ORANGE_900),
+            "On Hold":     (ft.Colors.PURPLE_100, ft.Colors.PURPLE_900),
             "Closed":      (ft.Colors.GREEN_100,  ft.Colors.GREEN_900),
         }
         bg, fg = palette.get(status, (ft.Colors.GREY_200, ft.Colors.GREY_800))
@@ -154,13 +155,22 @@ def build_task_tracker(page: ft.Page, config: dict,
                     status_dd.value,
                 )
             else:
-                update_task(
-                    output_path,
-                    task["id"],
-                    title=title_field.value.strip(),
-                    project=proj,
-                    status=status_dd.value,
+                new_title  = title_field.value.strip()
+                new_proj   = proj
+                new_status = status_dd.value
+                changed = (
+                    new_title  != task["title"]
+                    or new_proj   != (task["project"] or "")
+                    or new_status != task["status"]
                 )
+                if changed:
+                    update_task(
+                        output_path,
+                        task["id"],
+                        title=new_title,
+                        project=new_proj,
+                        status=new_status,
+                    )
             dlg.open = False
             _clear_selection()
             _refresh()
@@ -280,6 +290,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                                 style=ft.ButtonStyle(
                                     padding=ft.padding.all(0),
                                     overlay_color=ft.Colors.TRANSPARENT,
+                                    mouse_cursor=ft.MouseCursor.CLICK,
                                 ),
                                 on_click=lambda _, t=task: open_task_dialog(t),
                             )

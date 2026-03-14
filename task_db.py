@@ -12,7 +12,7 @@ from pathlib import Path
 
 DB_FILENAME = "tasks.db"
 
-STATUSES = ["Open", "In Progress", "Closed"]
+STATUSES = ["Open", "In Progress", "On Hold", "Closed"]
 
 # Only these column names may be touched by update_task, preventing any
 # accidental (or injected) writes to unintended columns.
@@ -84,10 +84,15 @@ def update_task(output_path: str, task_id: int, **fields) -> None:
     safe = {k: v for k, v in fields.items() if k in _UPDATABLE_FIELDS}
     if not safe:
         return
-    safe["modified_at"] = _now()
-    # Auto-stamp closed_at when task moves to Closed (if not already set).
-    if safe.get("status") == "Closed" and "closed_at" not in safe:
-        safe["closed_at"] = _now()
+    new_status = safe.get("status")
+    if new_status == "Closed":
+        # Task chiuso: imposta closed_at, svuota modified_at
+        safe["closed_at"]   = _now()
+        safe["modified_at"] = ""
+    else:
+        # Task aperto/in-progress: aggiorna modified_at, svuota closed_at
+        safe["modified_at"] = _now()
+        safe["closed_at"]   = None
     set_clause = ", ".join(f"{col} = ?" for col in safe)
     values = list(safe.values()) + [task_id]
     with _connect(output_path) as conn:

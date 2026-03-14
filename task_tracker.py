@@ -19,6 +19,17 @@ def build_task_tracker(page: ft.Page, config: dict,
 
     # ── Selection state ───────────────────────────────────────────────────────
     _sel: dict = {"task": None}
+
+    # ── Sort state ───────────────────────────────────────────────────────────
+    _sort: dict = {"col": None, "asc": True}
+    # Maps DataTable column index → task dict key
+    _SORT_KEYS = {
+        2: "project",
+        3: "opened_at",
+        4: "modified_at",
+        5: "closed_at",
+        6: "status",
+    }
     edit_btn.disabled   = True
     del_btn.disabled    = True
     edit_btn.icon_color = ft.Colors.with_opacity(0.3, ft.Colors.BLUE_400)
@@ -40,10 +51,24 @@ def build_task_tracker(page: ft.Page, config: dict,
             del_btn.disabled    = False
             edit_btn.icon_color = ft.Colors.BLUE_400
             del_btn.icon_color  = ft.Colors.RED_400
-        data_table.rows = _build_rows(fetch_all_tasks(output_path))
+        data_table.rows = _build_rows(_apply_sort(fetch_all_tasks(output_path)))
         page.update()
 
     # ── Helpers ──────────────────────────────────────────────────────────────
+
+    def _apply_sort(tasks: list[dict]) -> list[dict]:
+        col = _sort["col"]
+        if col is None or col not in _SORT_KEYS:
+            return tasks
+        key = _SORT_KEYS[col]
+        return sorted(tasks, key=lambda t: (t[key] or ""), reverse=not _sort["asc"])
+
+    def _on_sort(e) -> None:
+        _sort["col"] = e.column_index
+        _sort["asc"] = e.ascending
+        data_table.sort_column_index = e.column_index
+        data_table.sort_ascending    = e.ascending
+        _refresh()
 
     def _fmt(val) -> str:
         return val if val else "—"
@@ -219,13 +244,15 @@ def build_task_tracker(page: ft.Page, config: dict,
         columns=[
             ft.DataColumn(ft.Text("#",        size=13, weight=_COL_HEADER)),
             ft.DataColumn(ft.Text("Title",    size=13, weight=_COL_HEADER)),
-            ft.DataColumn(ft.Text("Project",  size=13, weight=_COL_HEADER)),
-            ft.DataColumn(ft.Text("Opened",   size=13, weight=_COL_HEADER)),
-            ft.DataColumn(ft.Text("Modified", size=13, weight=_COL_HEADER)),
-            ft.DataColumn(ft.Text("Closed",   size=13, weight=_COL_HEADER)),
-            ft.DataColumn(ft.Text("Status",   size=13, weight=_COL_HEADER)),
+            ft.DataColumn(ft.Row([ft.Text("Project",  size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
+            ft.DataColumn(ft.Row([ft.Text("Opened",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
+            ft.DataColumn(ft.Row([ft.Text("Modified", size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
+            ft.DataColumn(ft.Row([ft.Text("Closed",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
+            ft.DataColumn(ft.Row([ft.Text("Status",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
         ],
         rows=[],
+        sort_column_index=None,
+        sort_ascending=True,
         border=ft.border.all(1, ft.Colors.OUTLINE_VARIANT),
         border_radius=8,
         vertical_lines=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
@@ -291,7 +318,7 @@ def build_task_tracker(page: ft.Page, config: dict,
     list_area = ft.Container(content=empty_state, expand=True)
 
     def _refresh() -> None:
-        tasks = fetch_all_tasks(output_path)
+        tasks = _apply_sort(fetch_all_tasks(output_path))
         if tasks:
             data_table.rows = _build_rows(tasks)
             list_area.content = ft.ListView(

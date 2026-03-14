@@ -55,6 +55,16 @@ def fetch_all_tasks(output_path: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def fetch_distinct_projects(output_path: str) -> list[str]:
+    """Return the sorted list of distinct non-empty project names."""
+    with _connect(output_path) as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT project FROM tasks"
+            " WHERE project != '' ORDER BY project ASC"
+        ).fetchall()
+    return [r[0] for r in rows]
+
+
 def create_task(output_path: str, title: str, project: str,
                 status: str = "Open") -> int:
     """Insert a new task and return its assigned id."""
@@ -62,8 +72,8 @@ def create_task(output_path: str, title: str, project: str,
     with _connect(output_path) as conn:
         cur = conn.execute(
             "INSERT INTO tasks (title, project, status, opened_at, modified_at)"
-            " VALUES (?, ?, ?, ?, ?)",
-            (title, project, status, now, now),
+            " VALUES (?, ?, ?, ?, '')",
+            (title, project, status, now),
         )
         conn.commit()
         return cur.lastrowid

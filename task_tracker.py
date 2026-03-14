@@ -5,7 +5,7 @@ Builds and returns the Task Tracker view for the Memento main window.
 
 import flet as ft
 from task_db import (
-    STATUSES, init_db, fetch_all_tasks,
+    STATUSES, init_db, fetch_all_tasks, fetch_distinct_projects,
     create_task, update_task, delete_task,
 )
 
@@ -73,11 +73,41 @@ def build_task_tracker(page: ft.Page, config: dict,
             expand=True,
             autofocus=True,
         )
-        project_field = ft.TextField(
+
+        _projects = fetch_distinct_projects(output_path)
+        _proj_suggestions = ft.Column([], spacing=0, visible=False)
+
+        project_text = ft.TextField(
             label="Project",
             value=task["project"] if task else "",
             expand=True,
         )
+
+        def _on_project_change(e) -> None:
+            typed = e.control.value.strip()
+            matches = [p for p in _projects if typed.lower() and typed.lower() in p.lower()][:6]
+            _proj_suggestions.controls = [
+                ft.Container(
+                    content=ft.Text(p, size=13),
+                    padding=ft.padding.symmetric(horizontal=12, vertical=8),
+                    border_radius=4,
+                    ink=True,
+                    on_click=lambda _, p=p: _pick_project(p),
+                )
+                for p in matches
+            ]
+            _proj_suggestions.visible = bool(matches)
+            save_btn.disabled = not bool(typed)
+            page.update()
+
+        def _pick_project(name: str) -> None:
+            project_text.value = name
+            _proj_suggestions.visible = False
+            save_btn.disabled = False
+            page.update()
+
+        project_text.on_change = _on_project_change
+
         status_dd = ft.Dropdown(
             label="Status",
             value=task["status"] if task else "Open",
@@ -90,11 +120,12 @@ def build_task_tracker(page: ft.Page, config: dict,
                 title_field.error_text = "Required"
                 page.update()
                 return
+            proj = project_text.value.strip()
             if is_new:
                 create_task(
                     output_path,
                     title_field.value.strip(),
-                    project_field.value.strip(),
+                    proj,
                     status_dd.value,
                 )
             else:
@@ -102,7 +133,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                     output_path,
                     task["id"],
                     title=title_field.value.strip(),
-                    project=project_field.value.strip(),
+                    project=proj,
                     status=status_dd.value,
                 )
             dlg.open = False
@@ -119,30 +150,42 @@ def build_task_tracker(page: ft.Page, config: dict,
             dlg.open = False
             page.update()
 
-        date_rows = [] if is_new else [
-            ft.Divider(height=10),
-            ft.Row([
-                ft.Text("Opened:",   size=12, color=ft.Colors.GREY_500, width=90),
-                ft.Text(_fmt(task["opened_at"]),   size=12),
-            ]),
-            ft.Row([
-                ft.Text("Modified:", size=12, color=ft.Colors.GREY_500, width=90),
-                ft.Text(_fmt(task["modified_at"]), size=12),
-            ]),
-            ft.Row([
-                ft.Text("Closed:",   size=12, color=ft.Colors.GREY_500, width=90),
-                ft.Text(_fmt(task["closed_at"]),   size=12),
-            ]),
-        ]
+        date_rows = []
 
-        left_actions = [] if is_new else [
-            ft.TextButton(
-                "Delete",
-                style=ft.ButtonStyle(color=ft.Colors.ERROR),
-                on_click=_delete,
+        delete_btn = ft.FilledButton(
+            "Delete",
+            icon=ft.Icons.DELETE_OUTLINE,
+            style=ft.ButtonStyle(bgcolor=ft.Colors.RED_600, color=ft.Colors.WHITE),
+            on_click=_delete,
+            visible=not is_new,
+        )
+        cancel_btn = ft.FilledButton(
+            "Cancel",
+            icon=ft.Icons.CLOSE,
+            style=ft.ButtonStyle(bgcolor=ft.Colors.GREY_600, color=ft.Colors.WHITE),
+            on_click=_cancel,
+        )
+        save_btn = ft.FilledButton(
+            "Save",
+            icon=ft.Icons.CHECK,
+            style=ft.ButtonStyle(
+                bgcolor={
+                    ft.ControlState.DEFAULT:  ft.Colors.GREEN_600,
+                    ft.ControlState.DISABLED: ft.Colors.with_opacity(0.35, ft.Colors.GREEN_600),
+                },
+                color={
+                    ft.ControlState.DEFAULT:  ft.Colors.WHITE,
+                    ft.ControlState.DISABLED: ft.Colors.with_opacity(0.4, ft.Colors.WHITE),
+                },
             ),
-            ft.Container(expand=True),
-        ]
+            on_click=_save,
+            disabled=not bool((task["project"] if task else "").strip()),
+        )
+
+        btn_row = ft.Row(
+            [delete_btn, cancel_btn, save_btn] if not is_new else [cancel_btn, save_btn],
+            alignment=ft.MainAxisAlignment.SPACE_EVENLY,
+        )
 
         dlg = ft.AlertDialog(
             modal=True,
@@ -153,19 +196,16 @@ def build_task_tracker(page: ft.Page, config: dict,
             content=ft.Column(
                 [
                     title_field,
-                    ft.Row([project_field, status_dd], spacing=12),
-                    *date_rows,
+                    ft.Column([project_text, _proj_suggestions], spacing=0),
+                    status_dd,
+                    ft.Divider(height=16),
+                    btn_row,
                 ],
                 tight=True,
                 spacing=12,
                 width=480,
             ),
-            actions=[
-                *left_actions,
-                ft.TextButton("Cancel", on_click=_cancel),
-                ft.FilledButton("Save", on_click=_save),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
+            actions=[],
         )
         page.overlay.append(dlg)
         dlg.open = True
@@ -180,10 +220,10 @@ def build_task_tracker(page: ft.Page, config: dict,
             ft.DataColumn(ft.Text("#",        size=13, weight=_COL_HEADER)),
             ft.DataColumn(ft.Text("Title",    size=13, weight=_COL_HEADER)),
             ft.DataColumn(ft.Text("Project",  size=13, weight=_COL_HEADER)),
-            ft.DataColumn(ft.Text("Status",   size=13, weight=_COL_HEADER)),
             ft.DataColumn(ft.Text("Opened",   size=13, weight=_COL_HEADER)),
             ft.DataColumn(ft.Text("Modified", size=13, weight=_COL_HEADER)),
             ft.DataColumn(ft.Text("Closed",   size=13, weight=_COL_HEADER)),
+            ft.DataColumn(ft.Text("Status",   size=13, weight=_COL_HEADER)),
         ],
         rows=[],
         border=ft.border.all(1, ft.Colors.OUTLINE_VARIANT),
@@ -204,7 +244,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 ft.DataRow(
                     selected=is_sel,
                     color=ft.Colors.with_opacity(0.12, ft.Colors.BLUE) if is_sel else None,
-                    on_select_changed=lambda e, t=task: _select_task(e, t),
+                    on_select_change=lambda e, t=task: _select_task(e, t),
                     cells=[
                         ft.DataCell(ft.Text(str(task["id"]), size=13)),
                         ft.DataCell(
@@ -218,13 +258,13 @@ def build_task_tracker(page: ft.Page, config: dict,
                             )
                         ),
                         ft.DataCell(ft.Text(_fmt(task["project"]),    size=13)),
-                        ft.DataCell(_status_chip(task["status"])),
                         ft.DataCell(ft.Text(_fmt(task["opened_at"]),   size=12,
                                             color=ft.Colors.GREY_500)),
                         ft.DataCell(ft.Text(_fmt(task["modified_at"]), size=12,
                                             color=ft.Colors.GREY_500)),
                         ft.DataCell(ft.Text(_fmt(task["closed_at"]),   size=12,
                                             color=ft.Colors.GREY_500)),
+                        ft.DataCell(_status_chip(task["status"])),
                     ]
                 )
             )

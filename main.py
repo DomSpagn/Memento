@@ -17,7 +17,6 @@ def main(page: ft.Page) -> None:
     page.window.min_height = 600
 
     def on_wizard_complete(config: dict) -> None:
-        """Called by the wizard when the user clicks Finish."""
         save_config(config)
         show_main_app(page, config)
 

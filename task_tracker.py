@@ -231,8 +231,98 @@ def build_task_tracker(page: ft.Page, config: dict,
         )
 
         # ── Description field with toolbar ────────────────────────────────────
+        _current_desc = task.get("description", "") or ""
+        _desc_has_content = bool(_current_desc.strip())
+        # Shared refs to main action buttons (populated after they are created)
+        _main_btns: dict = {"delete": None, "save": None}
+
+        def _build_rich_spans(raw: str) -> list:
+            """Parse stored markup → list[ft.TextSpan]. Supports nested combos."""
+
+            def _merge_style(base, extra):
+                if base is None:
+                    return extra
+                deco = base.decoration
+                if extra.decoration is not None:
+                    deco = (
+                        ft.TextDecoration.UNDERLINE
+                        if deco == ft.TextDecoration.UNDERLINE
+                        else extra.decoration
+                    )
+                return ft.TextStyle(
+                    weight=extra.weight or base.weight,
+                    italic=(True if (extra.italic or base.italic) else None),
+                    decoration=deco,
+                    color=extra.color if extra.color is not None else base.color,
+                )
+
+            def parse_inline(text, inherited=None):
+                pat = re.compile(
+                    r'\*\*(?P<b>(?:(?!\*\*).)+?)\*\*'
+                    r'|\*(?P<i>(?:(?!\*).)+?)\*'
+                    r'|<u>(?P<u>(?:(?!</u>).)+?)</u>'
+                    r'|\[color=(?P<chex>[^\]]+)\](?P<cv>(?:(?!\[/color\]).)+?)\[/color\]',
+                    re.DOTALL,
+                )
+                result = []
+                last = 0
+                for m in pat.finditer(text):
+                    if m.start() > last:
+                        result.append(ft.TextSpan(text=text[last:m.start()], style=inherited))
+                    if m.group('b') is not None:
+                        s = _merge_style(inherited, ft.TextStyle(weight=ft.FontWeight.BOLD))
+                        result.extend(parse_inline(m.group('b'), s))
+                    elif m.group('i') is not None:
+                        s = _merge_style(inherited, ft.TextStyle(italic=True))
+                        result.extend(parse_inline(m.group('i'), s))
+                    elif m.group('u') is not None:
+                        s = _merge_style(inherited, ft.TextStyle(decoration=ft.TextDecoration.UNDERLINE))
+                        result.extend(parse_inline(m.group('u'), s))
+                    elif m.group('chex') is not None:
+                        s = _merge_style(inherited, ft.TextStyle(color=m.group('chex')))
+                        result.extend(parse_inline(m.group('cv'), s))
+                    last = m.end()
+                if last < len(text):
+                    result.append(ft.TextSpan(text=text[last:], style=inherited))
+                return result
+
+            spans = []
+            for i, line in enumerate(raw.split('\n')):
+                if i > 0:
+                    spans.append(ft.TextSpan(text='\n'))
+                if line.startswith('    '):
+                    spans.append(ft.TextSpan(
+                        text='    ',
+                        style=ft.TextStyle(color=ft.Colors.GREY_500),
+                    ))
+                    line = line[4:]
+                if line.startswith('• '):
+                    spans.append(ft.TextSpan(text='• '))
+                    line = line[2:]
+                else:
+                    nm = re.match(r'^(\d+\.\s)(.*)', line)
+                    if nm:
+                        spans.append(ft.TextSpan(text=nm.group(1)))
+                        line = nm.group(2)
+                spans.extend(parse_inline(line))
+            return spans
+
+        desc_display = ft.Text(
+            spans=_build_rich_spans(_current_desc),
+            selectable=True,
+            visible=_desc_has_content,
+        )
+
+        # Tracks cursor position updated via on_selection_change
+        _cursor: dict = {"pos": len(_current_desc)}
+
+        def _on_selection_change(e) -> None:
+            sel = desc_field.selection
+            if sel is not None:
+                _cursor["pos"] = sel.extent_offset
+
         desc_field = ft.TextField(
-            value=task.get("description", "") or "",
+            value=_current_desc,
             multiline=True,
             min_lines=9,
             max_lines=9,
@@ -240,22 +330,102 @@ def build_task_tracker(page: ft.Page, config: dict,
             hint_text="Task description…",
             content_padding=ft.padding.symmetric(horizontal=10, vertical=8),
             expand=True,
+            read_only=False,
+            visible=not _desc_has_content,
+            on_selection_change=_on_selection_change,
         )
 
-        async def _append(text: str) -> None:
-            desc_field.value = (desc_field.value or "") + text
-            await desc_field.focus()
+        desc_edit_btn = ft.IconButton(
+            icon=ft.Icons.EDIT_NOTE,
+            icon_size=18,
+            tooltip="Edit description",
+            visible=_desc_has_content,
+            style=ft.ButtonStyle(
+                padding=ft.padding.symmetric(horizontal=4, vertical=4),
+                shape=ft.RoundedRectangleBorder(radius=4),
+            ),
+        )
+
+        desc_save_btn = ft.IconButton(
+            icon=ft.Icons.SAVE_OUTLINED,
+            icon_size=18,
+            tooltip="Save description",
+            visible=not _desc_has_content,
+            style=ft.ButtonStyle(
+                padding=ft.padding.symmetric(horizontal=4, vertical=4),
+                shape=ft.RoundedRectangleBorder(radius=4),
+            ),
+        )
+
+        def _on_desc_save(_e) -> None:
+            new_desc = desc_field.value or ""
+            update_task(output_path, task["id"], description=new_desc)
+            has_content = bool(new_desc.strip())
+            desc_display.spans = _build_rich_spans(new_desc)
+            desc_display.visible = has_content
+            desc_field.visible = not has_content
+            desc_edit_btn.visible = has_content
+            desc_save_btn.visible = not has_content
+            desc_toolbar.visible = not has_content
+            if _main_btns["delete"]:
+                _main_btns["delete"].disabled = False
+            if _main_btns["save"]:
+                _main_btns["save"].disabled = False
             page.update()
 
+        desc_save_btn.on_click = _on_desc_save
+
+        async def _on_desc_edit(_e) -> None:
+            desc_display.visible = False
+            desc_field.visible = True
+            desc_edit_btn.visible = False
+            desc_save_btn.visible = True
+            desc_toolbar.visible = True
+            if _main_btns["delete"]:
+                _main_btns["delete"].disabled = True
+            if _main_btns["save"]:
+                _main_btns["save"].disabled = True
+            page.update()
+            await desc_field.focus()
+
+        desc_edit_btn.on_click = _on_desc_edit
+
+        async def _insert_at_cursor(text: str) -> None:
+            """Insert text at the current cursor position, restore cursor after."""
+            cur = desc_field.value or ""
+            pos = min(_cursor["pos"], len(cur))
+            new_val = cur[:pos] + text + cur[pos:]
+            new_pos = pos + len(text)
+            desc_field.value = new_val
+            desc_field.selection = ft.TextSelection(
+                base_offset=new_pos, extent_offset=new_pos
+            )
+            _cursor["pos"] = new_pos
+            page.update()
+
+        async def _append(text: str) -> None:
+            await _insert_at_cursor(text)
+
         async def _apply_format(prefix: str, suffix: str, placeholder: str) -> None:
-            await _append(f"{prefix}{placeholder}{suffix}")
+            await _insert_at_cursor(f"{prefix}{placeholder}{suffix}")
 
         async def _apply_line_prefix(prefix: str) -> None:
             cur = desc_field.value or ""
-            if cur and not cur.endswith("\n"):
-                cur += "\n"
-            desc_field.value = cur + prefix
-            await desc_field.focus()
+            pos = min(_cursor["pos"], len(cur))
+            # Go to start of current line
+            line_start = cur.rfind('\n', 0, pos) + 1
+            before = cur[:line_start]
+            after  = cur[line_start:]
+            if after.endswith('\n') or not after:
+                new_val = before + prefix + after
+            else:
+                new_val = before + prefix + after
+            new_pos = line_start + len(prefix)
+            desc_field.value = new_val
+            desc_field.selection = ft.TextSelection(
+                base_offset=new_pos, extent_offset=new_pos
+            )
+            _cursor["pos"] = new_pos
             page.update()
 
         async def _apply_numbered(_e) -> None:
@@ -265,9 +435,8 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         async def _remove_quotes(_e) -> None:
             cur = desc_field.value or ""
-            lines = [ln[2:] if ln.startswith("> ") else ln for ln in cur.splitlines()]
+            lines = [ln[4:] if ln.startswith("    ") else ln for ln in cur.splitlines()]
             desc_field.value = "\n".join(lines)
-            await desc_field.focus()
             page.update()
 
         def _tb_btn(icon, tooltip, on_click):
@@ -298,7 +467,7 @@ def build_task_tracker(page: ft.Page, config: dict,
         async def _on_italic(_e):      await _apply_format("*",    "*",     "italic text")
         async def _on_underline(_e):   await _apply_format("<u>",  "</u>",  "underlined text")
         async def _on_bullet(_e):      await _apply_line_prefix("• ")
-        async def _on_quote(_e):       await _apply_line_prefix("> ")
+        async def _on_quote(_e):       await _apply_line_prefix("    ")
 
         def _make_color_handler(hex_color):
             async def _handler(_e):
@@ -325,6 +494,7 @@ def build_task_tracker(page: ft.Page, config: dict,
         )
 
         desc_toolbar = ft.Container(
+            visible=not _desc_has_content,
             content=ft.Row(
                 [
                     _tb_btn(ft.Icons.FORMAT_BOLD,          "Bold",         _on_bold),
@@ -348,10 +518,22 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         desc_section = ft.Column(
             [
-                ft.Text("Description", size=12, weight=ft.FontWeight.W_600,
-                        color=ft.Colors.GREY_600),
+                ft.Row(
+                    [
+                        ft.Text("Description", size=12, weight=ft.FontWeight.W_600,
+                                color=ft.Colors.GREY_600, expand=True),
+                        desc_edit_btn,
+                        desc_save_btn,
+                    ],
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
                 ft.Container(
-                    content=ft.Column([desc_toolbar, desc_field], spacing=0),
+                    content=ft.Column(
+                        [desc_toolbar, desc_display, desc_field],
+                        spacing=0,
+                        expand=True,
+                        horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+                    ),
                     border=ft.border.all(1, ft.Colors.OUTLINE_VARIANT),
                     border_radius=6,
                     expand=True,
@@ -359,11 +541,12 @@ def build_task_tracker(page: ft.Page, config: dict,
             ],
             spacing=4,
             expand=True,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
 
         # ── Attachments ───────────────────────────────────────────────────────
         attach_dir = (
-            Path(output_path) / "Memento" / "TaskTracker" / "attachments" / str(task["id"])
+            Path(output_path) / "Memento" / "TaskTracker" / "attachments"
         )
         attach_list_col = ft.Column([], spacing=4)
 
@@ -437,6 +620,7 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         # ── Dialog actions ────────────────────────────────────────────────────
         def _save(_) -> None:
+            # If description editor is open, persist it too
             update_task(output_path, task["id"], description=desc_field.value or "")
             dlg.open = False
             _clear_selection()
@@ -460,7 +644,16 @@ def build_task_tracker(page: ft.Page, config: dict,
         delete_btn = ft.FilledButton(
             "Delete",
             icon=ft.Icons.DELETE_OUTLINE,
-            style=ft.ButtonStyle(bgcolor=ft.Colors.RED_600, color=ft.Colors.WHITE),
+            style=ft.ButtonStyle(
+                bgcolor={
+                    ft.ControlState.DEFAULT:  ft.Colors.RED_600,
+                    ft.ControlState.DISABLED: ft.Colors.with_opacity(0.35, ft.Colors.RED_600),
+                },
+                color={
+                    ft.ControlState.DEFAULT:  ft.Colors.WHITE,
+                    ft.ControlState.DISABLED: ft.Colors.with_opacity(0.4, ft.Colors.WHITE),
+                },
+            ),
             on_click=_delete,
         )
         cancel_btn = ft.FilledButton(
@@ -472,9 +665,20 @@ def build_task_tracker(page: ft.Page, config: dict,
         save_btn = ft.FilledButton(
             "Save",
             icon=ft.Icons.CHECK,
-            style=ft.ButtonStyle(bgcolor=ft.Colors.GREEN_600, color=ft.Colors.WHITE),
+            style=ft.ButtonStyle(
+                bgcolor={
+                    ft.ControlState.DEFAULT:  ft.Colors.GREEN_600,
+                    ft.ControlState.DISABLED: ft.Colors.with_opacity(0.35, ft.Colors.GREEN_600),
+                },
+                color={
+                    ft.ControlState.DEFAULT:  ft.Colors.WHITE,
+                    ft.ControlState.DISABLED: ft.Colors.with_opacity(0.4, ft.Colors.WHITE),
+                },
+            ),
             on_click=_save,
         )
+        _main_btns["delete"] = delete_btn
+        _main_btns["save"]   = save_btn
 
         dlg = ft.AlertDialog(
             modal=True,
@@ -495,6 +699,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                     ],
                     spacing=6,
                     expand=True,
+                    horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
                 ),
                 width=560,
                 height=600,

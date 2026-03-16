@@ -20,7 +20,8 @@ from task_db import (
 
 
 def build_task_tracker(page: ft.Page, config: dict,
-                       add_btn, edit_btn, del_btn) -> ft.Column:
+                       add_btn, edit_btn, del_btn,
+                       on_open_task=None, on_close_task=None) -> ft.Column:
     """Return the Task Tracker UI and wire add_btn / edit_btn / del_btn."""
 
     output_path: str = config.get("OutputPath", "")
@@ -212,9 +213,9 @@ def build_task_tracker(page: ft.Page, config: dict,
             page.update()
             return
 
-        # ── EXISTING TASK: read-only title/project/status + description + files ─
+        # ── EXISTING TASK: editable title/project/status + description + files ─
 
-        # ── Read-only header ──────────────────────────────────────────────────
+        # ── Editable header ───────────────────────────────────────────────────
         def _label_row(label: str, value_ctrl) -> ft.Row:
             return ft.Row(
                 [
@@ -226,11 +227,80 @@ def build_task_tracker(page: ft.Page, config: dict,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
             )
 
+        header_title = ft.TextField(
+            value=task["title"],
+            expand=True,
+            border=ft.InputBorder.UNDERLINE,
+            content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
+            text_size=13,
+        )
+        _hdr_projects = fetch_distinct_projects(output_path)
+        _hdr_suggestions = ft.Column([], spacing=0, visible=False)
+        header_project = ft.TextField(
+            value=task["project"] or "",
+            expand=True,
+            border=ft.InputBorder.UNDERLINE,
+            content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
+            text_size=13,
+        )
+
+        def _on_hdr_project_change(e) -> None:
+            typed = header_project.value.strip()
+            matches = [p for p in _hdr_projects if typed.lower() and typed.lower() in p.lower()][:6]
+            _hdr_suggestions.controls = [
+                ft.Container(
+                    content=ft.Text(p, size=13),
+                    padding=ft.padding.symmetric(horizontal=12, vertical=8),
+                    border_radius=4,
+                    ink=True,
+                    on_click=lambda _, p=p: _pick_hdr_project(p),
+                )
+                for p in matches
+            ]
+            _hdr_suggestions.visible = bool(matches)
+            if header_project.value.strip() != _orig["project"]:
+                _edit_state["dirty"] = True
+                _update_save_btn()
+            else:
+                page.update()
+
+        def _pick_hdr_project(name: str) -> None:
+            header_project.value = name
+            _hdr_suggestions.visible = False
+            if name != _orig["project"]:
+                _edit_state["dirty"] = True
+            _update_save_btn()
+
+        header_project.on_change = _on_hdr_project_change
+
+        header_status = ft.Dropdown(
+            value=task["status"],
+            options=[ft.dropdown.Option(s) for s in STATUSES],
+            width=160,
+            border=ft.InputBorder.UNDERLINE,
+            content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
+            text_size=13,
+        )
+
+        def _on_hdr_title_change(_e) -> None:
+            if header_title.value.strip() != _orig["title"]:
+                _edit_state["dirty"] = True
+            _update_save_btn()
+
+        header_title.on_change = _on_hdr_title_change
+
+        def _on_hdr_status_change(_e) -> None:
+            if (header_status.value or "") != _orig["status"]:
+                _edit_state["dirty"] = True
+            _update_save_btn()
+
+        header_status.on_change = _on_hdr_status_change
+
         header_col = ft.Column(
             [
-                _label_row("Title:",   ft.Text(task["title"],          size=13)),
-                _label_row("Project:", ft.Text(task["project"] or "—", size=13)),
-                _label_row("Status:",  _status_chip(task["status"])),
+                _label_row("Title:",   header_title),
+                _label_row("Project:", ft.Column([header_project, _hdr_suggestions], spacing=0)),
+                _label_row("Status:",  header_status),
             ],
             spacing=6,
         )
@@ -240,6 +310,22 @@ def build_task_tracker(page: ft.Page, config: dict,
         _desc_has_content = bool(_current_desc.strip())
         # Shared refs to main action buttons (populated after they are created)
         _main_btns: dict = {"delete": None, "save": None}
+        # Original values for dirty detection
+        _orig = {
+            "title":       task["title"],
+            "project":     task.get("project", "") or "",
+            "status":      task["status"],
+            "description": _current_desc,
+        }
+        # dirty = at least one change confirmed; editing = unsaved edit in progress
+        _edit_state = {"dirty": False, "editing": not _desc_has_content}
+
+        def _update_save_btn() -> None:
+            if _main_btns["save"]:
+                _main_btns["save"].disabled = not (
+                    _edit_state["dirty"] and not _edit_state["editing"]
+                )
+            page.update()
 
         def _build_rich_spans(raw: str) -> list:
             """Parse stored markup → list[ft.TextSpan]. Supports nested combos."""
@@ -338,7 +424,16 @@ def build_task_tracker(page: ft.Page, config: dict,
             read_only=False,
             visible=not _desc_has_content,
             on_selection_change=_on_selection_change,
+            on_change=lambda _e: _desc_field_on_change(),
         )
+
+        def _desc_field_on_change() -> None:
+            _edit_state["editing"] = True
+            if _main_btns["delete"]:
+                _main_btns["delete"].disabled = True
+            if _main_btns["save"]:
+                _main_btns["save"].disabled = True
+            page.update()
 
         desc_edit_btn = ft.IconButton(
             icon=ft.Icons.EDIT_NOTE,
@@ -362,6 +457,17 @@ def build_task_tracker(page: ft.Page, config: dict,
             ),
         )
 
+        desc_cancel_btn = ft.IconButton(
+            icon=ft.Icons.CLOSE,
+            icon_size=18,
+            tooltip="Cancel editing",
+            visible=False,
+            style=ft.ButtonStyle(
+                padding=ft.padding.symmetric(horizontal=4, vertical=4),
+                shape=ft.RoundedRectangleBorder(radius=4),
+            ),
+        )
+
         def _on_desc_save(_e) -> None:
             new_desc = desc_field.value or ""
             update_task(output_path, task["id"], description=new_desc)
@@ -371,21 +477,42 @@ def build_task_tracker(page: ft.Page, config: dict,
             desc_field.visible = not has_content
             desc_edit_btn.visible = has_content
             desc_save_btn.visible = not has_content
+            desc_cancel_btn.visible = False
             desc_toolbar.visible = not has_content
+            _edit_state["editing"] = False
+            if new_desc != _orig["description"]:
+                _edit_state["dirty"] = True
             if _main_btns["delete"]:
                 _main_btns["delete"].disabled = False
-            if _main_btns["save"]:
-                _main_btns["save"].disabled = False
-            page.update()
+            _update_save_btn()
 
         desc_save_btn.on_click = _on_desc_save
+
+        def _on_desc_cancel(_e) -> None:
+            """Restore previous description without saving."""
+            desc_field.value = _current_desc
+            has_content = bool(_current_desc.strip())
+            desc_display.visible = has_content
+            desc_field.visible = not has_content
+            desc_edit_btn.visible = has_content
+            desc_save_btn.visible = not has_content
+            desc_cancel_btn.visible = False
+            desc_toolbar.visible = not has_content
+            _edit_state["editing"] = False
+            if _main_btns["delete"]:
+                _main_btns["delete"].disabled = False
+            _update_save_btn()
+
+        desc_cancel_btn.on_click = _on_desc_cancel
 
         async def _on_desc_edit(_e) -> None:
             desc_display.visible = False
             desc_field.visible = True
             desc_edit_btn.visible = False
             desc_save_btn.visible = True
+            desc_cancel_btn.visible = True
             desc_toolbar.visible = True
+            _edit_state["editing"] = True
             if _main_btns["delete"]:
                 _main_btns["delete"].disabled = True
             if _main_btns["save"]:
@@ -529,6 +656,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                                 color=ft.Colors.GREY_600, expand=True),
                         desc_edit_btn,
                         desc_save_btn,
+                        desc_cancel_btn,
                     ],
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
@@ -541,6 +669,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                     ),
                     border=ft.border.all(1, ft.Colors.OUTLINE_VARIANT),
                     border_radius=6,
+                    bgcolor=ft.Colors.with_opacity(0.10, ft.Colors.YELLOW),
                     expand=True,
                 ),
             ],
@@ -564,34 +693,29 @@ def build_task_tracker(page: ft.Page, config: dict,
         def _refresh_attach() -> None:
             atts = fetch_task_attachments(output_path, task["id"])
             attach_list_col.controls = [
-                ft.Container(
-                    content=ft.Row(
-                        [
-                            ft.Icon(ft.Icons.ATTACH_FILE, size=14, color=ft.Colors.GREY_500),
-                            ft.TextButton(
-                                a["orig_name"],
-                                style=ft.ButtonStyle(
-                                    padding=ft.padding.all(0),
-                                    overlay_color=ft.Colors.TRANSPARENT,
-                                ),
-                                on_click=lambda _e, fn=a["filename"]: _open_file(attach_dir / fn),
-                                expand=True,
+                ft.Row(
+                    [
+                        ft.Icon(ft.Icons.ATTACH_FILE, size=14, color=ft.Colors.GREY_500),
+                        ft.TextButton(
+                            a["orig_name"],
+                            style=ft.ButtonStyle(
+                                padding=ft.padding.all(0),
+                                overlay_color=ft.Colors.TRANSPARENT,
+                                text_style=ft.TextStyle(decoration=ft.TextDecoration.UNDERLINE),
                             ),
-                            ft.IconButton(
-                                icon=ft.Icons.DELETE_OUTLINE,
-                                icon_size=15,
-                                icon_color=ft.Colors.RED_400,
-                                tooltip="Remove attachment",
-                                on_click=lambda _e, att=a: _remove_att(att),
-                                style=ft.ButtonStyle(padding=ft.padding.all(2)),
-                            ),
-                        ],
-                        spacing=6,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                    ),
-                    border=ft.border.all(1, ft.Colors.OUTLINE_VARIANT),
-                    border_radius=4,
-                    padding=ft.padding.symmetric(horizontal=8, vertical=4),
+                            on_click=lambda _e, fn=a["filename"]: _open_file(attach_dir / fn),
+                        ),
+                        ft.IconButton(
+                            icon=ft.Icons.DELETE_OUTLINE,
+                            icon_size=15,
+                            icon_color=ft.Colors.RED_400,
+                            tooltip="Remove attachment",
+                            on_click=lambda _e, att=a: _remove_att(att),
+                            style=ft.ButtonStyle(padding=ft.padding.all(2)),
+                        ),
+                    ],
+                    spacing=4,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 )
                 for a in atts
             ]
@@ -660,34 +784,29 @@ def build_task_tracker(page: ft.Page, config: dict,
             h_atts = fetch_history_attachments(output_path, entry["id"])
             h_att_col = ft.Column(
                 [
-                    ft.Container(
-                        content=ft.Row(
-                            [
-                                ft.Icon(ft.Icons.ATTACH_FILE, size=13, color=ft.Colors.GREY_500),
-                                ft.TextButton(
-                                    a["orig_name"],
-                                    style=ft.ButtonStyle(
-                                        padding=ft.padding.all(0),
-                                        overlay_color=ft.Colors.TRANSPARENT,
-                                    ),
-                                    on_click=lambda _e, fn=a["filename"]: _open_file(history_attach_dir / fn),
-                                    expand=True,
+                    ft.Row(
+                        [
+                            ft.Icon(ft.Icons.ATTACH_FILE, size=13, color=ft.Colors.GREY_500),
+                            ft.TextButton(
+                                a["orig_name"],
+                                style=ft.ButtonStyle(
+                                    padding=ft.padding.all(0),
+                                    overlay_color=ft.Colors.TRANSPARENT,
+                                    text_style=ft.TextStyle(decoration=ft.TextDecoration.UNDERLINE),
                                 ),
-                                ft.IconButton(
-                                    icon=ft.Icons.DELETE_OUTLINE,
-                                    icon_size=13,
-                                    icon_color=ft.Colors.RED_400,
-                                    tooltip="Remove",
-                                    on_click=lambda _e, a=a, eid=entry["id"]: _del_h_att(a, eid),
-                                    style=ft.ButtonStyle(padding=ft.padding.all(2)),
-                                ),
-                            ],
-                            spacing=4,
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                        ),
-                        border=ft.border.all(1, ft.Colors.OUTLINE_VARIANT),
-                        border_radius=4,
-                        padding=ft.padding.symmetric(horizontal=6, vertical=3),
+                                on_click=lambda _e, fn=a["filename"]: _open_file(history_attach_dir / fn),
+                            ),
+                            ft.IconButton(
+                                icon=ft.Icons.DELETE_OUTLINE,
+                                icon_size=13,
+                                icon_color=ft.Colors.RED_400,
+                                tooltip="Remove",
+                                on_click=lambda _e, a=a, eid=entry["id"]: _del_h_att(a, eid),
+                                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+                            ),
+                        ],
+                        spacing=4,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     )
                     for a in h_atts
                 ],
@@ -716,6 +835,12 @@ def build_task_tracker(page: ft.Page, config: dict,
                 visible=False,
                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
             )
+            cancel_body_btn = ft.IconButton(
+                icon=ft.Icons.CLOSE, icon_size=15,
+                tooltip="Cancel",
+                visible=False,
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+            )
             del_entry_btn = ft.IconButton(
                 icon=ft.Icons.DELETE_OUTLINE, icon_size=15,
                 icon_color=ft.Colors.RED_400,
@@ -723,10 +848,12 @@ def build_task_tracker(page: ft.Page, config: dict,
                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
             )
 
-            def _on_edit_body(_e, bt=body_txt, eb=edit_body_btn, sb=save_body_btn):
+            def _on_edit_body(_e, bt=body_txt, eb=edit_body_btn, sb=save_body_btn, cb=cancel_body_btn):
                 bt.read_only = False
                 eb.visible = False
                 sb.visible = True
+                cb.visible = True
+                _edit_state["editing"] = True
                 if _main_btns["delete"]:
                     _main_btns["delete"].disabled = True
                 if _main_btns["save"]:
@@ -734,16 +861,29 @@ def build_task_tracker(page: ft.Page, config: dict,
                 page.update()
 
             def _on_save_body(_e, eid=entry["id"], bt=body_txt,
-                              eb=edit_body_btn, sb=save_body_btn):
+                              eb=edit_body_btn, sb=save_body_btn, cb=cancel_body_btn):
                 update_history_entry(output_path, eid, bt.value or "")
                 bt.read_only = True
                 eb.visible = True
                 sb.visible = False
+                cb.visible = False
+                _edit_state["editing"] = False
+                _edit_state["dirty"] = True
                 if _main_btns["delete"]:
                     _main_btns["delete"].disabled = False
-                if _main_btns["save"]:
-                    _main_btns["save"].disabled = False
-                page.update()
+                _update_save_btn()
+
+            def _on_cancel_body(_e, orig=entry["body"], bt=body_txt,
+                                eb=edit_body_btn, sb=save_body_btn, cb=cancel_body_btn):
+                bt.value = orig
+                bt.read_only = True
+                eb.visible = True
+                sb.visible = False
+                cb.visible = False
+                _edit_state["editing"] = False
+                if _main_btns["delete"]:
+                    _main_btns["delete"].disabled = False
+                _update_save_btn()
 
             def _on_del_entry(_e, eid=entry["id"]):
                 delete_history_entry(output_path, eid)
@@ -751,6 +891,7 @@ def build_task_tracker(page: ft.Page, config: dict,
 
             edit_body_btn.on_click = _on_edit_body
             save_body_btn.on_click = _on_save_body
+            cancel_body_btn.on_click = _on_cancel_body
             del_entry_btn.on_click = _on_del_entry
 
             async def _attach_to_history(_e, eid=entry["id"], hac=h_att_col):
@@ -779,6 +920,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                                         weight=ft.FontWeight.W_600),
                                 edit_body_btn,
                                 save_body_btn,
+                                cancel_body_btn,
                                 del_entry_btn,
                             ],
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -799,6 +941,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 ),
                 border=ft.border.all(1, ft.Colors.OUTLINE_VARIANT),
                 border_radius=6,
+                bgcolor=ft.Colors.with_opacity(0.04, ft.Colors.ON_SURFACE),
                 padding=ft.padding.all(8),
             )
 
@@ -826,6 +969,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             max_lines=4,
             expand=True,
             border_radius=6,
+            bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.BLUE),
             content_padding=ft.padding.symmetric(horizontal=10, vertical=8),
         )
 
@@ -838,11 +982,10 @@ def build_task_tracker(page: ft.Page, config: dict,
             has_text = bool((new_entry_field.value or "").strip())
             add_entry_btn.icon = ft.Icons.SAVE_OUTLINED if has_text else ft.Icons.ADD_COMMENT_OUTLINED
             add_entry_btn.tooltip = "Save update" if has_text else "Add update"
+            _edit_state["editing"] = has_text
             if _main_btns["delete"]:
                 _main_btns["delete"].disabled = has_text
-            if _main_btns["save"]:
-                _main_btns["save"].disabled = has_text
-            page.update()
+            _update_save_btn()
 
         new_entry_field.on_change = _on_new_entry_change
 
@@ -854,10 +997,11 @@ def build_task_tracker(page: ft.Page, config: dict,
             new_entry_field.value = ""
             add_entry_btn.icon = ft.Icons.ADD_COMMENT_OUTLINED
             add_entry_btn.tooltip = "Add update"
+            _edit_state["editing"] = False
+            _edit_state["dirty"] = True
             if _main_btns["delete"]:
                 _main_btns["delete"].disabled = False
-            if _main_btns["save"]:
-                _main_btns["save"].disabled = False
+            _update_save_btn()
             _refresh_history()
 
         add_entry_btn.on_click = _add_history_entry
@@ -881,13 +1025,26 @@ def build_task_tracker(page: ft.Page, config: dict,
         )
         _refresh_history()
 
-        # ── Dialog actions ────────────────────────────────────────────────────
+        # ── Actions ───────────────────────────────────────────────────────────
+        _dlg_ref: dict = {"dlg": None}
+
+        def _go_back() -> None:
+            if on_close_task:
+                on_close_task()
+            elif _dlg_ref["dlg"]:
+                _dlg_ref["dlg"].open = False
+                _clear_selection()
+                _refresh()
+
         def _save(_) -> None:
-            # If description editor is open, persist it too
-            update_task(output_path, task["id"], description=desc_field.value or "")
-            dlg.open = False
-            _clear_selection()
-            _refresh()
+            update_task(
+                output_path, task["id"],
+                title=header_title.value.strip() or task["title"],
+                project=header_project.value.strip(),
+                status=header_status.value,
+                description=desc_field.value or "",
+            )
+            _go_back()
 
         def _delete(_) -> None:
             for att in fetch_task_attachments(output_path, task["id"]):
@@ -902,13 +1059,10 @@ def build_task_tracker(page: ft.Page, config: dict,
                     except OSError:
                         pass
             delete_task(output_path, task["id"])
-            dlg.open = False
-            _clear_selection()
-            _refresh()
+            _go_back()
 
         def _cancel(_) -> None:
-            dlg.open = False
-            page.update()
+            _go_back()
 
         delete_btn = ft.FilledButton(
             "Delete",
@@ -948,40 +1102,82 @@ def build_task_tracker(page: ft.Page, config: dict,
         )
         _main_btns["delete"] = delete_btn
         _main_btns["save"]   = save_btn
+        # Save always starts disabled; enabled only after a confirmed change
+        save_btn.disabled = True
 
-        dlg = ft.AlertDialog(
-            modal=True,
-            title=ft.Text(f"Task  #{task['id']}", weight=ft.FontWeight.BOLD),
-            content=ft.Container(
+        if on_open_task:
+            # ── Full-page navigation ──────────────────────────────────────────
+            detail_view = ft.Container(
                 content=ft.Column(
                     [
-                        header_col,
-                        ft.Divider(height=4),
-                        desc_section,
-                        ft.Divider(height=4),
-                        files_section,
-                        ft.Divider(height=4),
-                        history_section,
-                        ft.Divider(height=4),
-                        ft.Row(
-                            [delete_btn, cancel_btn, save_btn],
-                            alignment=ft.MainAxisAlignment.SPACE_EVENLY,
+                        ft.Container(
+                            content=ft.Column(
+                                [
+                                    header_col,
+                                    ft.Divider(height=4),
+                                    desc_section,
+                                    ft.Divider(height=4),
+                                    files_section,
+                                    ft.Divider(height=4),
+                                    history_section,
+                                    ft.Divider(height=16),
+                                    ft.Row(
+                                        [delete_btn, cancel_btn, save_btn],
+                                        alignment=ft.MainAxisAlignment.SPACE_EVENLY,
+                                    ),
+                                    ft.Divider(height=8),
+                                ],
+                                spacing=6,
+                                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+                            ),
+                            expand=True,
+                            padding=ft.padding.symmetric(horizontal=32, vertical=16),
                         ),
                     ],
-                    spacing=6,
-                    expand=True,
+                    scroll=ft.ScrollMode.AUTO,
                     horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+                    expand=True,
                 ),
-                width=560,
-                height=700,
                 expand=True,
-            ),
-            actions=[],
-        )
-        page.overlay.append(dlg)
-        dlg.open = True
-        _refresh_attach()
-        page.update()
+            )
+            _refresh_attach()
+            on_open_task(detail_view, f"Task  #{task['id']}")
+        else:
+            # ── Dialog fallback ───────────────────────────────────────────────
+            dlg = ft.AlertDialog(
+                modal=True,
+                title=ft.Text(f"Task  #{task['id']}", weight=ft.FontWeight.BOLD),
+                content=ft.Container(
+                    content=ft.Column(
+                        [
+                            header_col,
+                            ft.Divider(height=4),
+                            desc_section,
+                            ft.Divider(height=4),
+                            files_section,
+                            ft.Divider(height=4),
+                            history_section,
+                            ft.Divider(height=4),
+                            ft.Row(
+                                [delete_btn, cancel_btn, save_btn],
+                                alignment=ft.MainAxisAlignment.SPACE_EVENLY,
+                            ),
+                        ],
+                        spacing=6,
+                        expand=True,
+                        horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+                    ),
+                    width=560,
+                    height=700,
+                    expand=True,
+                ),
+                actions=[],
+            )
+            _dlg_ref["dlg"] = dlg
+            page.overlay.append(dlg)
+            dlg.open = True
+            _refresh_attach()
+            page.update()
 
     # ── Table ────────────────────────────────────────────────────────────────
 

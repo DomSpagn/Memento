@@ -235,10 +235,50 @@ def show_main_app(page: ft.Page, config: dict) -> None:
     _state = {"tracker": config.get("StartWith", "TaskTracker")}
     _task_actions.visible = _state["tracker"] == "TaskTracker"
 
+    # ── Page-level navigation ────────────────────────────────────────
+    def _restore_appbar() -> None:
+        """Reset AppBar to the tracker-list state."""
+        app_bar.leading = ft.Container(
+            content=_tracker_seg,
+            padding=ft.padding.only(left=8),
+            alignment=ft.Alignment(-1, 0),
+        )
+        app_bar.leading_width = 260
+        app_bar.title = _task_actions
+        app_bar.center_title = True
+        _task_actions.visible = _state["tracker"] == "TaskTracker"
+
+    def _navigate_to_detail(view, task_label: str) -> None:
+        """Replace the work area with a task detail full page."""
+        _task_actions.visible = False
+        app_bar.leading = ft.Container(
+            content=ft.IconButton(
+                icon=ft.Icons.ARROW_BACK,
+                icon_size=20,
+                tooltip="Back to task list",
+                on_click=_navigate_back,
+            ),
+            padding=ft.padding.only(left=4),
+            alignment=ft.Alignment(0, 0),
+        )
+        app_bar.leading_width = 56
+        app_bar.title = ft.Text(task_label, weight=ft.FontWeight.W_500, size=15)
+        app_bar.center_title = True
+        work_area.content = view
+        page.update()
+
+    def _navigate_back(_=None) -> None:
+        """Return from task detail to the task list."""
+        _restore_appbar()
+        work_area.content = _build_tracker_view(_state["tracker"])
+        page.update()
+
     def _build_tracker_view(tracker: str):
         _task_actions.visible = tracker == "TaskTracker"
         if tracker == "TaskTracker":
-            return build_task_tracker(page, config, _task_add_btn, _task_edit_btn, _task_del_btn)
+            return build_task_tracker(page, config, _task_add_btn, _task_edit_btn, _task_del_btn,
+                                      on_open_task=_navigate_to_detail,
+                                      on_close_task=_navigate_back)
         # DesignTracker placeholder
         return ft.Container(
             content=ft.Column(
@@ -270,6 +310,7 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         _state["tracker"] = key
         config["StartWith"] = key
         save_config(config)
+        _restore_appbar()
         work_area.content = _build_tracker_view(key)
         page.update()
 

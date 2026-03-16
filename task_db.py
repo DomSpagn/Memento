@@ -16,7 +16,7 @@ STATUSES = ["Open", "In Progress", "On Hold", "Closed"]
 
 # Only these column names may be touched by update_task, preventing any
 # accidental (or injected) writes to unintended columns.
-_UPDATABLE_FIELDS = {"title", "project", "status", "modified_at", "closed_at"}
+_UPDATABLE_FIELDS = {"title", "project", "status", "modified_at", "closed_at", "description"}
 
 
 def _db_path(output_path: str) -> Path:
@@ -31,8 +31,12 @@ def _connect(output_path: str) -> sqlite3.Connection:
     return conn
 
 
+def _attachments_path(output_path: str) -> Path:
+    return Path(output_path) / "Memento" / "TaskTracker" / "attachments"
+
+
 def init_db(output_path: str) -> None:
-    """Create the tasks table if it does not exist yet."""
+    """Create tables and migrate schema if needed."""
     with _connect(output_path) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
@@ -40,9 +44,24 @@ def init_db(output_path: str) -> None:
                 title       TEXT    NOT NULL,
                 project     TEXT    NOT NULL DEFAULT '',
                 status      TEXT    NOT NULL DEFAULT 'Open',
+                description TEXT    NOT NULL DEFAULT '',
                 opened_at   TEXT    NOT NULL,
                 modified_at TEXT    NOT NULL,
                 closed_at   TEXT
+            )
+        """)
+        # Migration: add description column for existing databases
+        existing_cols = [r[1] for r in conn.execute("PRAGMA table_info(tasks)").fetchall()]
+        if "description" not in existing_cols:
+            conn.execute("ALTER TABLE tasks ADD COLUMN description TEXT NOT NULL DEFAULT ''")
+        # Attachments table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS attachments (
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                task_id   INTEGER NOT NULL,
+                filename  TEXT    NOT NULL,
+                orig_name TEXT    NOT NULL,
+                FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
             )
         """)
         conn.commit()
@@ -84,15 +103,15 @@ def update_task(output_path: str, task_id: int, **fields) -> None:
     safe = {k: v for k, v in fields.items() if k in _UPDATABLE_FIELDS}
     if not safe:
         return
-    new_status = safe.get("status")
-    if new_status == "Closed":
-        # Task chiuso: imposta closed_at, svuota modified_at
-        safe["closed_at"]   = _now()
-        safe["modified_at"] = ""
-    else:
-        # Task aperto/in-progress: aggiorna modified_at, svuota closed_at
-        safe["modified_at"] = _now()
-        safe["closed_at"]   = None
+    # Only touch timestamps when the status is explicitly being updated
+    if "status" in safe:
+        new_status = safe["status"]
+        if new_status == "Closed":
+            safe["closed_at"]   = _now()
+            safe["modified_at"] = ""
+        else:
+            safe["modified_at"] = _now()
+            safe["closed_at"]   = None
     set_clause = ", ".join(f"{col} = ?" for col in safe)
     values = list(safe.values()) + [task_id]
     with _connect(output_path) as conn:
@@ -105,6 +124,42 @@ def delete_task(output_path: str, task_id: int) -> None:
     with _connect(output_path) as conn:
         conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
         conn.commit()
+
+
+# ── Attachment helpers ────────────────────────────────────────────────────────
+
+def fetch_task_attachments(output_path: str, task_id: int) -> list[dict]:
+    """Return all attachments for a task ordered by insertion order."""
+    with _connect(output_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM attachments WHERE task_id = ? ORDER BY id ASC",
+            (task_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_attachment(output_path: str, task_id: int, filename: str, orig_name: str) -> int:
+    """Insert an attachment record and return its assigned id."""
+    with _connect(output_path) as conn:
+        cur = conn.execute(
+            "INSERT INTO attachments (task_id, filename, orig_name) VALUES (?, ?, ?)",
+            (task_id, filename, orig_name),
+        )
+        conn.commit()
+        return cur.lastrowid
+
+
+def remove_attachment(output_path: str, attachment_id: int) -> str | None:
+    """Delete attachment record and return its stored filename, or None if not found."""
+    with _connect(output_path) as conn:
+        row = conn.execute(
+            "SELECT filename FROM attachments WHERE id = ?", (attachment_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        conn.execute("DELETE FROM attachments WHERE id = ?", (attachment_id,))
+        conn.commit()
+    return row[0]
 
 
 def _now() -> str:

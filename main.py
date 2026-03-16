@@ -1,11 +1,6 @@
 """
 main.py
 Entry point for the Memento application.
-
-Start-up logic:
-  - If mem_conf.json does not exist → show the first-run wizard.
-  - Otherwise             → load the saved configuration and open the
-                            main window directly.
 """
 
 import flet as ft
@@ -26,8 +21,7 @@ def main(page: ft.Page) -> None:
         save_config(config)
         show_main_app(page, config)
 
-    if not config_exists():
-        # First run: start with dark theme so the wizard looks consistent
+    if not config_exists():        
         page.theme_mode = ft.ThemeMode.DARK
         show_wizard(page, on_complete=on_wizard_complete)
     else:

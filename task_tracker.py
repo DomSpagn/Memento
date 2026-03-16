@@ -3,14 +3,19 @@ task_tracker.py
 Builds and returns the Task Tracker view for the Memento main window.
 """
 
+import os
 import re
 import shutil
 import flet as ft
+from datetime import datetime, timezone
 from pathlib import Path
 from task_db import (
     STATUSES, init_db, fetch_all_tasks, fetch_distinct_projects,
     create_task, update_task, delete_task,
     fetch_task_attachments, add_attachment, remove_attachment,
+    fetch_history, add_history_entry, update_history_entry,
+    delete_history_entry, fetch_history_attachments,
+    add_history_attachment, remove_history_attachment,
 )
 
 
@@ -550,6 +555,12 @@ def build_task_tracker(page: ft.Page, config: dict,
         )
         attach_list_col = ft.Column([], spacing=4)
 
+        def _open_file(path) -> None:
+            try:
+                os.startfile(str(path))
+            except Exception:
+                pass
+
         def _refresh_attach() -> None:
             atts = fetch_task_attachments(output_path, task["id"])
             attach_list_col.controls = [
@@ -557,7 +568,15 @@ def build_task_tracker(page: ft.Page, config: dict,
                     content=ft.Row(
                         [
                             ft.Icon(ft.Icons.ATTACH_FILE, size=14, color=ft.Colors.GREY_500),
-                            ft.Text(a["orig_name"], size=12, expand=True),
+                            ft.TextButton(
+                                a["orig_name"],
+                                style=ft.ButtonStyle(
+                                    padding=ft.padding.all(0),
+                                    overlay_color=ft.Colors.TRANSPARENT,
+                                ),
+                                on_click=lambda _e, fn=a["filename"]: _open_file(attach_dir / fn),
+                                expand=True,
+                            ),
                             ft.IconButton(
                                 icon=ft.Icons.DELETE_OUTLINE,
                                 icon_size=15,
@@ -618,6 +637,250 @@ def build_task_tracker(page: ft.Page, config: dict,
             spacing=6,
         )
 
+        # ── History section ───────────────────────────────────────────────────
+        history_attach_dir = attach_dir  # same attachments folder
+        history_entries_col = ft.Column([], spacing=8)
+
+        def _rel_date(iso: str) -> str:
+            """Return a human-readable relative date string."""
+            try:
+                dt = datetime.fromisoformat(iso)
+                delta = datetime.now() - dt
+                days = delta.days
+                if days == 0:
+                    return "Today"
+                if days == 1:
+                    return "Yesterday"
+                return f"{days} days ago"
+            except Exception:
+                return iso
+
+        def _build_history_entry_widget(entry: dict, index: int) -> ft.Container:
+            """Build a single history entry card."""
+            h_atts = fetch_history_attachments(output_path, entry["id"])
+            h_att_col = ft.Column(
+                [
+                    ft.Container(
+                        content=ft.Row(
+                            [
+                                ft.Icon(ft.Icons.ATTACH_FILE, size=13, color=ft.Colors.GREY_500),
+                                ft.TextButton(
+                                    a["orig_name"],
+                                    style=ft.ButtonStyle(
+                                        padding=ft.padding.all(0),
+                                        overlay_color=ft.Colors.TRANSPARENT,
+                                    ),
+                                    on_click=lambda _e, fn=a["filename"]: _open_file(history_attach_dir / fn),
+                                    expand=True,
+                                ),
+                                ft.IconButton(
+                                    icon=ft.Icons.DELETE_OUTLINE,
+                                    icon_size=13,
+                                    icon_color=ft.Colors.RED_400,
+                                    tooltip="Remove",
+                                    on_click=lambda _e, a=a, eid=entry["id"]: _del_h_att(a, eid),
+                                    style=ft.ButtonStyle(padding=ft.padding.all(2)),
+                                ),
+                            ],
+                            spacing=4,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        ),
+                        border=ft.border.all(1, ft.Colors.OUTLINE_VARIANT),
+                        border_radius=4,
+                        padding=ft.padding.symmetric(horizontal=6, vertical=3),
+                    )
+                    for a in h_atts
+                ],
+                spacing=3,
+            )
+
+            body_txt = ft.TextField(
+                value=entry["body"],
+                multiline=True,
+                min_lines=2,
+                max_lines=6,
+                read_only=True,
+                border=ft.InputBorder.NONE,
+                content_padding=ft.padding.symmetric(horizontal=8, vertical=6),
+                expand=True,
+            )
+
+            edit_body_btn = ft.IconButton(
+                icon=ft.Icons.EDIT_NOTE, icon_size=15,
+                tooltip="Edit",
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+            )
+            save_body_btn = ft.IconButton(
+                icon=ft.Icons.SAVE_OUTLINED, icon_size=15,
+                tooltip="Save",
+                visible=False,
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+            )
+            del_entry_btn = ft.IconButton(
+                icon=ft.Icons.DELETE_OUTLINE, icon_size=15,
+                icon_color=ft.Colors.RED_400,
+                tooltip="Delete entry",
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+            )
+
+            def _on_edit_body(_e, bt=body_txt, eb=edit_body_btn, sb=save_body_btn):
+                bt.read_only = False
+                eb.visible = False
+                sb.visible = True
+                if _main_btns["delete"]:
+                    _main_btns["delete"].disabled = True
+                if _main_btns["save"]:
+                    _main_btns["save"].disabled = True
+                page.update()
+
+            def _on_save_body(_e, eid=entry["id"], bt=body_txt,
+                              eb=edit_body_btn, sb=save_body_btn):
+                update_history_entry(output_path, eid, bt.value or "")
+                bt.read_only = True
+                eb.visible = True
+                sb.visible = False
+                if _main_btns["delete"]:
+                    _main_btns["delete"].disabled = False
+                if _main_btns["save"]:
+                    _main_btns["save"].disabled = False
+                page.update()
+
+            def _on_del_entry(_e, eid=entry["id"]):
+                delete_history_entry(output_path, eid)
+                _refresh_history()
+
+            edit_body_btn.on_click = _on_edit_body
+            save_body_btn.on_click = _on_save_body
+            del_entry_btn.on_click = _on_del_entry
+
+            async def _attach_to_history(_e, eid=entry["id"], hac=h_att_col):
+                fp = ft.FilePicker()
+                files = await fp.pick_files(allow_multiple=True)
+                if not files:
+                    return
+                history_attach_dir.mkdir(parents=True, exist_ok=True)
+                for f in files:
+                    src = Path(f.path)
+                    dest_name = f"h{eid}_{src.name}"
+                    shutil.copy2(str(src), str(history_attach_dir / dest_name))
+                    add_history_attachment(output_path, eid, dest_name, src.name)
+                _refresh_history()
+
+            return ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Row(
+                            [
+                                ft.Text(_rel_date(entry["created_at"]),
+                                        size=11, color=ft.Colors.GREY_500,
+                                        expand=True),
+                                ft.Text(f"#{index}", size=11,
+                                        color=ft.Colors.GREY_500,
+                                        weight=ft.FontWeight.W_600),
+                                edit_body_btn,
+                                save_body_btn,
+                                del_entry_btn,
+                            ],
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=2,
+                        ),
+                        body_txt,
+                        h_att_col,
+                        ft.IconButton(
+                            icon=ft.Icons.ATTACH_FILE,
+                            icon_size=15,
+                            tooltip="Attach file to this entry",
+                            on_click=_attach_to_history,
+                            style=ft.ButtonStyle(padding=ft.padding.all(2)),
+                        ),
+                    ],
+                    spacing=4,
+                    horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+                ),
+                border=ft.border.all(1, ft.Colors.OUTLINE_VARIANT),
+                border_radius=6,
+                padding=ft.padding.all(8),
+            )
+
+        def _refresh_history() -> None:
+            entries = fetch_history(output_path, task["id"])
+            history_entries_col.controls = [
+                _build_history_entry_widget(e, i + 1)
+                for i, e in enumerate(entries)
+            ]
+            page.update()
+
+        def _del_h_att(att: dict, _history_id: int) -> None:
+            fname = remove_history_attachment(output_path, att["id"])
+            if fname:
+                try:
+                    (history_attach_dir / fname).unlink(missing_ok=True)
+                except OSError:
+                    pass
+            _refresh_history()
+
+        new_entry_field = ft.TextField(
+            hint_text="Write an update…",
+            multiline=True,
+            min_lines=2,
+            max_lines=4,
+            expand=True,
+            border_radius=6,
+            content_padding=ft.padding.symmetric(horizontal=10, vertical=8),
+        )
+
+        add_entry_btn = ft.IconButton(
+            icon=ft.Icons.ADD_COMMENT_OUTLINED,
+            tooltip="Add update",
+        )
+
+        def _on_new_entry_change(_e) -> None:
+            has_text = bool((new_entry_field.value or "").strip())
+            add_entry_btn.icon = ft.Icons.SAVE_OUTLINED if has_text else ft.Icons.ADD_COMMENT_OUTLINED
+            add_entry_btn.tooltip = "Save update" if has_text else "Add update"
+            if _main_btns["delete"]:
+                _main_btns["delete"].disabled = has_text
+            if _main_btns["save"]:
+                _main_btns["save"].disabled = has_text
+            page.update()
+
+        new_entry_field.on_change = _on_new_entry_change
+
+        def _add_history_entry(_e) -> None:
+            text = new_entry_field.value or ""
+            if not text.strip():
+                return
+            add_history_entry(output_path, task["id"], text)
+            new_entry_field.value = ""
+            add_entry_btn.icon = ft.Icons.ADD_COMMENT_OUTLINED
+            add_entry_btn.tooltip = "Add update"
+            if _main_btns["delete"]:
+                _main_btns["delete"].disabled = False
+            if _main_btns["save"]:
+                _main_btns["save"].disabled = False
+            _refresh_history()
+
+        add_entry_btn.on_click = _add_history_entry
+
+        history_section = ft.Column(
+            [
+                ft.Text("History", size=12, weight=ft.FontWeight.W_600,
+                        color=ft.Colors.GREY_600),
+                history_entries_col,
+                ft.Row(
+                    [
+                        new_entry_field,
+                        add_entry_btn,
+                    ],
+                    spacing=4,
+                    vertical_alignment=ft.CrossAxisAlignment.START,
+                ),
+            ],
+            spacing=6,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        )
+        _refresh_history()
+
         # ── Dialog actions ────────────────────────────────────────────────────
         def _save(_) -> None:
             # If description editor is open, persist it too
@@ -632,6 +895,12 @@ def build_task_tracker(page: ft.Page, config: dict,
                     (attach_dir / att["filename"]).unlink(missing_ok=True)
                 except OSError:
                     pass
+            for entry in fetch_history(output_path, task["id"]):
+                for hatt in fetch_history_attachments(output_path, entry["id"]):
+                    try:
+                        (history_attach_dir / hatt["filename"]).unlink(missing_ok=True)
+                    except OSError:
+                        pass
             delete_task(output_path, task["id"])
             dlg.open = False
             _clear_selection()
@@ -692,6 +961,8 @@ def build_task_tracker(page: ft.Page, config: dict,
                         ft.Divider(height=4),
                         files_section,
                         ft.Divider(height=4),
+                        history_section,
+                        ft.Divider(height=4),
                         ft.Row(
                             [delete_btn, cancel_btn, save_btn],
                             alignment=ft.MainAxisAlignment.SPACE_EVENLY,
@@ -702,7 +973,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                     horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
                 ),
                 width=560,
-                height=600,
+                height=700,
                 expand=True,
             ),
             actions=[],

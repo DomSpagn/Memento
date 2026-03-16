@@ -162,5 +162,99 @@ def remove_attachment(output_path: str, attachment_id: int) -> str | None:
     return row[0]
 
 
+# ── History helpers ───────────────────────────────────────────────────────────
+
+def _ensure_history_tables(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS history (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id    INTEGER NOT NULL,
+            body       TEXT    NOT NULL DEFAULT '',
+            created_at TEXT    NOT NULL,
+            FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS history_attachments (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            history_id  INTEGER NOT NULL,
+            filename    TEXT    NOT NULL,
+            orig_name   TEXT    NOT NULL,
+            FOREIGN KEY (history_id) REFERENCES history(id) ON DELETE CASCADE
+        )
+    """)
+
+
+def fetch_history(output_path: str, task_id: int) -> list[dict]:
+    with _connect(output_path) as conn:
+        _ensure_history_tables(conn)
+        rows = conn.execute(
+            "SELECT * FROM history WHERE task_id = ? ORDER BY id ASC",
+            (task_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_history_entry(output_path: str, task_id: int, body: str) -> int:
+    with _connect(output_path) as conn:
+        _ensure_history_tables(conn)
+        cur = conn.execute(
+            "INSERT INTO history (task_id, body, created_at) VALUES (?, ?, ?)",
+            (task_id, body, _now()),
+        )
+        conn.commit()
+        return cur.lastrowid
+
+
+def update_history_entry(output_path: str, entry_id: int, body: str) -> None:
+    with _connect(output_path) as conn:
+        _ensure_history_tables(conn)
+        conn.execute("UPDATE history SET body = ? WHERE id = ?", (body, entry_id))
+        conn.commit()
+
+
+def delete_history_entry(output_path: str, entry_id: int) -> None:
+    with _connect(output_path) as conn:
+        _ensure_history_tables(conn)
+        conn.execute("DELETE FROM history WHERE id = ?", (entry_id,))
+        conn.commit()
+
+
+def fetch_history_attachments(output_path: str, history_id: int) -> list[dict]:
+    with _connect(output_path) as conn:
+        _ensure_history_tables(conn)
+        rows = conn.execute(
+            "SELECT * FROM history_attachments WHERE history_id = ? ORDER BY id ASC",
+            (history_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_history_attachment(output_path: str, history_id: int,
+                           filename: str, orig_name: str) -> int:
+    with _connect(output_path) as conn:
+        _ensure_history_tables(conn)
+        cur = conn.execute(
+            "INSERT INTO history_attachments (history_id, filename, orig_name)"
+            " VALUES (?, ?, ?)",
+            (history_id, filename, orig_name),
+        )
+        conn.commit()
+        return cur.lastrowid
+
+
+def remove_history_attachment(output_path: str, att_id: int) -> str | None:
+    with _connect(output_path) as conn:
+        _ensure_history_tables(conn)
+        row = conn.execute(
+            "SELECT filename FROM history_attachments WHERE id = ?", (att_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        conn.execute("DELETE FROM history_attachments WHERE id = ?", (att_id,))
+        conn.commit()
+    return row[0]
+
+
 def _now() -> str:
     return datetime.now().isoformat(sep=" ", timespec="seconds")

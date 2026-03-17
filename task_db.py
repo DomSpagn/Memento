@@ -64,6 +64,17 @@ def init_db(output_path: str) -> None:
                 FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
             )
         """)
+        # Related tasks table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS related_tasks (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                task_id     INTEGER NOT NULL,
+                related_id  INTEGER NOT NULL,
+                UNIQUE (task_id, related_id),
+                FOREIGN KEY (task_id)    REFERENCES tasks(id) ON DELETE CASCADE,
+                FOREIGN KEY (related_id) REFERENCES tasks(id) ON DELETE CASCADE
+            )
+        """)
         conn.commit()
 
 
@@ -258,3 +269,51 @@ def remove_history_attachment(output_path: str, att_id: int) -> str | None:
 
 def _now() -> str:
     return datetime.now().isoformat(sep=" ", timespec="seconds")
+
+
+# ── Related tasks helpers ─────────────────────────────────────────────────────
+
+def fetch_related_tasks(output_path: str, task_id: int) -> list[dict]:
+    """Return tasks related to task_id, ordered by related_id."""
+    with _connect(output_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT t.id, t.title, t.status
+            FROM related_tasks r
+            JOIN tasks t ON t.id = r.related_id
+            WHERE r.task_id = ?
+            ORDER BY r.related_id ASC
+            """,
+            (task_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_related_task(output_path: str, task_id: int, related_id: int) -> bool:
+    """Link related_id to task_id. Returns False if already exists or invalid."""
+    if task_id == related_id:
+        return False
+    with _connect(output_path) as conn:
+        # Verify the related task exists
+        row = conn.execute("SELECT id FROM tasks WHERE id = ?", (related_id,)).fetchone()
+        if row is None:
+            return False
+        try:
+            conn.execute(
+                "INSERT INTO related_tasks (task_id, related_id) VALUES (?, ?)",
+                (task_id, related_id),
+            )
+            conn.commit()
+        except Exception:
+            return False
+    return True
+
+
+def remove_related_task(output_path: str, task_id: int, related_id: int) -> None:
+    """Remove the link between task_id and related_id."""
+    with _connect(output_path) as conn:
+        conn.execute(
+            "DELETE FROM related_tasks WHERE task_id = ? AND related_id = ?",
+            (task_id, related_id),
+        )
+        conn.commit()

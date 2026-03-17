@@ -16,6 +16,7 @@ from task_db import (
     fetch_history, add_history_entry, update_history_entry,
     delete_history_entry, fetch_history_attachments,
     add_history_attachment, remove_history_attachment,
+    fetch_related_tasks, add_related_task, remove_related_task,
 )
 
 
@@ -681,6 +682,162 @@ def build_task_tracker(page: ft.Page, config: dict,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
 
+        # ── Related Tasks ─────────────────────────────────────────────────────
+        _related_editing = {"active": False}
+        related_list_col = ft.Column([], spacing=4)
+
+        def _refresh_related() -> None:
+            rels = fetch_related_tasks(output_path, task["id"])
+            rows = []
+            for r in rels:
+                rid    = r["id"]
+                rtitle = r["title"]
+                rows.append(
+                    ft.Row(
+                        [
+                            ft.Text(f"#{rid}", size=13, weight=ft.FontWeight.W_600,
+                                    color=ft.Colors.GREY_500, width=36),
+                            ft.TextButton(
+                                rtitle,
+                                style=ft.ButtonStyle(
+                                    padding=ft.padding.all(0),
+                                    overlay_color=ft.Colors.TRANSPARENT,
+                                    text_style=ft.TextStyle(
+                                        decoration=ft.TextDecoration.UNDERLINE
+                                    ),
+                                ),
+                                on_click=lambda _, rid=rid: _navigate_to_related(rid),
+                                expand=True,
+                            ),
+                            ft.IconButton(
+                                icon=ft.Icons.LINK_OFF,
+                                icon_size=15,
+                                icon_color=ft.Colors.RED_400,
+                                tooltip="Remove relation",
+                                on_click=lambda _, rid=rid: _remove_related(rid),
+                                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+                            ),
+                        ],
+                        spacing=4,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    )
+                )
+            related_list_col.controls = rows
+            page.update()
+
+        def _navigate_to_related(rid: int) -> None:
+            all_t = fetch_all_tasks(output_path)
+            target = next((t for t in all_t if t["id"] == rid), None)
+            if target:
+                open_task_dialog(target)
+
+        def _remove_related(rid: int) -> None:
+            remove_related_task(output_path, task["id"], rid)
+            _edit_state["dirty"]   = True
+            _edit_state["editing"] = False
+            _update_save_btn()
+            _refresh_related()
+
+        # ── Add-relation input row ────────────────────────────────────────────
+        related_input = ft.TextField(
+            hint_text="Task #",
+            width=90,
+            keyboard_type=ft.KeyboardType.NUMBER,
+            input_filter=ft.NumbersOnlyInputFilter(),
+            content_padding=ft.padding.symmetric(horizontal=8, vertical=6),
+            border_radius=6,
+        )
+        related_error = ft.Text("", size=11, color=ft.Colors.RED_400, visible=False)
+
+        rel_save_btn = ft.IconButton(
+            icon=ft.Icons.CHECK,
+            icon_size=17,
+            tooltip="Add relation",
+            icon_color=ft.Colors.GREEN_400,
+            style=ft.ButtonStyle(padding=ft.padding.all(2)),
+        )
+        rel_cancel_btn = ft.IconButton(
+            icon=ft.Icons.CLOSE,
+            icon_size=17,
+            tooltip="Cancel",
+            icon_color=ft.Colors.GREY_500,
+            style=ft.ButtonStyle(padding=ft.padding.all(2)),
+        )
+
+        def _set_related_editing(active: bool) -> None:
+            _related_editing["active"] = active
+            _edit_state["editing"] = active
+            if _main_btns["delete"]:
+                _main_btns["delete"].disabled = active
+            if _main_btns["save"]:
+                _main_btns["save"].disabled = active or not _edit_state["dirty"]
+
+        def _on_rel_input_change(_e) -> None:
+            related_error.visible = False
+            has_text = bool((related_input.value or "").strip())
+            _set_related_editing(has_text)
+            _update_save_btn()
+            page.update()
+
+        related_input.on_change = _on_rel_input_change
+
+        def _on_rel_save(_e) -> None:
+            raw = (related_input.value or "").strip()
+            if not raw:
+                return
+            try:
+                rid = int(raw)
+            except ValueError:
+                related_error.value   = "Enter a valid number"
+                related_error.visible = True
+                page.update()
+                return
+            ok = add_related_task(output_path, task["id"], rid)
+            if not ok:
+                related_error.value = (
+                    "Task not found" if rid != task["id"] else "Cannot relate to self"
+                )
+                related_error.visible = True
+                page.update()
+                return
+            related_input.value   = ""
+            related_error.visible = False
+            _edit_state["dirty"] = True
+            _set_related_editing(False)
+            _update_save_btn()
+            _refresh_related()
+
+        def _on_rel_cancel(_e) -> None:
+            related_input.value   = ""
+            related_error.visible = False
+            _set_related_editing(False)
+            _update_save_btn()
+            page.update()
+
+        rel_save_btn.on_click   = _on_rel_save
+        rel_cancel_btn.on_click = _on_rel_cancel
+
+        related_section = ft.Column(
+            [
+                ft.Text("Related Tasks", size=12, weight=ft.FontWeight.W_600,
+                        color=ft.Colors.GREY_600),
+                related_list_col,
+                ft.Row(
+                    [
+                        related_input,
+                        rel_save_btn,
+                        rel_cancel_btn,
+                        related_error,
+                    ],
+                    spacing=4,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+            ],
+            spacing=6,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        )
+        _refresh_related()
+
         # ── Attachments ───────────────────────────────────────────────────────
         attach_dir = (
             Path(output_path) / "Memento" / "TaskTracker" / "attachments"
@@ -1120,6 +1277,8 @@ def build_task_tracker(page: ft.Page, config: dict,
                                     ft.Divider(height=4),
                                     desc_section,
                                     ft.Divider(height=4),
+                                    related_section,
+                                    ft.Divider(height=4),
                                     files_section,
                                     ft.Divider(height=4),
                                     history_section,
@@ -1156,6 +1315,8 @@ def build_task_tracker(page: ft.Page, config: dict,
                             header_col,
                             ft.Divider(height=4),
                             desc_section,
+                            ft.Divider(height=4),
+                            related_section,
                             ft.Divider(height=4),
                             files_section,
                             ft.Divider(height=4),

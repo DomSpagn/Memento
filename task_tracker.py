@@ -7,7 +7,7 @@ import os
 import re
 import shutil
 import flet as ft
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from task_db import (
     STATUSES, init_db, fetch_all_tasks, fetch_distinct_projects,
@@ -20,9 +20,9 @@ from task_db import (
 
 
 def build_task_tracker(page: ft.Page, config: dict,
-                       add_btn, edit_btn, del_btn,
+                       add_btn, edit_btn, del_btn, chart_btn=None,
                        on_open_task=None, on_close_task=None) -> ft.Column:
-    """Return the Task Tracker UI and wire add_btn / edit_btn / del_btn."""
+    """Return the Task Tracker UI and wire add_btn / edit_btn / del_btn / chart_btn."""
 
     output_path: str = config.get("OutputPath", "")
     init_db(output_path)
@@ -44,6 +44,9 @@ def build_task_tracker(page: ft.Page, config: dict,
     del_btn.disabled    = True
     edit_btn.icon_color = ft.Colors.with_opacity(0.3, ft.Colors.BLUE_400)
     del_btn.icon_color  = ft.Colors.with_opacity(0.3, ft.Colors.RED_400)
+    if chart_btn:
+        chart_btn.disabled   = True
+        chart_btn.icon_color = ft.Colors.with_opacity(0.3, ft.Colors.PURPLE_400)
 
     def _clear_selection() -> None:
         _sel["task"] = None
@@ -1274,9 +1277,257 @@ def build_task_tracker(page: ft.Page, config: dict,
                 ],
                 expand=True,
             )
+            if chart_btn:
+                chart_btn.disabled   = False
+                chart_btn.icon_color = ft.Colors.PURPLE_400
         else:
             list_area.content = empty_state
+            if chart_btn:
+                chart_btn.disabled   = True
+                chart_btn.icon_color = ft.Colors.with_opacity(0.3, ft.Colors.PURPLE_400)
         page.update()
+
+    # ── Chart dialog ─────────────────────────────────────────────────────────
+
+    def _open_chart_dialog(_=None) -> None:  # noqa: C901
+        import math
+        import flet.canvas as cv
+
+        _STATUS_COLORS = {
+            "Open":        "#1E88E5",
+            "In Progress": "#FB8C00",
+            "On Hold":     "#8E24AA",
+            "Closed":      "#43A047",
+        }
+
+        _SIZE   = 240   # canvas pixel size
+        _CX     = _SIZE / 2
+        _CY     = _SIZE / 2
+        _R      = _SIZE / 2 - 6   # outer radius (leave a small margin)
+        _HOLE_R = _R * 0.32        # inner hole radius for donut look
+
+        _filter        = {"period": "day", "project": ""}
+        all_tasks_snap = fetch_all_tasks(output_path)
+        pie_canvas     = cv.Canvas([], width=_SIZE, height=_SIZE)
+        pie_area       = ft.Container(content=pie_canvas, width=_SIZE, height=_SIZE)
+        legend_col     = ft.Column([], spacing=10, tight=True)
+
+        def _parse_dt(val) -> datetime:
+            try:
+                return datetime.fromisoformat(val)
+            except (TypeError, ValueError):
+                return datetime.min
+
+        def _compute(period: str, project: str):
+            days_map = {"day": 1, "week": 7, "month": 30, "year": 365}
+            cutoff   = datetime.now() - timedelta(days=days_map[period])
+            filtered = [
+                t for t in all_tasks_snap
+                if (not project or t["project"] == project)
+                and _parse_dt(t["opened_at"]) >= cutoff
+            ]
+            counts = {s: 0 for s in STATUSES}
+            for t in filtered:
+                if t["status"] in counts:
+                    counts[t["status"]] += 1
+            return counts, sum(counts.values())
+
+        def _make_slice(cx, cy, r, hole_r, start_rad, sweep_rad, color):
+            """Return a cv.Path that draws a donut slice."""
+            end_rad    = start_rad + sweep_rad
+            large_arc  = sweep_rad > math.pi
+
+            # Outer arc start/end points
+            ox1 = cx + r * math.cos(start_rad)
+            oy1 = cy + r * math.sin(start_rad)
+            ox2 = cx + r * math.cos(end_rad)
+            oy2 = cy + r * math.sin(end_rad)
+
+            # Inner arc start/end points (reversed direction for closing)
+            ix1 = cx + hole_r * math.cos(end_rad)
+            iy1 = cy + hole_r * math.sin(end_rad)
+            ix2 = cx + hole_r * math.cos(start_rad)
+            iy2 = cy + hole_r * math.sin(start_rad)
+
+            return cv.Path(
+                elements=[
+                    cv.Path.MoveTo(ox1, oy1),
+                    cv.Path.ArcTo(ox2, oy2, radius=r,
+                                  large_arc=large_arc, clockwise=True),
+                    cv.Path.LineTo(ix1, iy1),
+                    cv.Path.ArcTo(ix2, iy2, radius=hole_r,
+                                  large_arc=large_arc, clockwise=False),
+                    cv.Path.Close(),
+                ],
+                paint=ft.Paint(
+                    color=color,
+                    style=ft.PaintingStyle.FILL,
+                ),
+            )
+
+        def _update() -> None:
+            counts, total = _compute(_filter["period"], _filter["project"])
+            if total == 0:
+                pie_canvas.shapes = [
+                    cv.Circle(_CX, _CY, _R,
+                               paint=ft.Paint(
+                                   color=ft.Colors.OUTLINE_VARIANT,
+                                   style=ft.PaintingStyle.FILL,
+                               )),
+                ]
+                legend_col.controls = [
+                    ft.Text(
+                        "No data for the selected filters.",
+                        size=13,
+                        color=ft.Colors.GREY_500,
+                        text_align=ft.TextAlign.CENTER,
+                    )
+                ]
+            else:
+                shapes       = []
+                legend_items = []
+                angle = -math.pi / 2   # start from 12 o'clock
+
+                non_zero = [(s, counts[s]) for s in STATUSES if counts[s] > 0]
+                for status, n in non_zero:
+                    pct   = n / total * 100
+                    color = _STATUS_COLORS[status]
+                    sweep = 2 * math.pi * (n / total)
+
+                    # A full-circle arc (sweep ≈ 2π) degenerates in path drawing;
+                    # render it as two filled circles (donut) instead.
+                    if len(non_zero) == 1:
+                        shapes.append(
+                            cv.Circle(_CX, _CY, _R,
+                                      paint=ft.Paint(color=color,
+                                                     style=ft.PaintingStyle.FILL))
+                        )
+                        shapes.append(
+                            cv.Circle(_CX, _CY, _HOLE_R,
+                                      paint=ft.Paint(
+                                          color=ft.Colors.SURFACE,
+                                          style=ft.PaintingStyle.FILL))
+                        )
+                    else:
+                        shapes.append(_make_slice(_CX, _CY, _R, _HOLE_R, angle, sweep, color))
+
+                    # Percentage label at the mid-angle of the slice
+                    if pct >= 7:
+                        mid  = angle + sweep / 2 if len(non_zero) > 1 else -math.pi / 2
+                        lr   = (_R + _HOLE_R) / 2
+                        lx   = _CX + lr * math.cos(mid)
+                        ly   = _CY + lr * math.sin(mid)
+                        shapes.append(
+                            cv.Text(
+                                x=lx, y=ly,
+                                value=f"{pct:.1f}%",
+                                alignment=ft.Alignment(0, 0),
+                                style=ft.TextStyle(
+                                    size=10,
+                                    color="#FFFFFF",
+                                    weight=ft.FontWeight.BOLD,
+                                ),
+                            )
+                        )
+
+                    angle += sweep
+                    legend_items.append(
+                        ft.Row(
+                            [
+                                ft.Container(
+                                    width=14, height=14,
+                                    bgcolor=color,
+                                    border_radius=3,
+                                ),
+                                ft.Text(
+                                    f"{status}  ·  {n}  ({pct:.1f}%)",
+                                    size=13,
+                                ),
+                            ],
+                            spacing=8,
+                            tight=True,
+                        )
+                    )
+
+                pie_canvas.shapes = shapes
+                legend_col.controls = legend_items
+            page.update()
+
+        def _on_period_change(e) -> None:
+            _filter["period"] = e.data
+            _update()
+
+        def _on_project_change(e) -> None:
+            _filter["project"] = e.data or ""
+            _update()
+
+        period_dd = ft.Dropdown(
+            label="Period",
+            value="day",
+            width=165,
+            options=[
+                ft.DropdownOption(key="day",   text="Last Day"),
+                ft.DropdownOption(key="week",  text="Last Week"),
+                ft.DropdownOption(key="month", text="Last Month"),
+                ft.DropdownOption(key="year",  text="Last Year"),
+            ],
+            on_select=_on_period_change,
+        )
+
+        project_dd = ft.Dropdown(
+            label="Project",
+            value="",
+            width=185,
+            options=(
+                [ft.DropdownOption(key="", text="All Projects")]
+                + [ft.DropdownOption(key=p, text=p)
+                   for p in fetch_distinct_projects(output_path)]
+            ),
+            on_select=_on_project_change,
+        )
+
+        def _close_chart(_) -> None:
+            chart_dlg.open = False
+            page.update()
+
+        chart_dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Row(
+                [
+                    ft.Icon(ft.Icons.PIE_CHART, color=ft.Colors.PURPLE_400),
+                    ft.Text("Status Distribution", weight=ft.FontWeight.BOLD),
+                ],
+                spacing=10,
+            ),
+            content=ft.Column(
+                [
+                    ft.Row([period_dd, project_dd], spacing=12),
+                    ft.Divider(height=6),
+                    ft.Row(
+                        [
+                            pie_area,
+                            ft.Container(
+                                content=legend_col,
+                                expand=True,
+                                padding=ft.padding.only(left=20),
+                                alignment=ft.Alignment(-1, 0),
+                            ),
+                        ],
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                ],
+                tight=True,
+                spacing=8,
+                width=540,
+            ),
+            actions=[
+                ft.TextButton("Close", on_click=_close_chart),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.overlay.append(chart_dlg)
+        chart_dlg.open = True
+        _update()
 
     _refresh()
 
@@ -1315,6 +1566,8 @@ def build_task_tracker(page: ft.Page, config: dict,
     add_btn.on_click  = lambda _: open_task_dialog(None)
     edit_btn.on_click = lambda _: open_task_dialog(_sel["task"]) if _sel["task"] else None
     del_btn.on_click  = _open_confirm
+    if chart_btn:
+        chart_btn.on_click = _open_chart_dialog
 
     # ── Root ─────────────────────────────────────────────────────────────────
 

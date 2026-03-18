@@ -544,13 +544,25 @@ def build_task_tracker(page: ft.Page, config: dict,
                 on_click=_new_add_rel_task,
                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
             )
+            new_rel_task_cancel_btn = ft.IconButton(
+                icon=ft.Icons.CLOSE,
+                icon_size=17,
+                icon_color=ft.Colors.GREY_500,
+                tooltip="Cancel",
+                on_click=lambda _: (
+                    setattr(new_rel_task_input, 'value', ''),
+                    setattr(new_rel_task_error, 'visible', False),
+                    page.update(),
+                ),
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+            )
             new_rel_tasks_section = ft.Column(
                 [
                     ft.Text("Related Tasks", size=12, weight=ft.FontWeight.W_600,
                             color=ft.Colors.GREY_600),
                     staged_rel_tasks_col,
                     ft.Row(
-                        [new_rel_task_input, new_rel_task_add_btn, new_rel_task_error],
+                        [new_rel_task_input, new_rel_task_add_btn, new_rel_task_cancel_btn, new_rel_task_error],
                         spacing=4,
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     ),
@@ -637,13 +649,25 @@ def build_task_tracker(page: ft.Page, config: dict,
                 on_click=_new_add_rel_design,
                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
             )
+            new_rel_design_cancel_btn = ft.IconButton(
+                icon=ft.Icons.CLOSE,
+                icon_size=17,
+                icon_color=ft.Colors.GREY_500,
+                tooltip="Cancel",
+                on_click=lambda _: (
+                    setattr(new_rel_design_input, 'value', ''),
+                    setattr(new_rel_design_error, 'visible', False),
+                    page.update(),
+                ),
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+            )
             new_rel_designs_section = ft.Column(
                 [
                     ft.Text("Related Designs", size=12, weight=ft.FontWeight.W_600,
                             color=ft.Colors.GREY_600),
                     staged_rel_designs_col,
                     ft.Row(
-                        [new_rel_design_input, new_rel_design_add_btn, new_rel_design_error],
+                        [new_rel_design_input, new_rel_design_add_btn, new_rel_design_cancel_btn, new_rel_design_error],
                         spacing=4,
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     ),
@@ -1518,11 +1542,11 @@ def build_task_tracker(page: ft.Page, config: dict,
                                     size=13,
                                     no_wrap=False,
                                     text_align=ft.TextAlign.LEFT,
-                                    decoration=ft.TextDecoration.UNDERLINE,
                                 ),
                                 style=ft.ButtonStyle(
                                     padding=ft.padding.all(0),
                                     overlay_color=ft.Colors.TRANSPARENT,
+                                    text_style=ft.TextStyle(decoration=ft.TextDecoration.UNDERLINE),
                                 ),
                                 on_click=lambda _, rid=rid: _navigate_to_related(rid),
                                 expand=True,
@@ -1610,11 +1634,21 @@ def build_task_tracker(page: ft.Page, config: dict,
                 related_error.visible = True
                 page.update()
                 return
+            if rid == task["id"]:
+                related_error.value   = "Cannot relate to self"
+                related_error.visible = True
+                page.update()
+                return
+            # Check if already linked
+            existing = fetch_related_tasks(output_path, task["id"])
+            if any(r["id"] == rid for r in existing):
+                related_error.value   = "Already linked"
+                related_error.visible = True
+                page.update()
+                return
             ok = add_related_task(output_path, task["id"], rid)
             if not ok:
-                related_error.value = (
-                    "Task not found" if rid != task["id"] else "Cannot relate to self"
-                )
+                related_error.value   = "Task not found"
                 related_error.visible = True
                 page.update()
                 return

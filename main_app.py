@@ -292,6 +292,8 @@ def show_main_app(page: ft.Page, config: dict) -> None:
                     content=btn_ctrl,
                     padding=ft.padding.symmetric(horizontal=4, vertical=8) if is_vert
                             else ft.padding.symmetric(horizontal=8, vertical=4),
+                    alignment=ft.Alignment(0, 0) if not is_vert else None,
+                    expand=not is_vert,
                 )
                 _cmd_panel.visible = True
                 if pos == "Bottom":

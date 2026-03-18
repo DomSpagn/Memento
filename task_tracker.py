@@ -219,25 +219,36 @@ def build_task_tracker(page: ft.Page, config: dict,
     def open_task_dialog(task: dict | None = None) -> None:  # noqa: C901
         is_new = task is None
 
-        # ── NEW TASK: editable title / project / status ──────────────────────
+        # ── NEW TASK dialog ───────────────────────────────────────────────────
         if is_new:
+            # ── Required fields ───────────────────────────────────────────────
             title_field = ft.TextField(
                 label="Title",
                 value="",
                 expand=True,
                 autofocus=True,
+                dense=True,
             )
-            _projects = fetch_distinct_projects(output_path)
+            _new_projects = fetch_distinct_projects(output_path)
             _proj_suggestions = ft.Column([], spacing=0, visible=False)
-            project_text = ft.TextField(label="Project", value="", expand=True)
+            project_text = ft.TextField(label="Project", value="", expand=True, dense=True)
+
+            def _check_required() -> None:
+                ok = (
+                    bool(title_field.value.strip())
+                    and bool(project_text.value.strip())
+                    and bool(status_dd.value)
+                )
+                new_save_btn.disabled = not ok
+                page.update()
 
             def _on_project_change(e) -> None:
                 typed = e.control.value.strip()
-                matches = [p for p in _projects if typed.lower() and typed.lower() in p.lower()][:6]
+                matches = [p for p in _new_projects if typed.lower() and typed.lower() in p.lower()][:6]
                 _proj_suggestions.controls = [
                     ft.Container(
                         content=ft.Text(p, size=13, color=ft.Colors.ORANGE_400),
-                        padding=ft.padding.symmetric(horizontal=12, vertical=8),
+                        padding=ft.padding.symmetric(horizontal=12, vertical=4),
                         border_radius=4,
                         ink=True,
                         on_click=lambda _, p=p: _pick_project(p),
@@ -245,8 +256,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                     for p in matches
                 ]
                 _proj_suggestions.visible = bool(matches)
-                new_save_btn.disabled = not bool(typed)
-                page.update()
+                _check_required()
 
             def _pick_project(name: str) -> None:
                 project_text.value = name
@@ -255,25 +265,490 @@ def build_task_tracker(page: ft.Page, config: dict,
                 page.update()
 
             project_text.on_change = _on_project_change
+            title_field.on_change  = lambda _: _check_required()
 
             status_dd = ft.Dropdown(
                 label="Status",
                 value="Open",
-                options=[ft.dropdown.Option(s, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.ORANGE_400, ft.ControlState.FOCUSED: ft.Colors.ORANGE_400, ft.ControlState.DEFAULT: ft.Colors.ON_SURFACE})) for s in STATUSES],
+                options=[ft.dropdown.Option(s, style=ft.ButtonStyle(color={
+                    ft.ControlState.HOVERED:  ft.Colors.ORANGE_400,
+                    ft.ControlState.FOCUSED:  ft.Colors.ORANGE_400,
+                    ft.ControlState.DEFAULT:  ft.Colors.ON_SURFACE,
+                })) for s in STATUSES],
                 width=160,
+                dense=True,
+                on_select=lambda _: _check_required(),
             )
 
-            def _new_save(_) -> None:
-                if not title_field.value.strip():
-                    title_field.error_text = "Required"
+            # ── Alarm ──────────────────────────────────────────────────────────
+            _NEW_ALARM_BEFORE_OPTS = [
+                ("0",   "At alarm time"),
+                ("5",   "5 min before"),
+                ("15",  "15 min before"),
+                ("30",  "30 min before"),
+                ("60",  "1 hour before"),
+                ("120", "2 hours before"),
+            ]
+            new_alarm_date = ft.TextField(
+                hint_text="YYYY-MM-DD",
+                width=115,
+                border=ft.InputBorder.UNDERLINE,
+                content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
+                text_size=13,
+                dense=True,
+            )
+            def _new_cap2(e) -> None:
+                if len(e.control.value) > 2:
+                    e.control.value = e.control.value[:2]
+                    e.control.update()
+            new_alarm_hh = ft.TextField(
+                hint_text="HH",
+                width=36,
+                input_filter=ft.NumbersOnlyInputFilter(),
+                on_change=_new_cap2,
+                border=ft.InputBorder.UNDERLINE,
+                content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
+                text_size=13,
+                text_align=ft.TextAlign.CENTER,
+                dense=True,
+            )
+            new_alarm_mm = ft.TextField(
+                hint_text="MM",
+                width=36,
+                input_filter=ft.NumbersOnlyInputFilter(),
+                on_change=_new_cap2,
+                border=ft.InputBorder.UNDERLINE,
+                content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
+                text_size=13,
+                text_align=ft.TextAlign.CENTER,
+                dense=True,
+            )
+            new_alarm_before_dd = ft.Dropdown(
+                value="0",
+                options=[ft.dropdown.Option(key=k, text=v, style=ft.ButtonStyle(color={
+                    ft.ControlState.HOVERED:  ft.Colors.ORANGE_400,
+                    ft.ControlState.FOCUSED:  ft.Colors.ORANGE_400,
+                    ft.ControlState.DEFAULT:  ft.Colors.ON_SURFACE,
+                })) for k, v in _NEW_ALARM_BEFORE_OPTS],
+                width=155,
+                border=ft.InputBorder.UNDERLINE,
+                content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
+                text_size=13,
+                dense=True,
+            )
+            new_alarm_switch = ft.Switch(
+                value=False,
+                disabled=True,
+                active_color=ft.Colors.GREEN_500,
+            )
+
+            def _new_alarm_time_str() -> str:
+                h = (new_alarm_hh.value or "").strip().zfill(2)
+                m = (new_alarm_mm.value or "").strip().zfill(2)
+                return f"{h}:{m}"
+
+            def _new_alarm_future_check(date_str: str, time_str: str) -> bool:
+                d = date_str.strip()
+                t = time_str.strip()
+                # Require both date and a fully specified time (HH:MM)
+                if not d or not t or t in (":", "00:", ":00"):
+                    return False
+                hh = (new_alarm_hh.value or "").strip()
+                mm = (new_alarm_mm.value or "").strip()
+                if not hh or not mm:
+                    return False
+                try:
+                    return datetime.strptime(f"{d} {t}", "%Y-%m-%d %H:%M") > datetime.now()
+                except ValueError:
+                    return False
+
+            def _new_refresh_alarm_switch() -> None:
+                is_fut = _new_alarm_future_check(
+                    new_alarm_date.value or "", _new_alarm_time_str()
+                )
+                new_alarm_switch.disabled = not is_fut
+                new_alarm_switch.value    = is_fut
+                page.update()
+
+            def _new_build_alarm_at() -> str:
+                d = (new_alarm_date.value or "").strip()
+                t = _new_alarm_time_str()
+                if not d:
+                    return ""
+                try:
+                    datetime.strptime(f"{d} {t}", "%Y-%m-%d %H:%M")
+                    return f"{d} {t}:00"
+                except ValueError:
+                    return ""
+
+            def _new_on_alarm_change(_e=None) -> None:
+                _new_refresh_alarm_switch()
+
+            new_alarm_date.on_change = _new_on_alarm_change
+            new_alarm_hh.on_change   = lambda e: (_new_cap2(e), _new_on_alarm_change())
+            new_alarm_mm.on_change   = lambda e: (_new_cap2(e), _new_on_alarm_change())
+
+            _new_date_picker = ft.DatePicker(
+                first_date=datetime.now().replace(hour=0, minute=0, second=0, microsecond=0),
+                last_date=datetime(2035, 12, 31),
+            )
+            page.overlay.append(_new_date_picker)
+
+            def _on_new_date_picked(_e) -> None:
+                if _new_date_picker.value:
+                    new_alarm_date.value = _new_date_picker.value.strftime("%Y-%m-%d")
+                    _new_refresh_alarm_switch()
+
+            _new_date_picker.on_change = _on_new_date_picked
+
+            def _open_new_calendar(_e) -> None:
+                try:
+                    _new_date_picker.value = datetime.strptime(
+                        (new_alarm_date.value or "").strip(), "%Y-%m-%d"
+                    )
+                except ValueError:
+                    _new_date_picker.value = None
+                _new_date_picker.open = True
+                page.update()
+
+            new_cal_btn = ft.IconButton(
+                icon=ft.Icons.CALENDAR_MONTH,
+                icon_size=18,
+                tooltip="Pick date",
+                on_click=_open_new_calendar,
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+            )
+            new_alarm_clear_btn = ft.IconButton(
+                icon=ft.Icons.ALARM_OFF,
+                icon_size=16,
+                tooltip="Clear alarm",
+                on_click=lambda _: (
+                    setattr(new_alarm_date, 'value', ''),
+                    setattr(new_alarm_hh, 'value', ''),
+                    setattr(new_alarm_mm, 'value', ''),
+                    setattr(new_alarm_before_dd, 'value', '0'),
+                    setattr(new_alarm_switch, 'disabled', True),
+                    setattr(new_alarm_switch, 'value', False),
+                    page.update(),
+                ),
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+            )
+            new_alarm_section = ft.Column(
+                [
+                    ft.Text("Alarm", size=12, weight=ft.FontWeight.W_600,
+                            color=ft.Colors.GREY_600),
+                    ft.Row(
+                        [
+                            new_alarm_date, new_cal_btn,
+                            ft.Icon(ft.Icons.ACCESS_TIME, size=14, color=ft.Colors.GREY_500),
+                            new_alarm_hh,
+                            ft.Text(":", size=14, weight=ft.FontWeight.W_600),
+                            new_alarm_mm,
+                            new_alarm_before_dd,
+                            new_alarm_clear_btn,
+                            ft.Container(expand=True),
+                            new_alarm_switch,
+                        ],
+                        spacing=4,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                ],
+                spacing=4,
+            )
+
+            # ── Description ────────────────────────────────────────────────────
+            new_desc_field = ft.TextField(
+                label="Description",
+                value="",
+                multiline=True,
+                min_lines=3,
+                max_lines=5,
+                expand=True,
+            )
+
+            # ── Related Tasks ─────────────────────────────────────────────────
+            _staged_rel_tasks: list = []
+            staged_rel_tasks_col = ft.Column([], spacing=4)
+
+            def _new_refresh_rel_tasks() -> None:
+                staged_rel_tasks_col.controls = [
+                    ft.Row(
+                        [
+                            ft.Text(f"#{rt['id']}", size=13, weight=ft.FontWeight.W_600,
+                                    color=ft.Colors.GREY_500, width=36),
+                            ft.Text(rt["title"], size=13, expand=True, no_wrap=False),
+                            ft.IconButton(
+                                icon=ft.Icons.LINK_OFF,
+                                icon_size=15,
+                                icon_color=ft.Colors.RED_400,
+                                tooltip="Remove",
+                                on_click=lambda _, rid=rt["id"]: _new_remove_rel_task(rid),
+                                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+                            ),
+                        ],
+                        spacing=4,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    )
+                    for rt in _staged_rel_tasks
+                ]
+                page.update()
+
+            def _new_remove_rel_task(rid: int) -> None:
+                _staged_rel_tasks[:] = [r for r in _staged_rel_tasks if r["id"] != rid]
+                _new_refresh_rel_tasks()
+
+            new_rel_task_input = ft.TextField(
+                hint_text="Task #",
+                width=90,
+                keyboard_type=ft.KeyboardType.NUMBER,
+                input_filter=ft.NumbersOnlyInputFilter(),
+                content_padding=ft.padding.symmetric(horizontal=8, vertical=6),
+                border_radius=6,
+                dense=True,
+            )
+            new_rel_task_error = ft.Text("", size=11, color=ft.Colors.RED_400, visible=False)
+
+            def _new_add_rel_task(_e) -> None:
+                raw = (new_rel_task_input.value or "").strip()
+                if not raw:
+                    return
+                try:
+                    rid = int(raw)
+                except ValueError:
+                    new_rel_task_error.value   = "Enter a valid number"
+                    new_rel_task_error.visible = True
                     page.update()
                     return
-                create_task(
-                    output_path,
-                    title_field.value.strip(),
-                    project_text.value.strip(),
-                    status_dd.value,
-                )
+                if any(r["id"] == rid for r in _staged_rel_tasks):
+                    new_rel_task_error.value   = "Already added"
+                    new_rel_task_error.visible = True
+                    page.update()
+                    return
+                all_t = fetch_all_tasks(output_path)
+                target = next((t for t in all_t if t["id"] == rid), None)
+                if not target:
+                    new_rel_task_error.value   = "Task not found"
+                    new_rel_task_error.visible = True
+                    page.update()
+                    return
+                _staged_rel_tasks.append({"id": rid, "title": target["title"]})
+                new_rel_task_input.value   = ""
+                new_rel_task_error.visible = False
+                _new_refresh_rel_tasks()
+
+            new_rel_task_add_btn = ft.IconButton(
+                icon=ft.Icons.CHECK,
+                icon_size=17,
+                icon_color=ft.Colors.GREEN_400,
+                tooltip="Add relation",
+                on_click=_new_add_rel_task,
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+            )
+            new_rel_tasks_section = ft.Column(
+                [
+                    ft.Text("Related Tasks", size=12, weight=ft.FontWeight.W_600,
+                            color=ft.Colors.GREY_600),
+                    staged_rel_tasks_col,
+                    ft.Row(
+                        [new_rel_task_input, new_rel_task_add_btn, new_rel_task_error],
+                        spacing=4,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                ],
+                spacing=4,
+                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+            )
+
+            # ── Related Designs ────────────────────────────────────────────────
+            _staged_rel_designs: list = []
+            staged_rel_designs_col = ft.Column([], spacing=4)
+
+            def _new_refresh_rel_designs() -> None:
+                staged_rel_designs_col.controls = [
+                    ft.Row(
+                        [
+                            ft.Text(f"#{rd['id']}", size=13, weight=ft.FontWeight.W_600,
+                                    color=ft.Colors.GREY_500, width=36),
+                            ft.Text(rd["title"], size=13, expand=True, no_wrap=False),
+                            ft.IconButton(
+                                icon=ft.Icons.LINK_OFF,
+                                icon_size=15,
+                                icon_color=ft.Colors.RED_400,
+                                tooltip="Remove",
+                                on_click=lambda _, did=rd["id"]: _new_remove_rel_design(did),
+                                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+                            ),
+                        ],
+                        spacing=4,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    )
+                    for rd in _staged_rel_designs
+                ]
+                page.update()
+
+            def _new_remove_rel_design(did: int) -> None:
+                _staged_rel_designs[:] = [d for d in _staged_rel_designs if d["id"] != did]
+                _new_refresh_rel_designs()
+
+            new_rel_design_input = ft.TextField(
+                hint_text="Design #",
+                width=100,
+                keyboard_type=ft.KeyboardType.NUMBER,
+                input_filter=ft.NumbersOnlyInputFilter(),
+                content_padding=ft.padding.symmetric(horizontal=8, vertical=6),
+                border_radius=6,
+                dense=True,
+            )
+            new_rel_design_error = ft.Text("", size=11, color=ft.Colors.RED_400, visible=False)
+
+            def _new_add_rel_design(_e) -> None:
+                raw = (new_rel_design_input.value or "").strip()
+                if not raw:
+                    return
+                try:
+                    did = int(raw)
+                except ValueError:
+                    new_rel_design_error.value   = "Enter a valid number"
+                    new_rel_design_error.visible = True
+                    page.update()
+                    return
+                if any(d["id"] == did for d in _staged_rel_designs):
+                    new_rel_design_error.value   = "Already added"
+                    new_rel_design_error.visible = True
+                    page.update()
+                    return
+                all_d = fetch_all_designs(output_path)
+                target = next((d for d in all_d if d["id"] == did), None)
+                if not target:
+                    new_rel_design_error.value   = "Design not found"
+                    new_rel_design_error.visible = True
+                    page.update()
+                    return
+                _staged_rel_designs.append({"id": did, "title": target["title"]})
+                new_rel_design_input.value   = ""
+                new_rel_design_error.visible = False
+                _new_refresh_rel_designs()
+
+            new_rel_design_add_btn = ft.IconButton(
+                icon=ft.Icons.CHECK,
+                icon_size=17,
+                icon_color=ft.Colors.GREEN_400,
+                tooltip="Add design relation",
+                on_click=_new_add_rel_design,
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+            )
+            new_rel_designs_section = ft.Column(
+                [
+                    ft.Text("Related Designs", size=12, weight=ft.FontWeight.W_600,
+                            color=ft.Colors.GREY_600),
+                    staged_rel_designs_col,
+                    ft.Row(
+                        [new_rel_design_input, new_rel_design_add_btn, new_rel_design_error],
+                        spacing=4,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                ],
+                spacing=4,
+                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+            )
+
+            # ── Files ──────────────────────────────────────────────────────────
+            _staged_files: list = []
+            staged_files_col = ft.Column([], spacing=4)
+
+            def _new_refresh_staged_files() -> None:
+                staged_files_col.controls = [
+                    ft.Row(
+                        [
+                            ft.Icon(ft.Icons.ATTACH_FILE, size=14, color=ft.Colors.GREY_500),
+                            ft.Text(sf["name"], size=13, expand=True, no_wrap=True,
+                                    overflow=ft.TextOverflow.ELLIPSIS),
+                            ft.IconButton(
+                                icon=ft.Icons.DELETE_OUTLINE,
+                                icon_size=15,
+                                icon_color=ft.Colors.RED_400,
+                                tooltip="Remove",
+                                on_click=lambda _, n=sf["name"]: _new_remove_file(n),
+                                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+                            ),
+                        ],
+                        spacing=4,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    )
+                    for sf in _staged_files
+                ]
+                page.update()
+
+            def _new_remove_file(name: str) -> None:
+                _staged_files[:] = [f for f in _staged_files if f["name"] != name]
+                _new_refresh_staged_files()
+
+            async def _new_attach_files(_e) -> None:
+                fp = ft.FilePicker()
+                files = await fp.pick_files(allow_multiple=True)
+                if not files:
+                    return
+                for f in files:
+                    src = Path(f.path)
+                    if not any(sf["name"] == src.name for sf in _staged_files):
+                        _staged_files.append({"path": src, "name": src.name})
+                _new_refresh_staged_files()
+
+            new_attach_btn = ft.ElevatedButton(
+                "Attach File",
+                icon=ft.Icons.ATTACH_FILE,
+                on_click=_new_attach_files,
+                style=ft.ButtonStyle(elevation=0),
+            )
+            new_files_section = ft.Column(
+                [
+                    ft.Text("Files", size=12, weight=ft.FontWeight.W_600,
+                            color=ft.Colors.GREY_600),
+                    new_attach_btn,
+                    staged_files_col,
+                ],
+                spacing=4,
+            )
+
+            # ── Save / Cancel ──────────────────────────────────────────────────
+            def _new_save(_) -> None:
+                title   = title_field.value.strip()
+                project = project_text.value.strip()
+                status  = status_dd.value
+                if not title or not project or not status:
+                    return
+                task_id = create_task(output_path, title, project, status)
+                # description
+                desc = new_desc_field.value.strip()
+                if desc:
+                    update_task(output_path, task_id, description=desc)
+                # alarm
+                alarm_at = _new_build_alarm_at()
+                if alarm_at:
+                    update_task(
+                        output_path, task_id,
+                        alarm_at=alarm_at,
+                        alarm_before=int(new_alarm_before_dd.value or 0),
+                        alarm_fired=0 if new_alarm_switch.value else 1,
+                    )
+                # related tasks
+                for rt in _staged_rel_tasks:
+                    add_related_task(output_path, task_id, rt["id"])
+                # related designs
+                for rd in _staged_rel_designs:
+                    add_task_design_link(output_path, task_id, rd["id"])
+                # files
+                if _staged_files:
+                    _att_dir = Path(output_path) / "Memento" / "TaskTracker" / "attachments"
+                    _att_dir.mkdir(parents=True, exist_ok=True)
+                    for sf in _staged_files:
+                        dest_name = f"{task_id}_{sf['name']}"
+                        dest = _att_dir / dest_name
+                        try:
+                            shutil.copy2(str(sf["path"]), str(dest))
+                            add_attachment(output_path, task_id, dest_name, sf["name"])
+                        except OSError:
+                            pass
                 new_dlg.open = False
                 _clear_selection()
                 _refresh()
@@ -304,25 +779,35 @@ def build_task_tracker(page: ft.Page, config: dict,
                 style=ft.ButtonStyle(bgcolor=ft.Colors.GREY_600, color=ft.Colors.WHITE),
                 on_click=_new_cancel,
             )
+
             new_dlg = ft.AlertDialog(
                 modal=True,
                 title=ft.Text("New Task", weight=ft.FontWeight.BOLD),
                 content=ft.Column(
                     [
+                        # ── Required ──────────────────────────────────────────
                         title_field,
-                        ft.Column([project_text, _proj_suggestions], spacing=0),
+                        ft.Column([project_text, _proj_suggestions], spacing=0, tight=True),
                         status_dd,
-                        ft.Divider(height=16),
-                        ft.Row(
-                            [new_cancel_btn, new_save_btn],
-                            alignment=ft.MainAxisAlignment.SPACE_EVENLY,
-                        ),
+                        ft.Divider(height=6),
+                        # ── Optional ─────────────────────────────────────────
+                        new_alarm_section,
+                        ft.Divider(height=4),
+                        new_desc_field,
+                        ft.Divider(height=4),
+                        new_rel_tasks_section,
+                        ft.Divider(height=4),
+                        new_rel_designs_section,
+                        ft.Divider(height=4),
+                        new_files_section,
                     ],
                     tight=True,
-                    spacing=12,
-                    width=480,
+                    spacing=8,
+                    width=520,
+                    scroll=ft.ScrollMode.AUTO,
                 ),
-                actions=[],
+                actions=[new_cancel_btn, new_save_btn],
+                actions_alignment=ft.MainAxisAlignment.SPACE_EVENLY,
             )
             page.overlay.append(new_dlg)
             new_dlg.open = True

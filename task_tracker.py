@@ -45,19 +45,8 @@ def _fire_notification(task_title: str, project: str = "") -> None:
             winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
         except Exception:
             pass
-    try:
-        from plyer import notification as _plyer
-        _plyer.notify(
-            title=task_title,
-            message=project or "",
-            app_name="Memento",
-            app_icon=_ICON_PATH,
-            timeout=10,
-        )
-        return
-    except Exception:
-        pass
     if sys.platform == "win32":
+        # Use PowerShell WinRT directly on Windows for full layout control
         def _ps_esc(s: str) -> str:
             return s.replace("'", "''")
 
@@ -69,16 +58,9 @@ def _fire_notification(task_title: str, project: str = "") -> None:
             "Windows.UI.Notifications,ContentType=WindowsRuntime]>$null",
             "$xml=[Windows.UI.Notifications.ToastNotificationManager]::"
             "GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastImageAndText02)",
-            f"$xml.GetElementsByTagName('text')[0].AppendChild("
-            f"$xml.CreateTextNode('{t0}'))>$null",
-        ]
-        if t1:
-            lines.append(
-                f"$xml.GetElementsByTagName('text')[1].AppendChild("
-                f"$xml.CreateTextNode('{t1}'))>$null"
-            )
-        lines += [
-            f"$xml.GetElementsByTagName('image')[0].SetAttribute('src','{icon_uri}')>$null",
+            f"$xml.GetElementsByTagName('text').Item(0).InnerText='{t0}'",
+            f"$xml.GetElementsByTagName('text').Item(1).InnerText='{t1}'",
+            f"$xml.GetElementsByTagName('image').Item(0).SetAttribute('src','{icon_uri}')",
             "$t=[Windows.UI.Notifications.ToastNotification]::new($xml)",
             "[Windows.UI.Notifications.ToastNotificationManager]::"
             "CreateToastNotifier('Memento').Show($t)",
@@ -93,6 +75,18 @@ def _fire_notification(task_title: str, project: str = "") -> None:
             )
         except Exception:
             pass
+        return
+    # Fallback for non-Windows: try plyer
+    try:
+        from plyer import notification as _plyer
+        _plyer.notify(
+            title=task_title,
+            message=project or "",
+            app_name="Memento",
+            timeout=10,
+        )
+    except Exception:
+        pass
 
 
 def _start_alarm_checker(output_path: str, on_fired=None) -> None:
@@ -1839,14 +1833,14 @@ def build_task_tracker(page: ft.Page, config: dict,
 
     data_table = ft.DataTable(
         columns=[
-            ft.DataColumn(ft.Text("#",        size=13, weight=_COL_HEADER)),
-            ft.DataColumn(ft.Text("Title",    size=13, weight=_COL_HEADER)),
-            ft.DataColumn(ft.Row([ft.Text("Project",  size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
-            ft.DataColumn(ft.Row([ft.Text("Opened",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
-            ft.DataColumn(ft.Row([ft.Text("Modified", size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
-            ft.DataColumn(ft.Row([ft.Text("Closed",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
-            ft.DataColumn(ft.Row([ft.Text("Status",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
-            ft.DataColumn(ft.Text("Alarm", size=13, weight=_COL_HEADER)),
+            ft.DataColumn(ft.Text("#",        size=13, weight=_COL_HEADER), heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Text("Title",    size=13, weight=_COL_HEADER), heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text("Project",  size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text("Opened",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text("Modified", size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text("Closed",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text("Status",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Text("Alarm",    size=13, weight=_COL_HEADER), heading_row_alignment=ft.MainAxisAlignment.CENTER),
         ],
         rows=[],
         sort_column_index=None,
@@ -1860,6 +1854,7 @@ def build_task_tracker(page: ft.Page, config: dict,
     )
 
     def _build_rows(tasks: list[dict]) -> list[ft.DataRow]:
+        def _c(ctrl): return ft.Container(content=ctrl, alignment=ft.alignment.Alignment(0, 0))
         sel_id = _sel["task"]["id"] if _sel["task"] else None
         rows = []
         for t in tasks:
@@ -1871,9 +1866,9 @@ def build_task_tracker(page: ft.Page, config: dict,
                     color=ft.Colors.with_opacity(0.12, ft.Colors.BLUE) if is_sel else None,
                     on_select_change=lambda e, t=task: _select_task(e, t),
                     cells=[
-                        ft.DataCell(ft.Text(str(task["id"]), size=13)),
+                        ft.DataCell(_c(ft.Text(str(task["id"]), size=13))),
                         ft.DataCell(
-                            ft.TextButton(
+                            _c(ft.TextButton(
                                 content=ft.Text(
                                     task["title"],
                                     size=13,
@@ -1885,17 +1880,17 @@ def build_task_tracker(page: ft.Page, config: dict,
                                     mouse_cursor=ft.MouseCursor.CLICK,
                                 ),
                                 on_click=lambda _, t=task: open_task_dialog(t),
-                            )
+                            ))
                         ),
-                        ft.DataCell(ft.Text(_fmt(task["project"]),    size=13)),
-                        ft.DataCell(ft.Text(_fmt(task["opened_at"]),   size=12,
-                                            color=ft.Colors.GREY_500)),
-                        ft.DataCell(ft.Text(_fmt(task["modified_at"]), size=12,
-                                            color=ft.Colors.GREY_500)),
-                        ft.DataCell(ft.Text(_fmt(task["closed_at"]),   size=12,
-                                            color=ft.Colors.GREY_500)),
-                        ft.DataCell(_status_chip(task["status"])),
-                        ft.DataCell(_alarm_icon(task)),
+                        ft.DataCell(_c(ft.Text(_fmt(task["project"]),    size=13))),
+                        ft.DataCell(_c(ft.Text(_fmt(task["opened_at"]),   size=12,
+                                            color=ft.Colors.GREY_500))),
+                        ft.DataCell(_c(ft.Text(_fmt(task["modified_at"]), size=12,
+                                            color=ft.Colors.GREY_500))),
+                        ft.DataCell(_c(ft.Text(_fmt(task["closed_at"]),   size=12,
+                                            color=ft.Colors.GREY_500))),
+                        ft.DataCell(_c(_status_chip(task["status"]))),
+                        ft.DataCell(_c(_alarm_icon(task))),
                     ]
                 )
             )

@@ -1585,17 +1585,17 @@ def build_design_tracker(page: ft.Page, config: dict,
 
     data_table = ft.DataTable(
         columns=[
-            ft.DataColumn(ft.Text("#",         size=13, weight=_COL_HEADER)),
-            ft.DataColumn(ft.Text("Name",      size=13, weight=_COL_HEADER)),
-            ft.DataColumn(ft.Row([ft.Text("Board",    size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
-            ft.DataColumn(ft.Row([ft.Text("Revision", size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
-            ft.DataColumn(ft.Row([ft.Text("Project",  size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
-            ft.DataColumn(ft.Row([ft.Text("Category", size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
-            ft.DataColumn(ft.Row([ft.Text("Function", size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
-            ft.DataColumn(ft.Row([ft.Text("Opened",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
-            ft.DataColumn(ft.Row([ft.Text("Modified", size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
-            ft.DataColumn(ft.Row([ft.Text("Closed",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
-            ft.DataColumn(ft.Row([ft.Text("Status",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
+            ft.DataColumn(ft.Text("#",         size=13, weight=_COL_HEADER), heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Text("Name",      size=13, weight=_COL_HEADER), heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text("Board",    size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text("Revision", size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text("Project",  size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text("Category", size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text("Function", size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text("Opened",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text("Modified", size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text("Closed",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text("Status",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
         ],
         rows=[],
         sort_column_index=None,
@@ -1609,6 +1609,7 @@ def build_design_tracker(page: ft.Page, config: dict,
     )
 
     def _build_rows(designs: list[dict]) -> list[ft.DataRow]:
+        def _c(ctrl): return ft.Container(content=ctrl, alignment=ft.alignment.Alignment(0, 0))
         sel_id = _sel["design"]["id"] if _sel["design"] else None
         rows = []
         for d in designs:
@@ -1620,9 +1621,9 @@ def build_design_tracker(page: ft.Page, config: dict,
                     color=ft.Colors.with_opacity(0.12, ft.Colors.BLUE) if is_sel else None,
                     on_select_change=lambda e, d=design: _select_design(e, d),
                     cells=[
-                        ft.DataCell(ft.Text(str(design["id"]), size=13)),
+                        ft.DataCell(_c(ft.Text(str(design["id"]), size=13))),
                         ft.DataCell(
-                            ft.TextButton(
+                            _c(ft.TextButton(
                                 design["title"],
                                 style=ft.ButtonStyle(
                                     padding=ft.padding.all(0),
@@ -1630,17 +1631,17 @@ def build_design_tracker(page: ft.Page, config: dict,
                                     mouse_cursor=ft.MouseCursor.CLICK,
                                 ),
                                 on_click=lambda _, d=design: open_design_dialog(d),
-                            )
+                            ))
                         ),
-                        ft.DataCell(ft.Text(_fmt(design.get("board") or ""),      size=13)),
-                        ft.DataCell(ft.Text(_fmt(design.get("revision") or ""),   size=13)),
-                        ft.DataCell(ft.Text(_fmt(design["project"]),           size=13)),
-                        ft.DataCell(ft.Text(_display_category(design),         size=13)),
-                        ft.DataCell(ft.Text(_display_function(design),         size=13)),
-                        ft.DataCell(ft.Text(_fmt(design["opened_at"]),         size=12, color=ft.Colors.GREY_500)),
-                        ft.DataCell(ft.Text(_fmt(design["modified_at"]),       size=12, color=ft.Colors.GREY_500)),
-                        ft.DataCell(ft.Text(_fmt(design["closed_at"]),         size=12, color=ft.Colors.GREY_500)),
-                        ft.DataCell(_status_chip(design["status"])),
+                        ft.DataCell(_c(ft.Text(_fmt(design.get("board") or ""),      size=13))),
+                        ft.DataCell(_c(ft.Text(_fmt(design.get("revision") or ""),   size=13))),
+                        ft.DataCell(_c(ft.Text(_fmt(design["project"]),           size=13))),
+                        ft.DataCell(_c(ft.Text(_display_category(design),         size=13))),
+                        ft.DataCell(_c(ft.Text(_display_function(design),         size=13))),
+                        ft.DataCell(_c(ft.Text(_fmt(design["opened_at"]),         size=12, color=ft.Colors.GREY_500))),
+                        ft.DataCell(_c(ft.Text(_fmt(design["modified_at"]),       size=12, color=ft.Colors.GREY_500))),
+                        ft.DataCell(_c(ft.Text(_fmt(design["closed_at"]),         size=12, color=ft.Colors.GREY_500))),
+                        ft.DataCell(_c(_status_chip(design["status"]))),
                     ]
                 )
             )

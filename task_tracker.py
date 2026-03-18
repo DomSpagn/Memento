@@ -259,7 +259,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             status_dd = ft.Dropdown(
                 label="Status",
                 value="Open",
-                options=[ft.dropdown.Option(s, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.ORANGE_400, ft.ControlState.FOCUSED: ft.Colors.ORANGE_400, ft.ControlState.DEFAULT: ft.Colors.WHITE})) for s in STATUSES],
+                options=[ft.dropdown.Option(s, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.ORANGE_400, ft.ControlState.FOCUSED: ft.Colors.ORANGE_400, ft.ControlState.DEFAULT: ft.Colors.ON_SURFACE})) for s in STATUSES],
                 width=160,
             )
 
@@ -385,7 +385,7 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         header_status = ft.Dropdown(
             value=task["status"],
-            options=[ft.dropdown.Option(s, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.ORANGE_400, ft.ControlState.FOCUSED: ft.Colors.ORANGE_400, ft.ControlState.DEFAULT: ft.Colors.WHITE})) for s in STATUSES],
+            options=[ft.dropdown.Option(s, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.ORANGE_400, ft.ControlState.FOCUSED: ft.Colors.ORANGE_400, ft.ControlState.DEFAULT: ft.Colors.ON_SURFACE})) for s in STATUSES],
             width=160,
             border=ft.InputBorder.UNDERLINE,
             content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
@@ -483,7 +483,7 @@ def build_task_tracker(page: ft.Page, config: dict,
         )
         alarm_before_dd = ft.Dropdown(
             value=str(_orig_alarm_before),
-            options=[ft.dropdown.Option(key=k, text=v, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.ORANGE_400, ft.ControlState.FOCUSED: ft.Colors.ORANGE_400, ft.ControlState.DEFAULT: ft.Colors.WHITE})) for k, v in _ALARM_BEFORE_OPTS],
+            options=[ft.dropdown.Option(key=k, text=v, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.ORANGE_400, ft.ControlState.FOCUSED: ft.Colors.ORANGE_400, ft.ControlState.DEFAULT: ft.Colors.ON_SURFACE})) for k, v in _ALARM_BEFORE_OPTS],
             width=155,
             border=ft.InputBorder.UNDERLINE,
             content_padding=ft.padding.symmetric(horizontal=4, vertical=4),

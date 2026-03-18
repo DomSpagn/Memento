@@ -171,7 +171,7 @@ def build_design_tracker(page: ft.Page, config: dict,
             cat_dd = ft.Dropdown(
                 label="Category",
                 value="Schematic",
-                options=[ft.dropdown.Option(c, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.BLUE_400, ft.ControlState.FOCUSED: ft.Colors.BLUE_400, ft.ControlState.DEFAULT: ft.Colors.WHITE})) for c in CATEGORIES],
+                options=[ft.dropdown.Option(c, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.BLUE_400, ft.ControlState.FOCUSED: ft.Colors.BLUE_400, ft.ControlState.DEFAULT: ft.Colors.ON_SURFACE})) for c in CATEGORIES],
                 width=200,
             )
             cat_custom_field = ft.TextField(
@@ -190,7 +190,7 @@ def build_design_tracker(page: ft.Page, config: dict,
             fn_dd = ft.Dropdown(
                 label="Function",
                 value="Connectivity",
-                options=[ft.dropdown.Option(f, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.BLUE_400, ft.ControlState.FOCUSED: ft.Colors.BLUE_400, ft.ControlState.DEFAULT: ft.Colors.WHITE})) for f in FUNCTIONS],
+                options=[ft.dropdown.Option(f, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.BLUE_400, ft.ControlState.FOCUSED: ft.Colors.BLUE_400, ft.ControlState.DEFAULT: ft.Colors.ON_SURFACE})) for f in FUNCTIONS],
                 width=200,
             )
             fn_custom_field = ft.TextField(
@@ -209,7 +209,7 @@ def build_design_tracker(page: ft.Page, config: dict,
             status_dd = ft.Dropdown(
                 label="Status",
                 value="Open",
-                options=[ft.dropdown.Option(s, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.BLUE_400, ft.ControlState.FOCUSED: ft.Colors.BLUE_400, ft.ControlState.DEFAULT: ft.Colors.WHITE})) for s in STATUSES],
+                options=[ft.dropdown.Option(s, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.BLUE_400, ft.ControlState.FOCUSED: ft.Colors.BLUE_400, ft.ControlState.DEFAULT: ft.Colors.ON_SURFACE})) for s in STATUSES],
                 width=160,
             )
 
@@ -345,7 +345,7 @@ def build_design_tracker(page: ft.Page, config: dict,
 
         header_cat = ft.Dropdown(
             value=_orig_cat,
-            options=[ft.dropdown.Option(c, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.BLUE_400, ft.ControlState.FOCUSED: ft.Colors.BLUE_400, ft.ControlState.DEFAULT: ft.Colors.WHITE})) for c in CATEGORIES],
+            options=[ft.dropdown.Option(c, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.BLUE_400, ft.ControlState.FOCUSED: ft.Colors.BLUE_400, ft.ControlState.DEFAULT: ft.Colors.ON_SURFACE})) for c in CATEGORIES],
             width=200,
             border=ft.InputBorder.UNDERLINE,
             content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
@@ -363,7 +363,7 @@ def build_design_tracker(page: ft.Page, config: dict,
 
         header_fn = ft.Dropdown(
             value=_orig_fn,
-            options=[ft.dropdown.Option(f, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.BLUE_400, ft.ControlState.FOCUSED: ft.Colors.BLUE_400, ft.ControlState.DEFAULT: ft.Colors.WHITE})) for f in FUNCTIONS],
+            options=[ft.dropdown.Option(f, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.BLUE_400, ft.ControlState.FOCUSED: ft.Colors.BLUE_400, ft.ControlState.DEFAULT: ft.Colors.ON_SURFACE})) for f in FUNCTIONS],
             width=200,
             border=ft.InputBorder.UNDERLINE,
             content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
@@ -381,7 +381,7 @@ def build_design_tracker(page: ft.Page, config: dict,
 
         header_status = ft.Dropdown(
             value=design["status"],
-            options=[ft.dropdown.Option(s, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.BLUE_400, ft.ControlState.FOCUSED: ft.Colors.BLUE_400, ft.ControlState.DEFAULT: ft.Colors.WHITE})) for s in STATUSES],
+            options=[ft.dropdown.Option(s, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.BLUE_400, ft.ControlState.FOCUSED: ft.Colors.BLUE_400, ft.ControlState.DEFAULT: ft.Colors.ON_SURFACE})) for s in STATUSES],
             width=160,
             border=ft.InputBorder.UNDERLINE,
             content_padding=ft.padding.symmetric(horizontal=4, vertical=4),

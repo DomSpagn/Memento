@@ -225,6 +225,8 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         await page.window.close()
 
     # ── Task Tracker toolbar buttons (centred in AppBar) ──────────
+    _cmd_pos = {"v": config.get("CmdBarPosition", "Top")}
+
     _task_add_btn   = ft.IconButton(icon=ft.Icons.ADD_TASK,       tooltip="New Task",     icon_size=22, icon_color=ft.Colors.GREEN_400)
     _task_edit_btn  = ft.IconButton(icon=ft.Icons.EDIT_NOTE,      tooltip="Edit Task",    icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.BLUE_400),   disabled=True)
     _task_del_btn   = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, tooltip="Delete Task",  icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.RED_400),    disabled=True)
@@ -251,6 +253,54 @@ def show_main_app(page: ft.Page, config: dict) -> None:
     _task_actions.visible   = _state["tracker"] == "TaskTracker"
     _design_actions.visible = _state["tracker"] == "DesignTracker"
 
+    # ── Body layout (changes with CmdBarPosition) ────────────────
+    # work_area is defined later; _body wraps work_area + optional cmd panel
+    _body = ft.Container(expand=True)  # content set by _apply_layout
+    _cmd_panel = ft.Container(visible=False, bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST)
+
+    def _active_actions():
+        return _task_actions if _state["tracker"] == "TaskTracker" else _design_actions
+
+    def _apply_layout(pos: str, navigating: bool = False) -> None:
+        """Rebuild body and AppBar according to pos ('Top','Bottom','Left','Right')."""
+        active = _active_actions()
+        _task_actions.visible   = (not navigating) and _state["tracker"] == "TaskTracker"
+        _design_actions.visible = (not navigating) and _state["tracker"] == "DesignTracker"
+        if pos == "Top":
+            # buttons inside AppBar – existing behaviour
+            _cmd_panel.visible = False
+            _actions_row.controls = [] if navigating else [active]
+            _body.content = work_area
+        else:
+            # buttons outside AppBar
+            _actions_row.controls = []
+            if navigating:
+                _cmd_panel.visible = False
+                _body.content = work_area
+            else:
+                is_vert = pos in ("Left", "Right")
+                btn_ctrl = (ft.Column([_task_add_btn, _task_edit_btn, _task_del_btn, _task_chart_btn]
+                                      if _state["tracker"] == "TaskTracker" else
+                                      [_design_add_btn, _design_edit_btn, _design_del_btn, _design_chart_btn],
+                                      spacing=4, tight=True)
+                            if is_vert else
+                            ft.Row([_task_add_btn, _task_edit_btn, _task_del_btn, _task_chart_btn]
+                                   if _state["tracker"] == "TaskTracker" else
+                                   [_design_add_btn, _design_edit_btn, _design_del_btn, _design_chart_btn],
+                                   spacing=0, tight=True))
+                _cmd_panel.content = ft.Container(
+                    content=btn_ctrl,
+                    padding=ft.padding.symmetric(horizontal=4, vertical=8) if is_vert
+                            else ft.padding.symmetric(horizontal=8, vertical=4),
+                )
+                _cmd_panel.visible = True
+                if pos == "Bottom":
+                    _body.content = ft.Column([work_area, _cmd_panel], expand=True, spacing=0)
+                elif pos == "Left":
+                    _body.content = ft.Row([_cmd_panel, work_area], expand=True, spacing=0)
+                else:  # Right
+                    _body.content = ft.Row([work_area, _cmd_panel], expand=True, spacing=0)
+
     # ── Page-level navigation ────────────────────────────────────────
     def _restore_appbar() -> None:
         """Reset AppBar to the tracker-list state."""
@@ -260,18 +310,13 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             alignment=ft.Alignment(-1, 0),
         )
         app_bar.leading_width = 260
-        _actions_row.controls = [
-            _task_actions if _state["tracker"] == "TaskTracker" else _design_actions
-        ]
         app_bar.title = _actions_row
         app_bar.center_title = True
-        _task_actions.visible   = _state["tracker"] == "TaskTracker"
-        _design_actions.visible = _state["tracker"] == "DesignTracker"
+        _apply_layout(_cmd_pos["v"])
 
     def _navigate_to_detail(view, task_label: str) -> None:
         """Replace the work area with a task/design detail full page."""
-        _task_actions.visible   = False
-        _design_actions.visible = False
+        _apply_layout(_cmd_pos["v"], navigating=True)
         app_bar.leading = ft.Container(
             content=ft.IconButton(
                 icon=ft.Icons.ARROW_BACK,
@@ -319,6 +364,7 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         _tracker_seg.thumb_color = ft.Colors.BLUE_400 if key == "DesignTracker" else ft.Colors.DEEP_ORANGE_400
         work_area.content = _build_tracker_view(key)
         _restore_appbar()
+        _apply_layout(_cmd_pos["v"])
         page.update()
 
     _tracker_seg = ft.CupertinoSlidingSegmentedButton(
@@ -355,6 +401,10 @@ def show_main_app(page: ft.Page, config: dict) -> None:
                     content=ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN, size=16), ft.Text("Output Path…")], spacing=8),
                     on_click=show_output_path,
                 ),
+                ft.PopupMenuItem(
+                    content=ft.Row([ft.Icon(ft.Icons.SPACE_DASHBOARD_OUTLINED, size=16), ft.Text("Command Bar…")], spacing=8),
+                    on_click=lambda _: _show_cmdbar_dialog(),
+                ),
             ]),
             # ── Theme toggle ─────────────────────────────────────
             ft.IconButton(
@@ -378,7 +428,56 @@ def show_main_app(page: ft.Page, config: dict) -> None:
     )
     page.appbar = app_bar
 
+    # Initialise body layout (all widgets now exist)
+    _apply_layout(_cmd_pos["v"])
+
+    # ── Command Bar position dialog ──────────────────────────────
+    _POS_OPTIONS = ["Top", "Bottom", "Left", "Right"]
+    _OPT_STYLE = ft.ButtonStyle(color={
+        ft.ControlState.HOVERED:  ft.Colors.ORANGE_400,
+        ft.ControlState.FOCUSED:  ft.Colors.ORANGE_400,
+        ft.ControlState.DEFAULT:  ft.Colors.ON_SURFACE,
+    })
+
+    def _show_cmdbar_dialog() -> None:
+        pos_dd = ft.Dropdown(
+            label="Position",
+            value=_cmd_pos["v"],
+            options=[ft.dropdown.Option(p, style=_OPT_STYLE) for p in _POS_OPTIONS],
+            width=200,
+        )
+
+        def _save_cmdbar(_) -> None:
+            new_pos = pos_dd.value or "Top"
+            _cmd_pos["v"] = new_pos
+            config["CmdBarPosition"] = new_pos
+            save_config(config)
+            cmdbar_dlg.open = False
+            _apply_layout(new_pos)
+            page.update()
+
+        cmdbar_dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Row(
+                [ft.Icon(ft.Icons.SPACE_DASHBOARD_OUTLINED, color=ft.Colors.ORANGE_400),
+                 ft.Text("Command Bar Position", weight=ft.FontWeight.BOLD)],
+                spacing=10,
+            ),
+            content=ft.Column(
+                [ft.Text("Choose where the action buttons appear:", size=13), pos_dd],
+                tight=True, spacing=12, width=320,
+            ),
+            actions=[
+                ft.TextButton("Cancel", on_click=lambda _: close_dlg(cmdbar_dlg)),
+                ft.FilledButton("Apply", on_click=_save_cmdbar),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.overlay.append(cmdbar_dlg)
+        cmdbar_dlg.open = True
+        page.update()
+
     # ── Assemble final layout ────────────────────────────────────
     page.controls.clear()
-    page.add(work_area)
+    page.add(_body)
     page.update()

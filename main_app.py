@@ -11,12 +11,14 @@ Responsibilities:
 """
 
 import asyncio
+import os
+from datetime import datetime
 import flet as ft
 from config_manager import save_config
 from task_tracker import build_task_tracker
 
-APP_VERSION = "v1.0"
-BUILD_DATE  = "13/03/2026"
+APP_VERSION = "v0.1"
+BUILD_DATE  = datetime.fromtimestamp(os.path.getmtime(__file__)).strftime("%d/%m/%Y")
 APP_AUTHOR  = "Domenico Spagnuolo"
 
 

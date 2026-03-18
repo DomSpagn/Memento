@@ -6,6 +6,10 @@ Builds and returns the Task Tracker view for the Memento main window.
 import os
 import re
 import shutil
+import subprocess
+import sys
+import threading
+import time
 import flet as ft
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -17,12 +21,108 @@ from task_db import (
     delete_history_entry, fetch_history_attachments,
     add_history_attachment, remove_history_attachment,
     fetch_related_tasks, add_related_task, remove_related_task,
+    get_pending_alarms, mark_alarm_fired,
 )
 from design_db import (
     fetch_all_designs, fetch_task_design_links,
     add_task_design_link, remove_task_design_link,
     init_db as _design_init_db,
 )
+
+
+# ── Module-level alarm checker ───────────────────────────────────────────────────────
+
+_alarm_checker_started: dict = {}
+_ICON_PATH = str(Path(__file__).parent / "Images" / "memento.ico")
+
+
+def _fire_notification(task_title: str, project: str = "") -> None:
+    """Fire a native Windows toast notification for a task alarm."""
+    # Play Windows notification sound first (always works, no deps)
+    if sys.platform == "win32":
+        try:
+            import winsound
+            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+        except Exception:
+            pass
+    try:
+        from plyer import notification as _plyer
+        _plyer.notify(
+            title=task_title,
+            message=project or "",
+            app_name="Memento",
+            app_icon=_ICON_PATH,
+            timeout=10,
+        )
+        return
+    except Exception:
+        pass
+    if sys.platform == "win32":
+        def _ps_esc(s: str) -> str:
+            return s.replace("'", "''")
+
+        t0 = _ps_esc(task_title)
+        t1 = _ps_esc(project) if project else ""
+        icon_uri = "file:///" + _ICON_PATH.replace("\\", "/")
+        lines = [
+            "[Windows.UI.Notifications.ToastNotificationManager,"
+            "Windows.UI.Notifications,ContentType=WindowsRuntime]>$null",
+            "$xml=[Windows.UI.Notifications.ToastNotificationManager]::"
+            "GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastImageAndText02)",
+            f"$xml.GetElementsByTagName('text')[0].AppendChild("
+            f"$xml.CreateTextNode('{t0}'))>$null",
+        ]
+        if t1:
+            lines.append(
+                f"$xml.GetElementsByTagName('text')[1].AppendChild("
+                f"$xml.CreateTextNode('{t1}'))>$null"
+            )
+        lines += [
+            f"$xml.GetElementsByTagName('image')[0].SetAttribute('src','{icon_uri}')>$null",
+            "$t=[Windows.UI.Notifications.ToastNotification]::new($xml)",
+            "[Windows.UI.Notifications.ToastNotificationManager]::"
+            "CreateToastNotifier('Memento').Show($t)",
+        ]
+        ps = "; ".join(lines)
+        try:
+            subprocess.Popen(
+                ["powershell", "-WindowStyle", "Hidden", "-Command", ps],
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            pass
+
+
+def _start_alarm_checker(output_path: str, on_fired=None) -> None:
+    """Start the background alarm checker daemon thread (once per output_path).
+    If already running, just update the on_fired callback."""
+    if output_path in _alarm_checker_started:
+        _alarm_checker_started[output_path]["on_fired"] = on_fired
+        return
+    _alarm_checker_started[output_path] = {"on_fired": on_fired}
+
+    def _run() -> None:
+        while True:
+            try:
+                fired_any = False
+                for t in get_pending_alarms(output_path):
+                    mark_alarm_fired(output_path, t["id"])
+                    _fire_notification(t["title"], t.get("project") or "")
+                    fired_any = True
+                if fired_any:
+                    cb = _alarm_checker_started[output_path].get("on_fired")
+                    if cb:
+                        try:
+                            cb()
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+            time.sleep(30)
+
+    threading.Thread(target=_run, daemon=True, name="memento_alarm").start()
 
 
 def build_task_tracker(page: ft.Page, config: dict,
@@ -107,6 +207,18 @@ def build_task_tracker(page: ft.Page, config: dict,
             border_radius=10,
             padding=ft.padding.symmetric(horizontal=8, vertical=3),
         )
+
+    def _alarm_icon(task: dict) -> ft.Control:
+        alarm_at    = task.get("alarm_at") or ""
+        alarm_fired = int(task.get("alarm_fired") or 0)
+        if not alarm_at:
+            return ft.Icon(ft.Icons.NOTIFICATIONS_OFF, size=16,
+                           color=ft.Colors.RED_400, tooltip="No alarm")
+        if alarm_fired:
+            return ft.Icon(ft.Icons.NOTIFICATIONS_OFF, size=16,
+                           color=ft.Colors.RED_400, tooltip=f"Alarm fired: {alarm_at}")
+        return ft.Icon(ft.Icons.NOTIFICATIONS_ACTIVE, size=16,
+                       color=ft.Colors.GREEN_500, tooltip=f"Alarm: {alarm_at}")
 
     # ── Detail / Edit dialog ─────────────────────────────────────────────────
 
@@ -305,6 +417,195 @@ def build_task_tracker(page: ft.Page, config: dict,
             spacing=6,
         )
 
+        # ── Alarm fields ──────────────────────────────────────────────────────
+        _orig_alarm_at     = task.get("alarm_at") or ""
+        _orig_alarm_before = int(task.get("alarm_before") or 0)
+        _orig_alarm_fired  = int(task.get("alarm_fired") or 0)
+        _alarm_date_init   = ""
+        _alarm_time_init   = ""
+        if _orig_alarm_at:
+            try:
+                _adt             = datetime.fromisoformat(_orig_alarm_at)
+                _alarm_date_init = _adt.strftime("%Y-%m-%d")
+                _alarm_time_init = _adt.strftime("%H:%M")
+            except ValueError:
+                pass
+
+        _ALARM_BEFORE_OPTS = [
+            ("0",   "At alarm time"),
+            ("5",   "5 min before"),
+            ("15",  "15 min before"),
+            ("30",  "30 min before"),
+            ("60",  "1 hour before"),
+            ("120", "2 hours before"),
+        ]
+
+        def _alarm_future_check(date_str: str, time_str: str) -> bool:
+            d = date_str.strip()
+            t = time_str.strip() or "00:00"
+            if not d:
+                return False
+            try:
+                return datetime.strptime(f"{d} {t}", "%Y-%m-%d %H:%M") > datetime.now()
+            except ValueError:
+                return False
+
+        alarm_date_field = ft.TextField(
+            value=_alarm_date_init,
+            hint_text="YYYY-MM-DD",
+            width=115,
+            border=ft.InputBorder.UNDERLINE,
+            content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
+            text_size=13,
+        )
+        _h_init = _alarm_time_init[:2]  if _alarm_time_init else ""
+        _m_init = _alarm_time_init[3:5] if _alarm_time_init else ""
+        def _cap2(e) -> None:
+            if len(e.control.value) > 2:
+                e.control.value = e.control.value[:2]
+                e.control.update()
+
+        alarm_hour_field = ft.TextField(
+            value=_h_init,
+            hint_text="HH",
+            width=36,
+            input_filter=ft.NumbersOnlyInputFilter(),
+            on_change=_cap2,
+            border=ft.InputBorder.UNDERLINE,
+            content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
+            text_size=13,
+            text_align=ft.TextAlign.CENTER,
+        )
+        alarm_min_field = ft.TextField(
+            value=_m_init,
+            hint_text="MM",
+            width=36,
+            input_filter=ft.NumbersOnlyInputFilter(),
+            on_change=_cap2,
+            border=ft.InputBorder.UNDERLINE,
+            content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
+            text_size=13,
+            text_align=ft.TextAlign.CENTER,
+        )
+        alarm_before_dd = ft.Dropdown(
+            value=str(_orig_alarm_before),
+            options=[ft.dropdown.Option(key=k, text=v) for k, v in _ALARM_BEFORE_OPTS],
+            width=155,
+            border=ft.InputBorder.UNDERLINE,
+            content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
+            text_size=13,
+        )
+        alarm_error_txt = ft.Text("", size=11, color=ft.Colors.RED_400, visible=False)
+
+        def _alarm_time_str() -> str:
+            h = (alarm_hour_field.value or "").strip().zfill(2)
+            m = (alarm_min_field.value  or "").strip().zfill(2)
+            return f"{h}:{m}"
+
+        _sw_future_init = _alarm_future_check(_alarm_date_init, _alarm_time_init or "00:00")
+        _sw_value_init  = _sw_future_init and (_orig_alarm_fired == 0)
+        alarm_switch = ft.Switch(
+            value=_sw_value_init,
+            disabled=not _sw_future_init,
+            active_color=ft.Colors.GREEN_500,
+        )
+
+        # Calendar date picker
+        _date_picker = ft.DatePicker(
+            first_date=datetime.now().replace(hour=0, minute=0, second=0, microsecond=0),
+            last_date=datetime(2035, 12, 31),
+        )
+        page.overlay.append(_date_picker)
+
+        def _on_date_picked(_e) -> None:
+            if _date_picker.value:
+                alarm_date_field.value = _date_picker.value.strftime("%Y-%m-%d")
+                _refresh_alarm_switch()
+                _update_save_btn()
+
+        _date_picker.on_change = _on_date_picked
+
+        def _open_calendar(_e) -> None:
+            try:
+                _date_picker.value = datetime.strptime(
+                    alarm_date_field.value.strip(), "%Y-%m-%d"
+                )
+            except ValueError:
+                _date_picker.value = None
+            _date_picker.open = True
+            page.update()
+
+        cal_btn = ft.IconButton(
+            icon=ft.Icons.CALENDAR_MONTH,
+            icon_size=18,
+            tooltip="Pick date",
+            on_click=_open_calendar,
+            style=ft.ButtonStyle(padding=ft.padding.all(2)),
+        )
+
+        def _refresh_alarm_switch() -> None:
+            is_fut = _alarm_future_check(alarm_date_field.value, _alarm_time_str())
+            alarm_switch.disabled = not is_fut
+            if not is_fut:
+                alarm_switch.value = False
+            else:
+                alarm_switch.value = True   # auto-enable when date is in the future
+            page.update()
+
+        def _build_alarm_at() -> str | None:
+            """Return ISO alarm string, '' if empty, None if format invalid."""
+            d = alarm_date_field.value.strip()
+            t = _alarm_time_str()
+            if not d:
+                return ""
+            try:
+                datetime.strptime(f"{d} {t}", "%Y-%m-%d %H:%M")
+                return f"{d} {t}:00"
+            except ValueError:
+                return None
+
+        def _on_clear_alarm(_e=None) -> None:
+            alarm_date_field.value  = ""
+            alarm_hour_field.value  = ""
+            alarm_min_field.value   = ""
+            alarm_before_dd.value   = "0"
+            alarm_error_txt.visible = False
+            alarm_switch.disabled   = True
+            alarm_switch.value      = False
+            _update_save_btn()
+
+        alarm_clear_btn = ft.IconButton(
+            icon=ft.Icons.ALARM_OFF,
+            icon_size=16,
+            tooltip="Clear alarm",
+            on_click=_on_clear_alarm,
+            style=ft.ButtonStyle(padding=ft.padding.all(2)),
+        )
+        alarm_section = ft.Column(
+            [
+                ft.Text("Alarm", size=12, weight=ft.FontWeight.W_600,
+                        color=ft.Colors.GREY_600),
+                ft.Row(
+                    [
+                        alarm_date_field,
+                        cal_btn,
+                        ft.Icon(ft.Icons.ACCESS_TIME, size=14, color=ft.Colors.GREY_500),
+                        alarm_hour_field,
+                        ft.Text(":", size=14, weight=ft.FontWeight.W_600),
+                        alarm_min_field,
+                        alarm_before_dd,
+                        alarm_clear_btn,
+                        ft.Container(expand=True),
+                        alarm_switch,
+                    ],
+                    spacing=6,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                alarm_error_txt,
+            ],
+            spacing=4,
+        )
+
         # ── Description field with toolbar ────────────────────────────────────
         _current_desc = task.get("description", "") or ""
         _desc_has_content = bool(_current_desc.strip())
@@ -312,10 +613,13 @@ def build_task_tracker(page: ft.Page, config: dict,
         _main_btns: dict = {"delete": None, "save": None}
         # Original values for dirty detection
         _orig = {
-            "title":       task["title"],
-            "project":     task.get("project", "") or "",
-            "status":      task["status"],
-            "description": _current_desc,
+            "title":        task["title"],
+            "project":      task.get("project", "") or "",
+            "status":       task["status"],
+            "description":  _current_desc,
+            "alarm_at":     _orig_alarm_at,
+            "alarm_before": _orig_alarm_before,
+            "alarm_fired":  _orig_alarm_fired,
         }
         # dirty = at least one change confirmed; editing = unsaved edit in progress
         _edit_state = {"dirty": False, "editing": not _desc_has_content}
@@ -327,11 +631,34 @@ def build_task_tracker(page: ft.Page, config: dict,
                     or header_project.value.strip() != _orig["project"]
                     or (header_status.value or "") != _orig["status"]
                 )
-                can_save = header_changed or (
+                alarm_at_new = _build_alarm_at()
+                new_fired = 0 if alarm_switch.value else 1
+                alarm_changed = (
+                    alarm_at_new is not None
+                    and alarm_at_new != ""
+                    and (
+                        alarm_at_new != _orig["alarm_at"]
+                        or int(alarm_before_dd.value or 0) != _orig["alarm_before"]
+                        or new_fired != _orig["alarm_fired"]
+                    )
+                ) or (
+                    alarm_at_new == "" and _orig["alarm_at"] != ""
+                )
+                can_save = header_changed or alarm_changed or (
                     _edit_state["dirty"] and not _edit_state["editing"]
                 )
                 _main_btns["save"].disabled = not can_save
             page.update()
+
+        def _on_alarm_time_change(_e) -> None:
+            _refresh_alarm_switch()
+            _update_save_btn()
+
+        alarm_date_field.on_change = _on_alarm_time_change
+        alarm_hour_field.on_change = _on_alarm_time_change
+        alarm_min_field.on_change  = _on_alarm_time_change
+        alarm_before_dd.on_select  = lambda _e: _update_save_btn()
+        alarm_switch.on_change     = lambda _e: _update_save_btn()
 
         def _build_rich_spans(raw: str) -> list:
             """Parse stored markup → list[ft.TextSpan]. Supports nested combos."""
@@ -1341,13 +1668,24 @@ def build_task_tracker(page: ft.Page, config: dict,
                 _refresh()
 
         def _save(_) -> None:
-            update_task(
-                output_path, task["id"],
-                title=header_title.value.strip() or task["title"],
-                project=header_project.value.strip(),
-                status=header_status.value,
-                description=desc_field.value or "",
+            alarm_at_val = _build_alarm_at()
+            if alarm_at_val is None:
+                alarm_error_txt.value   = "Invalid format \u2014 use YYYY-MM-DD and HH:MM"
+                alarm_error_txt.visible = True
+                page.update()
+                return
+            alarm_before_val = int(alarm_before_dd.value or 0)
+            new_fired = 0 if (alarm_switch.value and alarm_at_val) else 1
+            kwargs: dict = dict(
+                title        = header_title.value.strip() or task["title"],
+                project      = header_project.value.strip(),
+                status       = header_status.value,
+                description  = desc_field.value or "",
+                alarm_at     = alarm_at_val,
+                alarm_before = alarm_before_val,
+                alarm_fired  = new_fired,
             )
+            update_task(output_path, task["id"], **kwargs)
             _go_back()
 
         def _delete(_) -> None:
@@ -1419,6 +1757,8 @@ def build_task_tracker(page: ft.Page, config: dict,
                                 [
                                     header_col,
                                     ft.Divider(height=4),
+                                    alarm_section,
+                                    ft.Divider(height=4),
                                     desc_section,
                                     ft.Divider(height=4),
                                     related_section,
@@ -1459,6 +1799,8 @@ def build_task_tracker(page: ft.Page, config: dict,
                     content=ft.Column(
                         [
                             header_col,
+                            ft.Divider(height=4),
+                            alarm_section,
                             ft.Divider(height=4),
                             desc_section,
                             ft.Divider(height=4),
@@ -1504,6 +1846,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             ft.DataColumn(ft.Row([ft.Text("Modified", size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
             ft.DataColumn(ft.Row([ft.Text("Closed",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
             ft.DataColumn(ft.Row([ft.Text("Status",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2, tight=True), on_sort=_on_sort),
+            ft.DataColumn(ft.Text("Alarm", size=13, weight=_COL_HEADER)),
         ],
         rows=[],
         sort_column_index=None,
@@ -1552,6 +1895,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                         ft.DataCell(ft.Text(_fmt(task["closed_at"]),   size=12,
                                             color=ft.Colors.GREY_500)),
                         ft.DataCell(_status_chip(task["status"])),
+                        ft.DataCell(_alarm_icon(task)),
                     ]
                 )
             )
@@ -1884,4 +2228,5 @@ def build_task_tracker(page: ft.Page, config: dict,
 
     # ── Root ─────────────────────────────────────────────────────────────────
 
+    _start_alarm_checker(output_path, on_fired=_refresh)
     return list_area

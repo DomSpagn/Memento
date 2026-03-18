@@ -15,7 +15,6 @@ def main(page: ft.Page) -> None:
     page.window.height  = 768
     page.window.min_width  = 800
     page.window.min_height = 600
-    # Imposta l'icona della finestra
     page.window.icon = "memento.ico"
 
     def on_wizard_complete(config: dict) -> None:
@@ -31,4 +30,4 @@ def main(page: ft.Page) -> None:
 
 
 if __name__ == "__main__":
-    ft.app(target=main, assets_dir="Images")
+    ft.run(main, assets_dir="Images")

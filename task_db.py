@@ -7,7 +7,7 @@ Database location:
 """
 
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 DB_FILENAME = "tasks.db"
@@ -16,7 +16,10 @@ STATUSES = ["Open", "In Progress", "On Hold", "Closed"]
 
 # Only these column names may be touched by update_task, preventing any
 # accidental (or injected) writes to unintended columns.
-_UPDATABLE_FIELDS = {"title", "project", "status", "modified_at", "closed_at", "description"}
+_UPDATABLE_FIELDS = {
+    "title", "project", "status", "modified_at", "closed_at", "description",
+    "alarm_at", "alarm_before", "alarm_fired",
+}
 
 
 def _db_path(output_path: str) -> Path:
@@ -50,10 +53,16 @@ def init_db(output_path: str) -> None:
                 closed_at   TEXT
             )
         """)
-        # Migration: add description column for existing databases
+        # Migration: add columns for existing databases
         existing_cols = [r[1] for r in conn.execute("PRAGMA table_info(tasks)").fetchall()]
         if "description" not in existing_cols:
             conn.execute("ALTER TABLE tasks ADD COLUMN description TEXT NOT NULL DEFAULT ''")
+        if "alarm_at" not in existing_cols:
+            conn.execute("ALTER TABLE tasks ADD COLUMN alarm_at TEXT NOT NULL DEFAULT ''")
+        if "alarm_before" not in existing_cols:
+            conn.execute("ALTER TABLE tasks ADD COLUMN alarm_before INTEGER NOT NULL DEFAULT 0")
+        if "alarm_fired" not in existing_cols:
+            conn.execute("ALTER TABLE tasks ADD COLUMN alarm_fired INTEGER NOT NULL DEFAULT 0")
         # Attachments table
         conn.execute("""
             CREATE TABLE IF NOT EXISTS attachments (
@@ -316,4 +325,33 @@ def remove_related_task(output_path: str, task_id: int, related_id: int) -> None
             "DELETE FROM related_tasks WHERE task_id = ? AND related_id = ?",
             (task_id, related_id),
         )
+        conn.commit()
+
+
+# ── Alarm helpers ─────────────────────────────────────────────────────────────
+
+def get_pending_alarms(output_path: str) -> list[dict]:
+    """Return tasks whose alarm is due and hasn't been fired yet."""
+    with _connect(output_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM tasks WHERE alarm_at != '' AND alarm_fired = 0"
+        ).fetchall()
+    now = datetime.now()
+    result = []
+    for r in rows:
+        t = dict(r)
+        try:
+            before = int(t.get("alarm_before") or 0)
+            trigger = datetime.fromisoformat(t["alarm_at"]) - timedelta(minutes=before)
+            if now >= trigger:
+                result.append(t)
+        except (ValueError, TypeError):
+            pass
+    return result
+
+
+def mark_alarm_fired(output_path: str, task_id: int) -> None:
+    """Mark a task alarm as fired so it won't fire again."""
+    with _connect(output_path) as conn:
+        conn.execute("UPDATE tasks SET alarm_fired = 1 WHERE id = ?", (task_id,))
         conn.commit()

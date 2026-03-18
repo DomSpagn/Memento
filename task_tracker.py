@@ -1105,6 +1105,11 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         def _update_save_btn() -> None:
             if _main_btns["save"]:
+                # Title and Project must always be non-empty
+                fields_ok = (
+                    bool(header_title.value.strip())
+                    and bool(header_project.value.strip())
+                )
                 header_changed = (
                     header_title.value.strip() != _orig["title"]
                     or header_project.value.strip() != _orig["project"]
@@ -1123,8 +1128,10 @@ def build_task_tracker(page: ft.Page, config: dict,
                 ) or (
                     alarm_at_new == "" and _orig["alarm_at"] != ""
                 )
-                can_save = header_changed or alarm_changed or (
-                    _edit_state["dirty"] and not _edit_state["editing"]
+                can_save = fields_ok and (
+                    header_changed or alarm_changed or (
+                        _edit_state["dirty"] and not _edit_state["editing"]
+                    )
                 )
                 _main_btns["save"].disabled = not can_save
             page.update()
@@ -2247,12 +2254,6 @@ def build_task_tracker(page: ft.Page, config: dict,
                                     files_section,
                                     ft.Divider(height=4),
                                     history_section,
-                                    ft.Divider(height=16),
-                                    ft.Row(
-                                        [delete_btn, cancel_btn, save_btn],
-                                        alignment=ft.MainAxisAlignment.SPACE_EVENLY,
-                                    ),
-                                    ft.Divider(height=8),
                                 ],
                                 spacing=6,
                                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
@@ -2268,7 +2269,21 @@ def build_task_tracker(page: ft.Page, config: dict,
                 expand=True,
             )
             _refresh_attach()
-            on_open_task(detail_view, f"Task  #{task['id']}")
+            _action_bar = ft.Container(
+                content=ft.Row(
+                    [delete_btn, cancel_btn, save_btn],
+                    alignment=ft.MainAxisAlignment.SPACE_EVENLY,
+                ),
+                padding=ft.padding.symmetric(horizontal=32, vertical=10),
+                bgcolor=ft.Colors.SURFACE_CONTAINER,
+            )
+            detail_outer = ft.Column(
+                [detail_view, _action_bar],
+                spacing=0,
+                expand=True,
+                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+            )
+            on_open_task(detail_outer, f"Task  #{task['id']}")
         else:
             # ── Dialog fallback ───────────────────────────────────────────────
             dlg = ft.AlertDialog(
@@ -2290,11 +2305,6 @@ def build_task_tracker(page: ft.Page, config: dict,
                             files_section,
                             ft.Divider(height=4),
                             history_section,
-                            ft.Divider(height=4),
-                            ft.Row(
-                                [delete_btn, cancel_btn, save_btn],
-                                alignment=ft.MainAxisAlignment.SPACE_EVENLY,
-                            ),
                         ],
                         spacing=6,
                         expand=True,
@@ -2304,7 +2314,8 @@ def build_task_tracker(page: ft.Page, config: dict,
                     height=700,
                     expand=True,
                 ),
-                actions=[],
+                actions=[delete_btn, cancel_btn, save_btn],
+                actions_alignment=ft.MainAxisAlignment.SPACE_EVENLY,
             )
             _dlg_ref["dlg"] = dlg
             page.overlay.append(dlg)

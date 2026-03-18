@@ -18,7 +18,7 @@ from config_manager import save_config
 from task_tracker import build_task_tracker
 from design_tracker import build_design_tracker
 
-APP_VERSION = "v0.2"
+APP_VERSION = "v0.3"
 BUILD_DATE  = datetime.fromtimestamp(os.path.getmtime(__file__)).strftime("%d/%m/%Y")
 APP_AUTHOR  = "Domenico Spagnuolo"
 

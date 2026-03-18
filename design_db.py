@@ -14,7 +14,7 @@ DB_FILENAME = "designs.db"
 
 STATUSES   = ["Open", "In Progress", "On Hold", "Closed"]
 CATEGORIES = ["Schematic", "PCB", "Block Diagram", "Other"]
-FUNCTIONS  = ["Connectivity", "Logic", "HIL", "Other"]
+FUNCTIONS  = ["Connectivity", "Logic", "HIL", "SOM", "Other"]
 
 _UPDATABLE_FIELDS = {
     "title", "project", "board", "revision", "category", "category_custom",

@@ -16,8 +16,9 @@ from datetime import datetime
 import flet as ft
 from config_manager import save_config
 from task_tracker import build_task_tracker
+from design_tracker import build_design_tracker
 
-APP_VERSION = "v0.1"
+APP_VERSION = "v0.2"
 BUILD_DATE  = datetime.fromtimestamp(os.path.getmtime(__file__)).strftime("%d/%m/%Y")
 APP_AUTHOR  = "Domenico Spagnuolo"
 
@@ -234,9 +235,21 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         tight=True,
     )
 
+    # ── Design Tracker toolbar buttons ───────────────────────────
+    _design_add_btn   = ft.IconButton(icon=ft.Icons.ADD_TASK,          tooltip="New Design",    icon_size=22, icon_color=ft.Colors.GREEN_400)
+    _design_edit_btn  = ft.IconButton(icon=ft.Icons.EDIT_NOTE,        tooltip="Edit Design",   icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.BLUE_400),   disabled=True)
+    _design_del_btn   = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE,   tooltip="Delete Design", icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.RED_400),    disabled=True)
+    _design_chart_btn = ft.IconButton(icon=ft.Icons.PIE_CHART,        tooltip="Status Chart",  icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.PURPLE_400), disabled=True)
+    _design_actions   = ft.Row(
+        [_design_add_btn, _design_edit_btn, _design_del_btn, _design_chart_btn],
+        spacing=0,
+        tight=True,
+    )
+
     # ── Tracker state ────────────────────────────────────────────
     _state = {"tracker": config.get("StartWith", "TaskTracker")}
-    _task_actions.visible = _state["tracker"] == "TaskTracker"
+    _task_actions.visible   = _state["tracker"] == "TaskTracker"
+    _design_actions.visible = _state["tracker"] == "DesignTracker"
 
     # ── Page-level navigation ────────────────────────────────────────
     def _restore_appbar() -> None:
@@ -247,18 +260,23 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             alignment=ft.Alignment(-1, 0),
         )
         app_bar.leading_width = 260
-        app_bar.title = _task_actions
+        _actions_row.controls = [
+            _task_actions if _state["tracker"] == "TaskTracker" else _design_actions
+        ]
+        app_bar.title = _actions_row
         app_bar.center_title = True
-        _task_actions.visible = _state["tracker"] == "TaskTracker"
+        _task_actions.visible   = _state["tracker"] == "TaskTracker"
+        _design_actions.visible = _state["tracker"] == "DesignTracker"
 
     def _navigate_to_detail(view, task_label: str) -> None:
-        """Replace the work area with a task detail full page."""
-        _task_actions.visible = False
+        """Replace the work area with a task/design detail full page."""
+        _task_actions.visible   = False
+        _design_actions.visible = False
         app_bar.leading = ft.Container(
             content=ft.IconButton(
                 icon=ft.Icons.ARROW_BACK,
                 icon_size=20,
-                tooltip="Back to task list",
+                tooltip="Back to list",
                 on_click=_navigate_back,
             ),
             padding=ft.padding.only(left=4),
@@ -277,30 +295,15 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         page.update()
 
     def _build_tracker_view(tracker: str):
-        _task_actions.visible = tracker == "TaskTracker"
+        _task_actions.visible   = tracker == "TaskTracker"
+        _design_actions.visible = tracker == "DesignTracker"
         if tracker == "TaskTracker":
             return build_task_tracker(page, config, _task_add_btn, _task_edit_btn, _task_del_btn, _task_chart_btn,
                                       on_open_task=_navigate_to_detail,
                                       on_close_task=_navigate_back)
-        # DesignTracker placeholder
-        return ft.Container(
-            content=ft.Column(
-                [
-                    ft.Icon(ft.Icons.BRUSH, size=72, color=ft.Colors.GREY_400),
-                    ft.Text(
-                        "Design Tracker — coming soon",
-                        size=18,
-                        color=ft.Colors.GREY_500,
-                        weight=ft.FontWeight.W_300,
-                    ),
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                spacing=16,
-            ),
-            expand=True,
-            alignment=ft.Alignment(0, 0),
-        )
+        return build_design_tracker(page, config, _design_add_btn, _design_edit_btn, _design_del_btn, _design_chart_btn,
+                                    on_open_design=_navigate_to_detail,
+                                    on_close_design=_navigate_back)
 
     work_area = ft.Container(
         content=_build_tracker_view(_state["tracker"]),
@@ -313,8 +316,8 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         _state["tracker"] = key
         config["StartWith"] = key
         save_config(config)
-        _restore_appbar()
         work_area.content = _build_tracker_view(key)
+        _restore_appbar()
         page.update()
 
     _tracker_seg = ft.CupertinoSlidingSegmentedButton(
@@ -327,6 +330,12 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         ],
     )
 
+    _actions_row = ft.Row(
+        [_task_actions if _state["tracker"] == "TaskTracker" else _design_actions],
+        spacing=0,
+        tight=True,
+    )
+
     app_bar = ft.AppBar(
         leading=ft.Container(
             content=_tracker_seg,
@@ -334,7 +343,7 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             alignment=ft.Alignment(-1, 0),
         ),
         leading_width=260,
-        title=_task_actions,
+        title=_actions_row,
         center_title=True,
         bgcolor=ft.Colors.SURFACE_CONTAINER_HIGHEST,
         elevation=0,

@@ -1531,7 +1531,11 @@ def build_task_tracker(page: ft.Page, config: dict,
                         ft.DataCell(ft.Text(str(task["id"]), size=13)),
                         ft.DataCell(
                             ft.TextButton(
-                                task["title"],
+                                content=ft.Text(
+                                    task["title"],
+                                    size=13,
+                                    color=ft.Colors.DEEP_ORANGE_400,
+                                ),
                                 style=ft.ButtonStyle(
                                     padding=ft.padding.all(0),
                                     overlay_color=ft.Colors.TRANSPARENT,

@@ -316,6 +316,7 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         _state["tracker"] = key
         config["StartWith"] = key
         save_config(config)
+        _tracker_seg.thumb_color = ft.Colors.BLUE_400 if key == "DesignTracker" else ft.Colors.DEEP_ORANGE_400
         work_area.content = _build_tracker_view(key)
         _restore_appbar()
         page.update()
@@ -323,7 +324,7 @@ def show_main_app(page: ft.Page, config: dict) -> None:
     _tracker_seg = ft.CupertinoSlidingSegmentedButton(
         selected_index=0 if _state["tracker"] == "TaskTracker" else 1,
         on_change=_on_segment_change,
-        thumb_color=ft.Colors.BLUE_400,
+        thumb_color=ft.Colors.DEEP_ORANGE_400 if _state["tracker"] == "TaskTracker" else ft.Colors.BLUE_400,
         controls=[
             ft.Text("Task Tracker",   size=12),
             ft.Text("Design Tracker", size=12),

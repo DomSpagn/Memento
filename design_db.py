@@ -369,3 +369,37 @@ def remove_design_task_link(output_path: str, design_id: int, task_id: int) -> N
             (design_id, task_id),
         )
         conn.commit()
+
+
+def fetch_task_design_links(output_path: str, task_id: int) -> list[dict]:
+    """Return all design IDs linked to this task (reverse lookup)."""
+    with _connect(output_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM design_task_links WHERE task_id = ? ORDER BY id ASC",
+            (task_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_task_design_link(output_path: str, task_id: int, design_id: int) -> bool:
+    """Link a design to this task. Returns False if already linked."""
+    with _connect(output_path) as conn:
+        try:
+            conn.execute(
+                "INSERT INTO design_task_links (design_id, task_id) VALUES (?, ?)",
+                (design_id, task_id),
+            )
+            conn.commit()
+        except Exception:
+            return False
+    return True
+
+
+def remove_task_design_link(output_path: str, task_id: int, design_id: int) -> None:
+    """Remove the link between task_id and design_id."""
+    with _connect(output_path) as conn:
+        conn.execute(
+            "DELETE FROM design_task_links WHERE design_id = ? AND task_id = ?",
+            (design_id, task_id),
+        )
+        conn.commit()

@@ -18,6 +18,11 @@ from task_db import (
     add_history_attachment, remove_history_attachment,
     fetch_related_tasks, add_related_task, remove_related_task,
 )
+from design_db import (
+    fetch_all_designs, fetch_task_design_links,
+    add_task_design_link, remove_task_design_link,
+    init_db as _design_init_db,
+)
 
 
 def build_task_tracker(page: ft.Page, config: dict,
@@ -27,6 +32,7 @@ def build_task_tracker(page: ft.Page, config: dict,
 
     output_path: str = config.get("OutputPath", "")
     init_db(output_path)
+    _design_init_db(output_path)
 
     # ── Selection state ───────────────────────────────────────────────────────
     _sel: dict = {"task": None}
@@ -694,13 +700,16 @@ def build_task_tracker(page: ft.Page, config: dict,
                             ft.Text(f"#{rid}", size=13, weight=ft.FontWeight.W_600,
                                     color=ft.Colors.GREY_500, width=36),
                             ft.TextButton(
-                                rtitle,
+                                content=ft.Text(
+                                    rtitle,
+                                    size=13,
+                                    no_wrap=False,
+                                    text_align=ft.TextAlign.LEFT,
+                                    decoration=ft.TextDecoration.UNDERLINE,
+                                ),
                                 style=ft.ButtonStyle(
                                     padding=ft.padding.all(0),
                                     overlay_color=ft.Colors.TRANSPARENT,
-                                    text_style=ft.TextStyle(
-                                        decoration=ft.TextDecoration.UNDERLINE
-                                    ),
                                 ),
                                 on_click=lambda _, rid=rid: _navigate_to_related(rid),
                                 expand=True,
@@ -715,7 +724,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                             ),
                         ],
                         spacing=4,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        vertical_alignment=ft.CrossAxisAlignment.START,
                     )
                 )
             related_list_col.controls = rows
@@ -833,6 +842,145 @@ def build_task_tracker(page: ft.Page, config: dict,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         )
         _refresh_related()
+
+        # ── Related Designs ───────────────────────────────────────────────────
+        _rel_designs_editing = {"active": False}
+        rel_designs_list_col = ft.Column([], spacing=4)
+
+        def _refresh_related_designs() -> None:
+            links      = fetch_task_design_links(output_path, task["id"])
+            all_d      = fetch_all_designs(output_path)
+            design_map = {d["id"]: d for d in all_d}
+            rows_d     = []
+            for lnk in links:
+                did    = lnk["design_id"]
+                dtitle = design_map[did]["title"] if did in design_map else f"(design #{did} not found)"
+                rows_d.append(
+                    ft.Row(
+                        [
+                            ft.Text(f"#{did}", size=13, weight=ft.FontWeight.W_600,
+                                    color=ft.Colors.GREY_500, width=36),
+                            ft.Text(dtitle, size=13, expand=True, no_wrap=False),
+                            ft.IconButton(
+                                icon=ft.Icons.LINK_OFF,
+                                icon_size=15,
+                                icon_color=ft.Colors.RED_400,
+                                tooltip="Remove relation",
+                                on_click=lambda _, did=did: _remove_related_design(did),
+                                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+                            ),
+                        ],
+                        spacing=4,
+                        vertical_alignment=ft.CrossAxisAlignment.START,
+                    )
+                )
+            rel_designs_list_col.controls = rows_d
+            page.update()
+
+        def _remove_related_design(did: int) -> None:
+            remove_task_design_link(output_path, task["id"], did)
+            _edit_state["dirty"]   = True
+            _edit_state["editing"] = False
+            _update_save_btn()
+            _refresh_related_designs()
+
+        rel_design_input = ft.TextField(
+            hint_text="Design #",
+            width=120,
+            keyboard_type=ft.KeyboardType.NUMBER,
+            input_filter=ft.NumbersOnlyInputFilter(),
+            content_padding=ft.padding.symmetric(horizontal=8, vertical=6),
+            border_radius=6,
+        )
+        rel_design_error = ft.Text("", size=11, color=ft.Colors.RED_400, visible=False)
+
+        rel_design_save_btn = ft.IconButton(
+            icon=ft.Icons.CHECK,
+            icon_size=17,
+            tooltip="Add design relation",
+            icon_color=ft.Colors.GREEN_400,
+            style=ft.ButtonStyle(padding=ft.padding.all(2)),
+        )
+        rel_design_cancel_btn = ft.IconButton(
+            icon=ft.Icons.CLOSE,
+            icon_size=17,
+            tooltip="Cancel",
+            icon_color=ft.Colors.GREY_500,
+            style=ft.ButtonStyle(padding=ft.padding.all(2)),
+        )
+
+        def _set_rel_designs_editing(active: bool) -> None:
+            _rel_designs_editing["active"] = active
+            _edit_state["editing"]         = active
+            if _main_btns["delete"]:
+                _main_btns["delete"].disabled = active
+            if _main_btns["save"]:
+                _main_btns["save"].disabled = active or not _edit_state["dirty"]
+
+        def _on_rel_design_input_change(_e) -> None:
+            rel_design_error.visible = False
+            has_text = bool((rel_design_input.value or "").strip())
+            _set_rel_designs_editing(has_text)
+            _update_save_btn()
+            page.update()
+
+        rel_design_input.on_change = _on_rel_design_input_change
+
+        def _on_rel_design_save(_e) -> None:
+            raw = (rel_design_input.value or "").strip()
+            if not raw:
+                return
+            try:
+                did = int(raw)
+            except ValueError:
+                rel_design_error.value   = "Enter a valid number"
+                rel_design_error.visible = True
+                page.update()
+                return
+            all_d  = fetch_all_designs(output_path)
+            if not any(d["id"] == did for d in all_d):
+                rel_design_error.value   = "Design not found"
+                rel_design_error.visible = True
+                page.update()
+                return
+            ok = add_task_design_link(output_path, task["id"], did)
+            if not ok:
+                rel_design_error.value   = "Already linked"
+                rel_design_error.visible = True
+                page.update()
+                return
+            rel_design_input.value   = ""
+            rel_design_error.visible = False
+            _edit_state["dirty"]     = True
+            _set_rel_designs_editing(False)
+            _update_save_btn()
+            _refresh_related_designs()
+
+        def _on_rel_design_cancel(_e) -> None:
+            rel_design_input.value   = ""
+            rel_design_error.visible = False
+            _set_rel_designs_editing(False)
+            _update_save_btn()
+            page.update()
+
+        rel_design_save_btn.on_click   = _on_rel_design_save
+        rel_design_cancel_btn.on_click = _on_rel_design_cancel
+
+        related_designs_section = ft.Column(
+            [
+                ft.Text("Related Designs", size=12, weight=ft.FontWeight.W_600,
+                        color=ft.Colors.GREY_600),
+                rel_designs_list_col,
+                ft.Row(
+                    [rel_design_input, rel_design_save_btn, rel_design_cancel_btn, rel_design_error],
+                    spacing=4,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+            ],
+            spacing=6,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        )
+        _refresh_related_designs()
 
         # ── Attachments ───────────────────────────────────────────────────────
         attach_dir = (
@@ -1275,6 +1423,8 @@ def build_task_tracker(page: ft.Page, config: dict,
                                     ft.Divider(height=4),
                                     related_section,
                                     ft.Divider(height=4),
+                                    related_designs_section,
+                                    ft.Divider(height=4),
                                     files_section,
                                     ft.Divider(height=4),
                                     history_section,
@@ -1313,6 +1463,8 @@ def build_task_tracker(page: ft.Page, config: dict,
                             desc_section,
                             ft.Divider(height=4),
                             related_section,
+                            ft.Divider(height=4),
+                            related_designs_section,
                             ft.Divider(height=4),
                             files_section,
                             ft.Divider(height=4),

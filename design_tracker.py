@@ -837,11 +837,16 @@ def build_design_tracker(page: ft.Page, config: dict,
                             ft.Text(f"#{rid}", size=13, weight=ft.FontWeight.W_600,
                                     color=ft.Colors.GREY_500, width=36),
                             ft.TextButton(
-                                rtitle,
+                                content=ft.Text(
+                                    rtitle,
+                                    size=13,
+                                    no_wrap=False,
+                                    text_align=ft.TextAlign.LEFT,
+                                    decoration=ft.TextDecoration.UNDERLINE,
+                                ),
                                 style=ft.ButtonStyle(
                                     padding=ft.padding.all(0),
                                     overlay_color=ft.Colors.TRANSPARENT,
-                                    text_style=ft.TextStyle(decoration=ft.TextDecoration.UNDERLINE),
                                 ),
                                 on_click=lambda _, rid=rid: _navigate_to_related(rid),
                                 expand=True,
@@ -856,7 +861,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                             ),
                         ],
                         spacing=4,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        vertical_alignment=ft.CrossAxisAlignment.START,
                     )
                 )
             related_list_col.controls = rows
@@ -877,7 +882,7 @@ def build_design_tracker(page: ft.Page, config: dict,
 
         related_input = ft.TextField(
             hint_text="Design #",
-            width=90,
+            width=120,
             keyboard_type=ft.KeyboardType.NUMBER,
             input_filter=ft.NumbersOnlyInputFilter(),
             content_padding=ft.padding.symmetric(horizontal=8, vertical=6),
@@ -981,7 +986,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                         [
                             ft.Text(f"#{tid}", size=13, weight=ft.FontWeight.W_600,
                                     color=ft.Colors.GREY_500, width=36),
-                            ft.Text(ttitle, size=13, expand=True),
+                            ft.Text(ttitle, size=13, expand=True, no_wrap=False),
                             ft.IconButton(
                                 icon=ft.Icons.LINK_OFF,
                                 icon_size=15,
@@ -992,7 +997,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                             ),
                         ],
                         spacing=4,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        vertical_alignment=ft.CrossAxisAlignment.START,
                     )
                 )
             rel_tasks_list_col.controls = rows_t

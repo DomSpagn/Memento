@@ -1,2 +1,4 @@
 flet>=0.21.0
 plyer
+pystray
+Pillow

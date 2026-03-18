@@ -236,7 +236,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 matches = [p for p in _projects if typed.lower() and typed.lower() in p.lower()][:6]
                 _proj_suggestions.controls = [
                     ft.Container(
-                        content=ft.Text(p, size=13),
+                        content=ft.Text(p, size=13, color=ft.Colors.ORANGE_400),
                         padding=ft.padding.symmetric(horizontal=12, vertical=8),
                         border_radius=4,
                         ink=True,
@@ -259,7 +259,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             status_dd = ft.Dropdown(
                 label="Status",
                 value="Open",
-                options=[ft.dropdown.Option(s) for s in STATUSES],
+                options=[ft.dropdown.Option(s, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.ORANGE_400, ft.ControlState.FOCUSED: ft.Colors.ORANGE_400, ft.ControlState.DEFAULT: ft.Colors.WHITE})) for s in STATUSES],
                 width=160,
             )
 
@@ -365,7 +365,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             matches = [p for p in _hdr_projects if typed.lower() and typed.lower() in p.lower()][:6]
             _hdr_suggestions.controls = [
                 ft.Container(
-                    content=ft.Text(p, size=13),
+                    content=ft.Text(p, size=13, color=ft.Colors.ORANGE_400),
                     padding=ft.padding.symmetric(horizontal=12, vertical=8),
                     border_radius=4,
                     ink=True,
@@ -385,7 +385,7 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         header_status = ft.Dropdown(
             value=task["status"],
-            options=[ft.dropdown.Option(s) for s in STATUSES],
+            options=[ft.dropdown.Option(s, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.ORANGE_400, ft.ControlState.FOCUSED: ft.Colors.ORANGE_400, ft.ControlState.DEFAULT: ft.Colors.WHITE})) for s in STATUSES],
             width=160,
             border=ft.InputBorder.UNDERLINE,
             content_padding=ft.padding.symmetric(horizontal=4, vertical=4),
@@ -483,7 +483,7 @@ def build_task_tracker(page: ft.Page, config: dict,
         )
         alarm_before_dd = ft.Dropdown(
             value=str(_orig_alarm_before),
-            options=[ft.dropdown.Option(key=k, text=v) for k, v in _ALARM_BEFORE_OPTS],
+            options=[ft.dropdown.Option(key=k, text=v, style=ft.ButtonStyle(color={ft.ControlState.HOVERED: ft.Colors.ORANGE_400, ft.ControlState.FOCUSED: ft.Colors.ORANGE_400, ft.ControlState.DEFAULT: ft.Colors.WHITE})) for k, v in _ALARM_BEFORE_OPTS],
             width=155,
             border=ft.InputBorder.UNDERLINE,
             content_padding=ft.padding.symmetric(horizontal=4, vertical=4),

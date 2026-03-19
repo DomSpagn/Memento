@@ -287,6 +287,41 @@ def _now() -> str:
     return datetime.now().isoformat(sep=" ", timespec="seconds")
 
 
+# ── Bulk fetch helpers (used for search indexing) ────────────────────────────
+
+def fetch_all_task_attachments(output_path: str) -> list[dict]:
+    """Return every attachment row (all tasks)."""
+    with _connect(output_path) as conn:
+        rows = conn.execute(
+            "SELECT task_id, orig_name FROM attachments ORDER BY id ASC"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def fetch_all_history_attachments_bulk(output_path: str) -> list[dict]:
+    """Return every history-attachment row joined with its history entry (gives task_id)."""
+    with _connect(output_path) as conn:
+        _ensure_history_tables(conn)
+        rows = conn.execute(
+            "SELECT ha.orig_name, h.task_id "
+            "FROM history_attachments ha "
+            "JOIN history h ON h.id = ha.history_id "
+            "ORDER BY ha.id ASC"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def fetch_all_related_task_links(output_path: str) -> list[dict]:
+    """Return every related-task link with the related task's title."""
+    with _connect(output_path) as conn:
+        rows = conn.execute(
+            "SELECT r.task_id, t.title AS related_title "
+            "FROM related_tasks r JOIN tasks t ON t.id = r.related_id "
+            "ORDER BY r.id ASC"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 # ── Related tasks helpers ─────────────────────────────────────────────────────
 
 def fetch_related_tasks(output_path: str, task_id: int) -> list[dict]:

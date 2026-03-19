@@ -19,15 +19,17 @@ from design_db import (
     add_history_attachment, remove_history_attachment,
     fetch_related_designs, add_related_design, remove_related_design,
     fetch_design_task_links, add_design_task_link, remove_design_task_link,
+    fetch_all_design_attachments, fetch_all_history_attachments_bulk,
+    fetch_all_related_design_links, fetch_all_design_task_links_raw,
 )
 from task_db import fetch_all_tasks
 
 
 def build_design_tracker(page: ft.Page, config: dict,
                           add_btn, edit_btn, del_btn, chart_btn=None,
-                          filter_btn=None,
+                          filter_btn=None, search_btn=None,
                           on_open_design=None, on_close_design=None) -> ft.Column:
-    """Return the Design Tracker UI and wire add_btn / edit_btn / del_btn / chart_btn / filter_btn."""
+    """Return the Design Tracker UI and wire add_btn / edit_btn / del_btn / chart_btn / filter_btn / search_btn."""
 
     output_path: str = config.get("OutputPath", "")
     init_db(output_path)
@@ -61,6 +63,9 @@ def build_design_tracker(page: ft.Page, config: dict,
         "tags": []
     }
 
+    # ── Search state ──────────────────────────────────────────────────────────
+    _search_query: dict = {"q": ""}
+
     def _apply_filter(designs: list[dict]) -> list[dict]:
         result = designs
         if _active_filters["project"]:
@@ -90,11 +95,71 @@ def build_design_tracker(page: ft.Page, config: dict,
             result = [d for d in result if d["id"] in tagged_ids]
         return result
 
+    def _apply_search(designs: list[dict]) -> list[dict]:
+        q = _search_query["q"]
+        if not q:
+            return designs
+        all_hist     = fetch_all_history(output_path)
+        all_h_atts   = fetch_all_history_attachments_bulk(output_path)
+        all_d_atts   = fetch_all_design_attachments(output_path)
+        all_rel_d    = fetch_all_related_design_links(output_path)
+        all_dtlinks  = fetch_all_design_task_links_raw(output_path)
+        tasks_map    = {t["id"]: (t.get("title") or "").lower()
+                        for t in fetch_all_tasks(output_path)}
+
+        hist_map: dict = {}
+        for h in all_hist:
+            hist_map.setdefault(h["design_id"], []).append((h.get("body") or "").lower())
+
+        h_att_map: dict = {}
+        for ha in all_h_atts:
+            h_att_map.setdefault(ha["design_id"], []).append((ha.get("orig_name") or "").lower())
+
+        d_att_map: dict = {}
+        for da in all_d_atts:
+            d_att_map.setdefault(da["design_id"], []).append((da.get("orig_name") or "").lower())
+
+        rel_d_map: dict = {}
+        for rd in all_rel_d:
+            rel_d_map.setdefault(rd["design_id"], []).append((rd.get("related_title") or "").lower())
+
+        rel_t_map: dict = {}
+        for dtl in all_dtlinks:
+            title = tasks_map.get(dtl["task_id"], "")
+            if title:
+                rel_t_map.setdefault(dtl["design_id"], []).append(title)
+
+        def _matches(design: dict) -> bool:
+            did = design["id"]
+            haystack = " ".join(filter(None, [
+                (design.get("title")       or "").lower(),
+                (design.get("board")       or "").lower(),
+                (design.get("revision")    or "").lower(),
+                (design.get("project")     or "").lower(),
+                (design.get("category")    or "").lower(),
+                (design.get("function")    or "").lower(),
+                (design.get("status")      or "").lower(),
+                (design.get("description") or "").lower(),
+                " ".join(rel_d_map.get(did, [])),
+                " ".join(rel_t_map.get(did, [])),
+                " ".join(d_att_map.get(did, [])),
+                " ".join(hist_map.get(did, [])),
+                " ".join(h_att_map.get(did, [])),
+            ]))
+            return q in haystack
+
+        return [d for d in designs if _matches(d)]
+
     def _update_filter_btn_color() -> None:
         if filter_btn:
             active = any(v for v in _active_filters.values())
             filter_btn.icon_color = ft.Colors.ORANGE_400 if active else ft.Colors.GREY_500
             filter_btn.update()
+
+    def _update_search_btn_color() -> None:
+        if search_btn:
+            search_btn.icon_color = ft.Colors.BLUE_400 if _search_query["q"] else ft.Colors.GREY_500
+            search_btn.update()
 
     def _clear_selection() -> None:
         _sel["design"] = None
@@ -2187,6 +2252,56 @@ def build_design_tracker(page: ft.Page, config: dict,
         visible=False,
     )
 
+    _search_field = ft.TextField(
+        hint_text="Search…",
+        expand=True,
+        dense=True,
+        border_radius=6,
+        content_padding=ft.padding.symmetric(horizontal=8, vertical=4),
+        bgcolor=ft.Colors.with_opacity(0.15, ft.Colors.WHITE),
+        color=ft.Colors.WHITE,
+        hint_style=ft.TextStyle(color=ft.Colors.with_opacity(0.6, ft.Colors.WHITE)),
+        cursor_color=ft.Colors.WHITE,
+        border_color=ft.Colors.with_opacity(0.3, ft.Colors.WHITE),
+        focused_border_color=ft.Colors.WHITE,
+    )
+
+    def _on_search_change(e) -> None:
+        _search_query["q"] = (e.control.value or "").strip().lower()
+        _update_search_btn_color()
+        _refresh()
+
+    _search_field.on_change = _on_search_change
+
+    def _close_search(_=None) -> None:
+        _search_query["q"] = ""
+        _search_field.value = ""
+        _search_banner.visible = False
+        _update_search_btn_color()
+        _refresh()
+
+    _search_banner = ft.Container(
+        content=ft.Row(
+            [
+                ft.Icon(ft.Icons.SEARCH, size=16, color=ft.Colors.WHITE),
+                _search_field,
+                ft.IconButton(
+                    icon=ft.Icons.CLOSE,
+                    icon_size=16,
+                    icon_color=ft.Colors.WHITE,
+                    tooltip="Close search",
+                    on_click=_close_search,
+                    style=ft.ButtonStyle(padding=ft.padding.all(4)),
+                ),
+            ],
+            spacing=8,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        bgcolor=ft.Colors.BLUE_700,
+        padding=ft.padding.symmetric(horizontal=16, vertical=6),
+        visible=False,
+    )
+
     def _clear_filters() -> None:
         for k in _active_filters:
             _active_filters[k] = [] if k == "tags" else ""
@@ -2196,6 +2311,7 @@ def build_design_tracker(page: ft.Page, config: dict,
     def _refresh() -> None:
         all_designs = _apply_sort(fetch_all_designs(output_path))
         designs     = _apply_filter(all_designs)
+        designs     = _apply_search(designs)
         _filter_banner.visible = any(v for v in _active_filters.values())
         if designs:
             data_table.rows = _build_rows(designs)
@@ -2592,8 +2708,18 @@ def build_design_tracker(page: ft.Page, config: dict,
     if filter_btn:
         filter_btn.on_click = _open_filter_popup
 
+    if search_btn:
+        def _toggle_search(_=None) -> None:
+            _search_banner.visible = not _search_banner.visible
+            if _search_banner.visible:
+                _search_field.focus()
+            else:
+                _close_search()
+            page.update()
+        search_btn.on_click = _toggle_search
+
     return ft.Column(
-        [_filter_banner, list_area],
+        [_search_banner, _filter_banner, list_area],
         spacing=0,
         expand=True,
         horizontal_alignment=ft.CrossAxisAlignment.STRETCH,

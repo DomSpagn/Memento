@@ -297,6 +297,48 @@ def remove_history_attachment(output_path: str, att_id: int) -> str | None:
 def _now() -> str:
     return datetime.now().isoformat(sep=" ", timespec="seconds")
 
+# ── Bulk fetch helpers (used for search indexing) ────────────────────────────
+
+def fetch_all_design_attachments(output_path: str) -> list[dict]:
+    """Return every attachment row (all designs)."""
+    with _connect(output_path) as conn:
+        rows = conn.execute(
+            "SELECT design_id, orig_name FROM attachments ORDER BY id ASC"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def fetch_all_history_attachments_bulk(output_path: str) -> list[dict]:
+    """Return every history-attachment row joined with history (gives design_id)."""
+    with _connect(output_path) as conn:
+        _ensure_history_tables(conn)
+        rows = conn.execute(
+            "SELECT ha.orig_name, h.design_id "
+            "FROM history_attachments ha "
+            "JOIN history h ON h.id = ha.history_id "
+            "ORDER BY ha.id ASC"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def fetch_all_related_design_links(output_path: str) -> list[dict]:
+    """Return every related-design link with the related design's title."""
+    with _connect(output_path) as conn:
+        rows = conn.execute(
+            "SELECT r.design_id, d.title AS related_title "
+            "FROM related_designs r JOIN designs d ON d.id = r.related_id "
+            "ORDER BY r.id ASC"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def fetch_all_design_task_links_raw(output_path: str) -> list[dict]:
+    """Return every (design_id, task_id) pair from design_task_links."""
+    with _connect(output_path) as conn:
+        rows = conn.execute(
+            "SELECT design_id, task_id FROM design_task_links ORDER BY id ASC"
+        ).fetchall()
+    return [dict(r) for r in rows]
 
 # ── Related designs helpers ───────────────────────────────────────────────────
 

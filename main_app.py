@@ -233,8 +233,9 @@ def show_main_app(page: ft.Page, config: dict) -> None:
     _task_chart_btn  = ft.IconButton(icon=ft.Icons.PIE_CHART,      tooltip="Status Chart", icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.PURPLE_400), disabled=True)
     _task_cal_btn    = ft.IconButton(icon=ft.Icons.CALENDAR_MONTH, tooltip="Calendar",     icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.GREEN_500),   disabled=True)
     _task_filter_btn = ft.IconButton(icon=ft.Icons.FILTER_LIST,    tooltip="Filter",       icon_size=22, icon_color=ft.Colors.GREY_500)
+    _task_search_btn = ft.IconButton(icon=ft.Icons.SEARCH,          tooltip="Search",       icon_size=22, icon_color=ft.Colors.GREY_500)
     _task_actions    = ft.Row(
-        [_task_add_btn, _task_edit_btn, _task_del_btn, _task_chart_btn, _task_cal_btn, _task_filter_btn],
+        [_task_add_btn, _task_edit_btn, _task_del_btn, _task_chart_btn, _task_cal_btn, _task_filter_btn, _task_search_btn],
         spacing=0,
         tight=True,
     )
@@ -245,8 +246,9 @@ def show_main_app(page: ft.Page, config: dict) -> None:
     _design_del_btn    = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE,   tooltip="Delete Design", icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.RED_400),    disabled=True)
     _design_chart_btn  = ft.IconButton(icon=ft.Icons.PIE_CHART,        tooltip="Status Chart",  icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.PURPLE_400), disabled=True)
     _design_filter_btn = ft.IconButton(icon=ft.Icons.FILTER_LIST,      tooltip="Filter",        icon_size=22, icon_color=ft.Colors.GREY_500)
+    _design_search_btn = ft.IconButton(icon=ft.Icons.SEARCH,            tooltip="Search",        icon_size=22, icon_color=ft.Colors.GREY_500)
     _design_actions    = ft.Row(
-        [_design_add_btn, _design_edit_btn, _design_del_btn, _design_chart_btn, _design_filter_btn],
+        [_design_add_btn, _design_edit_btn, _design_del_btn, _design_chart_btn, _design_filter_btn, _design_search_btn],
         spacing=0,
         tight=True,
     )
@@ -282,14 +284,14 @@ def show_main_app(page: ft.Page, config: dict) -> None:
                 _body.content = work_area
             else:
                 is_vert = pos in ("Left", "Right")
-                btn_ctrl = (ft.Column([_task_add_btn, _task_edit_btn, _task_del_btn, _task_chart_btn, _task_cal_btn, _task_filter_btn]
+                btn_ctrl = (ft.Column([_task_add_btn, _task_edit_btn, _task_del_btn, _task_chart_btn, _task_cal_btn, _task_filter_btn, _task_search_btn]
                                       if _state["tracker"] == "TaskTracker" else
-                                      [_design_add_btn, _design_edit_btn, _design_del_btn, _design_chart_btn, _design_filter_btn],
+                                      [_design_add_btn, _design_edit_btn, _design_del_btn, _design_chart_btn, _design_filter_btn, _design_search_btn],
                                       spacing=4, tight=True)
                             if is_vert else
-                            ft.Row([_task_add_btn, _task_edit_btn, _task_del_btn, _task_chart_btn, _task_cal_btn, _task_filter_btn]
+                            ft.Row([_task_add_btn, _task_edit_btn, _task_del_btn, _task_chart_btn, _task_cal_btn, _task_filter_btn, _task_search_btn]
                                    if _state["tracker"] == "TaskTracker" else
-                                   [_design_add_btn, _design_edit_btn, _design_del_btn, _design_chart_btn, _design_filter_btn],
+                                   [_design_add_btn, _design_edit_btn, _design_del_btn, _design_chart_btn, _design_filter_btn, _design_search_btn],
                                    spacing=0, tight=True))
                 _cmd_panel.content = ft.Container(
                     content=btn_ctrl,
@@ -351,10 +353,12 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             return build_task_tracker(page, config, _task_add_btn, _task_edit_btn, _task_del_btn, _task_chart_btn,
                                       calendar_btn=_task_cal_btn,
                                       filter_btn=_task_filter_btn,
+                                      search_btn=_task_search_btn,
                                       on_open_task=_navigate_to_detail,
                                       on_close_task=_navigate_back)
         return build_design_tracker(page, config, _design_add_btn, _design_edit_btn, _design_del_btn, _design_chart_btn,
                                     filter_btn=_design_filter_btn,
+                                    search_btn=_design_search_btn,
                                     on_open_design=_navigate_to_detail,
                                     on_close_design=_navigate_back)
 

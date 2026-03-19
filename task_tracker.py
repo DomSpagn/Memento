@@ -21,11 +21,14 @@ from task_db import (
     delete_history_entry, fetch_history_attachments,
     add_history_attachment, remove_history_attachment,
     fetch_related_tasks, add_related_task, remove_related_task,
+    fetch_all_task_attachments, fetch_all_history_attachments_bulk,
+    fetch_all_related_task_links,
     get_pending_alarms, mark_alarm_fired,
 )
 from design_db import (
     fetch_all_designs, fetch_task_design_links,
     add_task_design_link, remove_task_design_link,
+    fetch_all_design_task_links_raw,
     init_db as _design_init_db,
 )
 
@@ -121,9 +124,9 @@ def _start_alarm_checker(output_path: str, on_fired=None) -> None:
 
 def build_task_tracker(page: ft.Page, config: dict,
                        add_btn, edit_btn, del_btn, chart_btn=None,
-                       calendar_btn=None, filter_btn=None,
+                       calendar_btn=None, filter_btn=None, search_btn=None,
                        on_open_task=None, on_close_task=None) -> ft.Column:
-    """Return the Task Tracker UI and wire add_btn / edit_btn / del_btn / chart_btn / calendar_btn / filter_btn."""
+    """Return the Task Tracker UI and wire add_btn / edit_btn / del_btn / chart_btn / calendar_btn / filter_btn / search_btn."""
 
     output_path: str = config.get("OutputPath", "")
     init_db(output_path)
@@ -159,6 +162,9 @@ def build_task_tracker(page: ft.Page, config: dict,
         "tags": []
     }
 
+    # ── Search state ──────────────────────────────────────────────────────────
+    _search_query: dict = {"q": ""}
+
     def _apply_filter(tasks: list[dict]) -> list[dict]:
         result = tasks
         if _active_filters["project"]:
@@ -182,11 +188,68 @@ def build_task_tracker(page: ft.Page, config: dict,
             result = [t for t in result if t["id"] in tagged_ids]
         return result
 
+    def _apply_search(tasks: list[dict]) -> list[dict]:
+        q = _search_query["q"]
+        if not q:
+            return tasks
+        # Build per-task lookup maps with a single round of bulk DB queries
+        all_hist     = fetch_all_history(output_path)
+        all_h_atts   = fetch_all_history_attachments_bulk(output_path)
+        all_t_atts   = fetch_all_task_attachments(output_path)
+        all_rel_t    = fetch_all_related_task_links(output_path)
+        all_dtlinks  = fetch_all_design_task_links_raw(output_path)
+        designs_map  = {d["id"]: (d.get("title") or "").lower()
+                        for d in fetch_all_designs(output_path)}
+
+        hist_map: dict     = {}
+        for h in all_hist:
+            hist_map.setdefault(h["task_id"], []).append((h.get("body") or "").lower())
+
+        h_att_map: dict = {}
+        for ha in all_h_atts:
+            h_att_map.setdefault(ha["task_id"], []).append((ha.get("orig_name") or "").lower())
+
+        t_att_map: dict = {}
+        for ta in all_t_atts:
+            t_att_map.setdefault(ta["task_id"], []).append((ta.get("orig_name") or "").lower())
+
+        rel_t_map: dict = {}
+        for rt in all_rel_t:
+            rel_t_map.setdefault(rt["task_id"], []).append((rt.get("related_title") or "").lower())
+
+        rel_d_map: dict = {}
+        for dtl in all_dtlinks:
+            title = designs_map.get(dtl["design_id"], "")
+            if title:
+                rel_d_map.setdefault(dtl["task_id"], []).append(title)
+
+        def _matches(task: dict) -> bool:
+            tid = task["id"]
+            haystack = " ".join(filter(None, [
+                (task.get("title")       or "").lower(),
+                (task.get("project")     or "").lower(),
+                (task.get("status")      or "").lower(),
+                (task.get("description") or "").lower(),
+                " ".join(rel_t_map.get(tid, [])),
+                " ".join(rel_d_map.get(tid, [])),
+                " ".join(t_att_map.get(tid, [])),
+                " ".join(hist_map.get(tid, [])),
+                " ".join(h_att_map.get(tid, [])),
+            ]))
+            return q in haystack
+
+        return [t for t in tasks if _matches(t)]
+
     def _update_filter_btn_color() -> None:
         if filter_btn:
             active = any(v for v in _active_filters.values())
             filter_btn.icon_color = ft.Colors.ORANGE_400 if active else ft.Colors.GREY_500
             filter_btn.update()
+
+    def _update_search_btn_color() -> None:
+        if search_btn:
+            search_btn.icon_color = ft.Colors.BLUE_400 if _search_query["q"] else ft.Colors.GREY_500
+            search_btn.update()
 
     def _clear_selection() -> None:
         _sel["task"] = None
@@ -2618,6 +2681,56 @@ def build_task_tracker(page: ft.Page, config: dict,
         visible=False,
     )
 
+    _search_field = ft.TextField(
+        hint_text="Search…",
+        expand=True,
+        dense=True,
+        border_radius=6,
+        content_padding=ft.padding.symmetric(horizontal=8, vertical=4),
+        bgcolor=ft.Colors.with_opacity(0.15, ft.Colors.WHITE),
+        color=ft.Colors.WHITE,
+        hint_style=ft.TextStyle(color=ft.Colors.with_opacity(0.6, ft.Colors.WHITE)),
+        cursor_color=ft.Colors.WHITE,
+        border_color=ft.Colors.with_opacity(0.3, ft.Colors.WHITE),
+        focused_border_color=ft.Colors.WHITE,
+    )
+
+    def _on_search_change(e) -> None:
+        _search_query["q"] = (e.control.value or "").strip().lower()
+        _update_search_btn_color()
+        _refresh()
+
+    _search_field.on_change = _on_search_change
+
+    def _close_search(_=None) -> None:
+        _search_query["q"] = ""
+        _search_field.value = ""
+        _search_banner.visible = False
+        _update_search_btn_color()
+        _refresh()
+
+    _search_banner = ft.Container(
+        content=ft.Row(
+            [
+                ft.Icon(ft.Icons.SEARCH, size=16, color=ft.Colors.WHITE),
+                _search_field,
+                ft.IconButton(
+                    icon=ft.Icons.CLOSE,
+                    icon_size=16,
+                    icon_color=ft.Colors.WHITE,
+                    tooltip="Close search",
+                    on_click=_close_search,
+                    style=ft.ButtonStyle(padding=ft.padding.all(4)),
+                ),
+            ],
+            spacing=8,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        bgcolor=ft.Colors.BLUE_700,
+        padding=ft.padding.symmetric(horizontal=16, vertical=6),
+        visible=False,
+    )
+
     def _clear_filters() -> None:
         for k in _active_filters:
             _active_filters[k] = [] if k == "tags" else ""
@@ -2627,6 +2740,7 @@ def build_task_tracker(page: ft.Page, config: dict,
     def _refresh() -> None:
         all_tasks = _apply_sort(fetch_all_tasks(output_path))
         tasks     = _apply_filter(all_tasks)
+        tasks     = _apply_search(tasks)
         _filter_banner.visible = any(v for v in _active_filters.values())
         if tasks:
             data_table.rows = _build_rows(tasks)
@@ -3086,6 +3200,16 @@ def build_task_tracker(page: ft.Page, config: dict,
 
     if filter_btn:
         filter_btn.on_click = _open_filter_popup
+
+    if search_btn:
+        def _toggle_search(_=None) -> None:
+            _search_banner.visible = not _search_banner.visible
+            if _search_banner.visible:
+                _search_field.focus()
+            else:
+                _close_search()
+            page.update()
+        search_btn.on_click = _toggle_search
 
     # ── Calendar dialog ───────────────────────────────────────────────────────
 
@@ -3685,7 +3809,7 @@ def build_task_tracker(page: ft.Page, config: dict,
 
     _start_alarm_checker(output_path, on_fired=_refresh)
     return ft.Column(
-        [_filter_banner, list_area],
+        [_search_banner, _filter_banner, list_area],
         spacing=0,
         expand=True,
         horizontal_alignment=ft.CrossAxisAlignment.STRETCH,

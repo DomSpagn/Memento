@@ -2800,8 +2800,17 @@ def build_task_tracker(page: ft.Page, config: dict,
                 return None
 
         # ── Small task chip shown inside each calendar cell ───────────
-        def _task_chip(task: dict, adt: datetime) -> ft.Container:
-            return ft.Container(
+        # Holds a reference to cal_dlg so chips can close it on double-tap
+        _cal_ref: dict = {}
+
+        def _open_task_from_cal(task: dict) -> None:
+            dlg = _cal_ref.get("dlg")
+            if dlg:
+                dlg.open = False
+            open_task_dialog(task)
+
+        def _task_chip(task: dict, adt: datetime) -> ft.GestureDetector:
+            chip = ft.Container(
                 content=ft.Column(
                     [
                         ft.Text(
@@ -2832,6 +2841,11 @@ def build_task_tracker(page: ft.Page, config: dict,
                 border_radius=4,
                 padding=ft.padding.symmetric(horizontal=5, vertical=3),
                 margin=ft.margin.only(bottom=2),
+                tooltip="Double-click to edit",
+            )
+            return ft.GestureDetector(
+                content=chip,
+                on_double_tap=lambda _, t=task: _open_task_from_cal(t),
             )
 
         # ── Daily view ────────────────────────────────────────────────
@@ -3342,6 +3356,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
+        _cal_ref["dlg"] = cal_dlg
         page.overlay.append(cal_dlg)
         cal_dlg.open = True
         page.update()

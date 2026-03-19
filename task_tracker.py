@@ -121,9 +121,9 @@ def _start_alarm_checker(output_path: str, on_fired=None) -> None:
 
 def build_task_tracker(page: ft.Page, config: dict,
                        add_btn, edit_btn, del_btn, chart_btn=None,
-                       calendar_btn=None,
+                       calendar_btn=None, filter_btn=None,
                        on_open_task=None, on_close_task=None) -> ft.Column:
-    """Return the Task Tracker UI and wire add_btn / edit_btn / del_btn / chart_btn / calendar_btn."""
+    """Return the Task Tracker UI and wire add_btn / edit_btn / del_btn / chart_btn / calendar_btn / filter_btn."""
 
     output_path: str = config.get("OutputPath", "")
     init_db(output_path)
@@ -152,6 +152,31 @@ def build_task_tracker(page: ft.Page, config: dict,
     if calendar_btn:
         calendar_btn.disabled   = True
         calendar_btn.icon_color = ft.Colors.with_opacity(0.3, ft.Colors.GREEN_500)
+
+    # ── Filter state ──────────────────────────────────────────────────────────
+    _active_filters: dict = {
+        "project": "", "opened": "", "modified": "", "closed": "", "status": ""
+    }
+
+    def _apply_filter(tasks: list[dict]) -> list[dict]:
+        result = tasks
+        if _active_filters["project"]:
+            result = [t for t in result if t.get("project") == _active_filters["project"]]
+        if _active_filters["status"]:
+            result = [t for t in result if t.get("status") == _active_filters["status"]]
+        if _active_filters["opened"]:
+            result = [t for t in result if (t.get("opened_at") or "")[:10] == _active_filters["opened"]]
+        if _active_filters["modified"]:
+            result = [t for t in result if (t.get("modified_at") or "")[:10] == _active_filters["modified"]]
+        if _active_filters["closed"]:
+            result = [t for t in result if (t.get("closed_at") or "")[:10] == _active_filters["closed"]]
+        return result
+
+    def _update_filter_btn_color() -> None:
+        if filter_btn:
+            active = any(v for v in _active_filters.values())
+            filter_btn.icon_color = ft.Colors.ORANGE_400 if active else ft.Colors.GREY_500
+            filter_btn.update()
 
     def _clear_selection() -> None:
         _sel["task"] = None
@@ -2552,8 +2577,44 @@ def build_task_tracker(page: ft.Page, config: dict,
 
     list_area = ft.Container(content=empty_state, expand=True)
 
+    _filter_banner = ft.Container(
+        content=ft.Row(
+            [
+                ft.Icon(ft.Icons.FILTER_LIST, size=16, color=ft.Colors.WHITE),
+                ft.Text("Filter active", size=13, color=ft.Colors.WHITE,
+                        weight=ft.FontWeight.W_500),
+                ft.Container(expand=True),
+                ft.TextButton(
+                    "Clear",
+                    style=ft.ButtonStyle(
+                        color={
+                            ft.ControlState.DEFAULT:  ft.Colors.WHITE,
+                            ft.ControlState.HOVERED:  ft.Colors.WHITE,
+                            ft.ControlState.PRESSED:  ft.Colors.WHITE,
+                        },
+                        overlay_color=ft.Colors.with_opacity(0.15, ft.Colors.WHITE),
+                    ),
+                    on_click=lambda _: _clear_filters(),
+                ),
+            ],
+            spacing=8,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        bgcolor=ft.Colors.ORANGE_700,
+        padding=ft.padding.symmetric(horizontal=16, vertical=6),
+        visible=False,
+    )
+
+    def _clear_filters() -> None:
+        for k in _active_filters:
+            _active_filters[k] = ""
+        _update_filter_btn_color()
+        _refresh()
+
     def _refresh() -> None:
-        tasks = _apply_sort(fetch_all_tasks(output_path))
+        all_tasks = _apply_sort(fetch_all_tasks(output_path))
+        tasks     = _apply_filter(all_tasks)
+        _filter_banner.visible = any(v for v in _active_filters.values())
         if tasks:
             data_table.rows = _build_rows(tasks)
             list_area.content = ft.ListView(
@@ -2871,6 +2932,90 @@ def build_task_tracker(page: ft.Page, config: dict,
     del_btn.on_click  = _open_confirm
     if chart_btn:
         chart_btn.on_click = _open_chart_dialog
+
+    # ── Filter popup ─────────────────────────────────────────────────────────
+
+    def _open_filter_popup(_=None) -> None:
+        all_tasks    = fetch_all_tasks(output_path)
+        projects     = sorted({t["project"] for t in all_tasks if t.get("project")})
+        opened_dates = sorted({(t.get("opened_at") or "")[:10] for t in all_tasks if t.get("opened_at")}, reverse=True)
+        mod_dates    = sorted({(t.get("modified_at") or "")[:10] for t in all_tasks if t.get("modified_at")}, reverse=True)
+        closed_dates = sorted({(t.get("closed_at") or "")[:10] for t in all_tasks if t.get("closed_at")}, reverse=True)
+
+        _OPT_STYLE = ft.ButtonStyle(color={
+            ft.ControlState.HOVERED:  ft.Colors.ORANGE_400,
+            ft.ControlState.FOCUSED:  ft.Colors.ORANGE_400,
+            ft.ControlState.DEFAULT:  ft.Colors.ON_SURFACE,
+        })
+        _STATUS_STYLE = {
+            "Open":        ft.ButtonStyle(color={ft.ControlState.DEFAULT: ft.Colors.BLUE_700,   ft.ControlState.HOVERED: ft.Colors.BLUE_400}),
+            "In Progress": ft.ButtonStyle(color={ft.ControlState.DEFAULT: ft.Colors.ORANGE_700, ft.ControlState.HOVERED: ft.Colors.ORANGE_400}),
+            "On Hold":     ft.ButtonStyle(color={ft.ControlState.DEFAULT: ft.Colors.PURPLE_700, ft.ControlState.HOVERED: ft.Colors.PURPLE_400}),
+            "Closed":      ft.ButtonStyle(color={ft.ControlState.DEFAULT: ft.Colors.GREEN_700,  ft.ControlState.HOVERED: ft.Colors.GREEN_400}),
+        }
+
+        def _dd(label, key, options, extra_style=None):
+            opts = [ft.dropdown.Option("", text="— All —", style=_OPT_STYLE)] + [
+                ft.dropdown.Option(o, text=o, style=extra_style.get(o, _OPT_STYLE) if extra_style else _OPT_STYLE)
+                for o in options
+            ]
+            return ft.Dropdown(
+                label=label,
+                value=_active_filters[key] or "",
+                options=opts,
+                width=200,
+                dense=True,
+                data=key,
+            )
+
+        dd_project  = _dd("Project",  "project",  projects)
+        dd_opened   = _dd("Opened",   "opened",   opened_dates)
+        dd_modified = _dd("Modified", "modified", mod_dates)
+        dd_closed   = _dd("Closed",   "closed",   closed_dates)
+        dd_status   = _dd("Status",   "status",   STATUSES, _STATUS_STYLE)
+
+        def _apply(_) -> None:
+            _active_filters["project"]  = dd_project.value  or ""
+            _active_filters["opened"]   = dd_opened.value   or ""
+            _active_filters["modified"] = dd_modified.value or ""
+            _active_filters["closed"]   = dd_closed.value   or ""
+            _active_filters["status"]   = dd_status.value   or ""
+            filter_dlg.open = False
+            _update_filter_btn_color()
+            _refresh()
+
+        def _reset(_) -> None:
+            for k in _active_filters:
+                _active_filters[k] = ""
+            filter_dlg.open = False
+            _update_filter_btn_color()
+            _refresh()
+
+        filter_dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Row(
+                [ft.Icon(ft.Icons.FILTER_LIST, color=ft.Colors.ORANGE_400),
+                 ft.Text("Filter Tasks", weight=ft.FontWeight.BOLD)],
+                spacing=10,
+            ),
+            content=ft.Column(
+                [dd_project, dd_opened, dd_modified, dd_closed, dd_status],
+                tight=True, spacing=12, width=240,
+            ),
+            actions=[
+                ft.TextButton("Reset", on_click=_reset,
+                              style=ft.ButtonStyle(color=ft.Colors.RED_400)),
+                ft.TextButton("Cancel", on_click=lambda _: (setattr(filter_dlg, "open", False), page.update())),
+                ft.FilledButton("Apply", on_click=_apply),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.overlay.append(filter_dlg)
+        filter_dlg.open = True
+        page.update()
+
+    if filter_btn:
+        filter_btn.on_click = _open_filter_popup
 
     # ── Calendar dialog ───────────────────────────────────────────────────────
 
@@ -3469,4 +3614,9 @@ def build_task_tracker(page: ft.Page, config: dict,
     # ── Root ─────────────────────────────────────────────────────────────────
 
     _start_alarm_checker(output_path, on_fired=_refresh)
-    return list_area
+    return ft.Column(
+        [_filter_banner, list_area],
+        spacing=0,
+        expand=True,
+        horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+    )

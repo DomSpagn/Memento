@@ -1697,10 +1697,111 @@ def build_design_tracker(page: ft.Page, config: dict,
         )
         add_entry_btn = ft.IconButton(icon=ft.Icons.ADD_COMMENT_OUTLINED, tooltip="Add update")
 
+        # ── Tag input row ──────────────────────────────────────────────────────
+        _staged_tags: list[str] = []
+        _tags_chips_row = ft.Row([], spacing=6, wrap=True)
+
+        def _refresh_tag_chips() -> None:
+            _tags_chips_row.controls = [
+                ft.Container(
+                    content=ft.Row(
+                        [
+                            ft.Text(f"#{t}", size=12, color=ft.Colors.BLUE_300,
+                                    weight=ft.FontWeight.W_500,
+                                    no_wrap=True),
+                            ft.IconButton(
+                                icon=ft.Icons.CLOSE,
+                                icon_size=12,
+                                icon_color=ft.Colors.GREY_500,
+                                tooltip="Remove tag",
+                                on_click=lambda _, tag=t: _remove_tag(tag),
+                                style=ft.ButtonStyle(padding=ft.padding.all(0)),
+                            ),
+                        ],
+                        spacing=2,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        tight=True,
+                    ),
+                    bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.BLUE_400),
+                    border=ft.border.all(1, ft.Colors.with_opacity(0.3, ft.Colors.BLUE_400)),
+                    border_radius=12,
+                    padding=ft.padding.only(left=8, right=2, top=2, bottom=2),
+                    # no fixed width — let the container shrink-wrap to content
+                )
+                for t in _staged_tags
+            ]
+            page.update()
+
+        def _remove_tag(tag: str) -> None:
+            if tag in _staged_tags:
+                _staged_tags.remove(tag)
+            _refresh_tag_chips()
+
+        def _on_tag_input_change(e) -> None:
+            if " " in (e.control.value or ""):
+                e.control.value = (e.control.value or "").replace(" ", "")
+                e.control.update()
+
+        tag_input = ft.TextField(
+            hint_text="#tag",
+            width=120,
+            dense=True,
+            border_radius=6,
+            content_padding=ft.padding.symmetric(horizontal=8, vertical=6),
+            disabled=True,
+            on_change=_on_tag_input_change,
+        )
+        add_tag_btn = ft.IconButton(
+            icon=ft.Icons.ADD,
+            icon_size=16,
+            tooltip="Add tag",
+            disabled=True,
+            style=ft.ButtonStyle(padding=ft.padding.all(2)),
+        )
+
+        def _do_add_tag(_e=None) -> None:
+            raw = (tag_input.value or "").strip().lstrip("#")
+            if not raw:
+                return
+            # Sanitise: no spaces, lowercase
+            tag = raw.split()[0].lower()
+            if tag and tag not in _staged_tags:
+                _staged_tags.append(tag)
+                _refresh_tag_chips()
+            tag_input.value = ""
+            page.update()
+
+        def _on_tag_submit(e) -> None:
+            _do_add_tag()
+
+        tag_input.on_submit = _on_tag_submit
+        add_tag_btn.on_click = _do_add_tag
+
+        tags_section = ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Icon(ft.Icons.TAG, size=15, color=ft.Colors.GREY_500),
+                        tag_input,
+                        add_tag_btn,
+                    ],
+                    spacing=4,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                _tags_chips_row,
+            ],
+            spacing=4,
+        )
+
         def _on_new_entry_change(_e) -> None:
             has_text = bool((new_entry_field.value or "").strip())
             add_entry_btn.icon    = ft.Icons.SAVE_OUTLINED if has_text else ft.Icons.ADD_COMMENT_OUTLINED
             add_entry_btn.tooltip = "Save update" if has_text else "Add update"
+            tag_input.disabled  = not has_text
+            add_tag_btn.disabled = not has_text
+            if not has_text and _staged_tags:
+                _staged_tags.clear()
+                _refresh_tag_chips()
             _edit_state["editing"] = has_text
             if _main_btns["delete"]:
                 _main_btns["delete"].disabled = has_text
@@ -1712,10 +1813,17 @@ def build_design_tracker(page: ft.Page, config: dict,
             text = new_entry_field.value or ""
             if not text.strip():
                 return
+            # Append tags if any
+            if _staged_tags:
+                text = text.rstrip() + "\n" + " ".join(f"#{t}" for t in _staged_tags)
             add_history_entry(output_path, design["id"], text)
             new_entry_field.value  = ""
+            _staged_tags.clear()
+            _refresh_tag_chips()
             add_entry_btn.icon     = ft.Icons.ADD_COMMENT_OUTLINED
             add_entry_btn.tooltip  = "Add update"
+            tag_input.disabled     = True
+            add_tag_btn.disabled   = True
             _edit_state["editing"] = False
             _edit_state["dirty"]   = True
             if _main_btns["delete"]:
@@ -1732,6 +1840,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                 history_entries_col,
                 ft.Row([new_entry_field, add_entry_btn], spacing=4,
                        vertical_alignment=ft.CrossAxisAlignment.START),
+                tags_section,
             ],
             spacing=6,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,

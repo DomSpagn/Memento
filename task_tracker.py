@@ -17,7 +17,7 @@ from task_db import (
     STATUSES, init_db, fetch_all_tasks, fetch_distinct_projects,
     create_task, update_task, delete_task,
     fetch_task_attachments, add_attachment, remove_attachment,
-    fetch_history, add_history_entry, update_history_entry,
+    fetch_history, fetch_all_history, add_history_entry, update_history_entry,
     delete_history_entry, fetch_history_attachments,
     add_history_attachment, remove_history_attachment,
     fetch_related_tasks, add_related_task, remove_related_task,
@@ -155,7 +155,8 @@ def build_task_tracker(page: ft.Page, config: dict,
 
     # ── Filter state ──────────────────────────────────────────────────────────
     _active_filters: dict = {
-        "project": "", "opened": "", "modified": "", "closed": "", "status": ""
+        "project": "", "opened": "", "modified": "", "closed": "", "status": "",
+        "tags": []
     }
 
     def _apply_filter(tasks: list[dict]) -> list[dict]:
@@ -170,6 +171,15 @@ def build_task_tracker(page: ft.Page, config: dict,
             result = [t for t in result if (t.get("modified_at") or "")[:10] == _active_filters["modified"]]
         if _active_filters["closed"]:
             result = [t for t in result if (t.get("closed_at") or "")[:10] == _active_filters["closed"]]
+        if _active_filters["tags"]:
+            all_hist = fetch_all_history(output_path)
+            required = set(_active_filters["tags"])
+            tagged_ids: set = set()
+            for h in all_hist:
+                found = {m.lstrip("#").lower() for m in re.findall(r"#\w+", h.get("body") or "")}
+                if found & required:
+                    tagged_ids.add(h["task_id"])
+            result = [t for t in result if t["id"] in tagged_ids]
         return result
 
     def _update_filter_btn_color() -> None:
@@ -2607,7 +2617,7 @@ def build_task_tracker(page: ft.Page, config: dict,
 
     def _clear_filters() -> None:
         for k in _active_filters:
-            _active_filters[k] = ""
+            _active_filters[k] = [] if k == "tags" else ""
         _update_filter_btn_color()
         _refresh()
 
@@ -2942,6 +2952,34 @@ def build_task_tracker(page: ft.Page, config: dict,
         mod_dates    = sorted({(t.get("modified_at") or "")[:10] for t in all_tasks if t.get("modified_at")}, reverse=True)
         closed_dates = sorted({(t.get("closed_at") or "")[:10] for t in all_tasks if t.get("closed_at")}, reverse=True)
 
+        all_hist = fetch_all_history(output_path)
+        all_tags = sorted(set(
+            m.lstrip("#").lower()
+            for h in all_hist
+            for m in re.findall(r"#\w+", h.get("body") or "")
+        ))
+        _tag_checks = {
+            tag: ft.Checkbox(
+                label=f"#{tag}",
+                value=tag in _active_filters["tags"],
+                active_color=ft.Colors.ORANGE_400,
+            )
+            for tag in all_tags
+        }
+        tags_body = ft.Column(
+            list(_tag_checks.values()),
+            spacing=4,
+            scroll=ft.ScrollMode.AUTO,
+            height=min(140, len(all_tags) * 34),
+        ) if all_tags else ft.Text("No tags found", size=12, color=ft.Colors.GREY_500, italic=True)
+        tags_section = ft.Column(
+            [
+                ft.Text("Tags", size=12, weight=ft.FontWeight.W_600, color=ft.Colors.GREY_600),
+                tags_body,
+            ],
+            spacing=4,
+        )
+
         _OPT_STYLE = ft.ButtonStyle(color={
             ft.ControlState.HOVERED:  ft.Colors.ORANGE_400,
             ft.ControlState.FOCUSED:  ft.Colors.ORANGE_400,
@@ -2980,13 +3018,14 @@ def build_task_tracker(page: ft.Page, config: dict,
             _active_filters["modified"] = dd_modified.value or ""
             _active_filters["closed"]   = dd_closed.value   or ""
             _active_filters["status"]   = dd_status.value   or ""
+            _active_filters["tags"]     = [tag for tag, cb in _tag_checks.items() if cb.value]
             filter_dlg.open = False
             _update_filter_btn_color()
             _refresh()
 
         def _reset(_) -> None:
             for k in _active_filters:
-                _active_filters[k] = ""
+                _active_filters[k] = [] if k == "tags" else ""
             filter_dlg.open = False
             _update_filter_btn_color()
             _refresh()
@@ -2999,8 +3038,9 @@ def build_task_tracker(page: ft.Page, config: dict,
                 spacing=10,
             ),
             content=ft.Column(
-                [dd_project, dd_opened, dd_modified, dd_closed, dd_status],
+                [dd_project, dd_opened, dd_modified, dd_closed, dd_status, tags_section],
                 tight=True, spacing=12, width=240,
+                scroll=ft.ScrollMode.AUTO,
             ),
             actions=[
                 ft.TextButton("Reset", on_click=_reset,

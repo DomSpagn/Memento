@@ -226,6 +226,13 @@ def fetch_history(output_path: str, design_id: int) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def fetch_all_history(output_path: str) -> list[dict]:
+    with _connect(output_path) as conn:
+        _ensure_history_tables(conn)
+        rows = conn.execute("SELECT * FROM history ORDER BY id ASC").fetchall()
+    return [dict(r) for r in rows]
+
+
 def add_history_entry(output_path: str, design_id: int, body: str) -> int:
     with _connect(output_path) as conn:
         _ensure_history_tables(conn)

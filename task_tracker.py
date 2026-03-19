@@ -121,8 +121,9 @@ def _start_alarm_checker(output_path: str, on_fired=None) -> None:
 
 def build_task_tracker(page: ft.Page, config: dict,
                        add_btn, edit_btn, del_btn, chart_btn=None,
+                       calendar_btn=None,
                        on_open_task=None, on_close_task=None) -> ft.Column:
-    """Return the Task Tracker UI and wire add_btn / edit_btn / del_btn / chart_btn."""
+    """Return the Task Tracker UI and wire add_btn / edit_btn / del_btn / chart_btn / calendar_btn."""
 
     output_path: str = config.get("OutputPath", "")
     init_db(output_path)
@@ -148,6 +149,9 @@ def build_task_tracker(page: ft.Page, config: dict,
     if chart_btn:
         chart_btn.disabled   = True
         chart_btn.icon_color = ft.Colors.with_opacity(0.3, ft.Colors.PURPLE_400)
+    if calendar_btn:
+        calendar_btn.disabled   = True
+        calendar_btn.icon_color = ft.Colors.with_opacity(0.3, ft.Colors.GREEN_500)
 
     def _clear_selection() -> None:
         _sel["task"] = None
@@ -2462,11 +2466,26 @@ def build_task_tracker(page: ft.Page, config: dict,
             if chart_btn:
                 chart_btn.disabled   = False
                 chart_btn.icon_color = ft.Colors.PURPLE_400
+            # Enable calendar btn only when there's at least one active alarm
+            _has_alarm = any(
+                t.get("alarm_at") and not int(t.get("alarm_fired") or 0)
+                for t in tasks
+            )
+            if calendar_btn:
+                if _has_alarm:
+                    calendar_btn.disabled   = False
+                    calendar_btn.icon_color = ft.Colors.GREEN_500
+                else:
+                    calendar_btn.disabled   = True
+                    calendar_btn.icon_color = ft.Colors.with_opacity(0.3, ft.Colors.GREEN_500)
         else:
             list_area.content = empty_state
             if chart_btn:
                 chart_btn.disabled   = True
                 chart_btn.icon_color = ft.Colors.with_opacity(0.3, ft.Colors.PURPLE_400)
+            if calendar_btn:
+                calendar_btn.disabled   = True
+                calendar_btn.icon_color = ft.Colors.with_opacity(0.3, ft.Colors.GREEN_500)
         page.update()
 
     # ── Chart dialog ─────────────────────────────────────────────────────────
@@ -2750,6 +2769,585 @@ def build_task_tracker(page: ft.Page, config: dict,
     del_btn.on_click  = _open_confirm
     if chart_btn:
         chart_btn.on_click = _open_chart_dialog
+
+    # ── Calendar dialog ───────────────────────────────────────────────────────
+
+    def _open_calendar_dialog(_=None) -> None:  # noqa: C901
+        """Open the alarm calendar pop-up with daily/weekly/monthly views."""
+        _cs = {
+            "view": "weekly",
+            "ref": datetime.now().replace(hour=0, minute=0, second=0, microsecond=0),
+        }
+
+        # English month/day name arrays (avoid locale-dependent strftime)
+        _MONTHS_EN       = ["January", "February", "March", "April", "May", "June",
+                            "July", "August", "September", "October", "November", "December"]
+        _MONTHS_SHORT_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        _DAYS_EN         = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        _DAYS_SHORT_EN   = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+        def _get_alarm_tasks() -> list:
+            return [
+                t for t in fetch_all_tasks(output_path)
+                if t.get("alarm_at") and not int(t.get("alarm_fired") or 0)
+            ]
+
+        def _alarm_dt(t: dict):
+            try:
+                return datetime.fromisoformat(t["alarm_at"])
+            except (TypeError, ValueError):
+                return None
+
+        # ── Small task chip shown inside each calendar cell ───────────
+        def _task_chip(task: dict, adt: datetime) -> ft.Container:
+            return ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text(
+                            adt.strftime("%H:%M"),
+                            size=10,
+                            color=ft.Colors.GREEN_700,
+                            weight=ft.FontWeight.BOLD,
+                        ),
+                        ft.Text(
+                            task["title"],
+                            size=11,
+                            no_wrap=True,
+                            overflow=ft.TextOverflow.ELLIPSIS,
+                        ),
+                        ft.Text(
+                            task.get("project") or "",
+                            size=10,
+                            color=ft.Colors.GREY_500,
+                            no_wrap=True,
+                            overflow=ft.TextOverflow.ELLIPSIS,
+                        ),
+                    ],
+                    spacing=1,
+                    tight=True,
+                ),
+                bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.GREEN_500),
+                border=ft.border.all(1, ft.Colors.with_opacity(0.4, ft.Colors.GREEN_500)),
+                border_radius=4,
+                padding=ft.padding.symmetric(horizontal=5, vertical=3),
+                margin=ft.margin.only(bottom=2),
+            )
+
+        # ── Daily view ────────────────────────────────────────────────
+        def _build_daily() -> ft.Control:
+            ref = _cs["ref"]
+            alarm_tasks = _get_alarm_tasks()
+            day_tasks = [
+                (t, adt) for t in alarm_tasks
+                if (adt := _alarm_dt(t)) and adt.date() == ref.date()
+            ]
+            day_tasks.sort(key=lambda x: x[1])
+            if day_tasks:
+                chips = [_task_chip(t, adt) for t, adt in day_tasks]
+            else:
+                chips = [ft.Text(
+                    "No active alarms for this day.",
+                    size=13,
+                    color=ft.Colors.GREY_500,
+                    italic=True,
+                )]
+            return ft.Container(
+                content=ft.Column(chips, spacing=6, scroll=ft.ScrollMode.AUTO),
+                expand=True,
+                padding=ft.padding.symmetric(horizontal=8, vertical=8),
+                height=260,
+            )
+
+        # ── Weekly view ───────────────────────────────────────────────
+        def _build_weekly() -> ft.Control:
+            ref    = _cs["ref"]
+            monday = ref - timedelta(days=ref.weekday())
+            days   = [monday + timedelta(days=i) for i in range(7)]
+            alarm_tasks = _get_alarm_tasks()
+            today  = datetime.now().date()
+
+            day_cols = []
+            for i, day in enumerate(days):
+                tasks_for_day = [
+                    (t, adt) for t in alarm_tasks
+                    if (adt := _alarm_dt(t)) and adt.date() == day.date()
+                ]
+                tasks_for_day.sort(key=lambda x: x[1])
+                is_today = (day.date() == today)
+                hdr_color = ft.Colors.ORANGE_400 if is_today else ft.Colors.ON_SURFACE_VARIANT
+
+                chips = ft.Column(
+                    [_task_chip(t, adt) for t, adt in tasks_for_day],
+                    spacing=3,
+                    scroll=ft.ScrollMode.AUTO,
+                    expand=True,
+                )
+                day_col = ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Container(
+                                content=ft.Column(
+                                    [
+                                        ft.Text(
+                                            _DAYS_SHORT_EN[i], size=11,
+                                            color=hdr_color,
+                                            weight=ft.FontWeight.W_600,
+                                            text_align=ft.TextAlign.CENTER,
+                                        ),
+                                        ft.Container(
+                                            content=ft.Text(
+                                                str(day.day), size=16,
+                                                color=hdr_color,
+                                                weight=ft.FontWeight.BOLD,
+                                                text_align=ft.TextAlign.CENTER,
+                                            ),
+                                            bgcolor=ft.Colors.with_opacity(0.18, ft.Colors.ORANGE_400) if is_today else None,
+                                            border_radius=14,
+                                            width=28,
+                                            height=28,
+                                            alignment=ft.Alignment(0, 0),
+                                        ),
+                                    ],
+                                    spacing=0,
+                                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                ),
+                                padding=ft.padding.symmetric(vertical=4),
+                                border=ft.border.only(
+                                    bottom=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
+                                ),
+                            ),
+                            chips,
+                        ],
+                        spacing=4,
+                        expand=True,
+                    ),
+                    expand=True,
+                    padding=ft.padding.symmetric(horizontal=4, vertical=4),
+                    border=ft.border.only(
+                        right=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT),
+                    ) if i < 6 else None,
+                )
+                day_cols.append(day_col)
+
+            return ft.Container(
+                content=ft.Row(day_cols, expand=True, spacing=0),
+                expand=True,
+                height=280,
+            )
+
+        # ── Monthly view ──────────────────────────────────────────────
+        def _build_monthly() -> ft.Control:
+            ref   = _cs["ref"]
+            year  = ref.year
+            month = ref.month
+
+            first_day    = datetime(year, month, 1)
+            start_offset = first_day.weekday()   # 0=Mon … 6=Sun
+            if month == 12:
+                next_m = datetime(year + 1, 1, 1)
+            else:
+                next_m = datetime(year, month + 1, 1)
+            days_in_month = (next_m - first_day).days
+
+            alarm_tasks = _get_alarm_tasks()
+            today = datetime.now().date()
+
+            # Build mapping day_number → list[(task, alarm_dt)]
+            day_map: dict[int, list] = {}
+            for t in alarm_tasks:
+                adt = _alarm_dt(t)
+                if adt and adt.year == year and adt.month == month:
+                    day_map.setdefault(adt.day, []).append((t, adt))
+
+            # Day-of-week header row
+            hdr_row = ft.Row(
+                [
+                    ft.Container(
+                        content=ft.Text(
+                            d, size=11, weight=ft.FontWeight.W_600,
+                            color=ft.Colors.ON_SURFACE_VARIANT,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        expand=True,
+                    )
+                    for d in _DAYS_SHORT_EN
+                ],
+                spacing=0,
+            )
+
+            grid_rows = [hdr_row]
+            week_cells: list = []
+            day_num   = 1
+
+            # Fill leading empty cells
+            for _ in range(start_offset):
+                week_cells.append(ft.Container(expand=True))
+
+            while day_num <= days_in_month:
+                cur_date = datetime(year, month, day_num).date()
+                is_today = (cur_date == today)
+                tasks_here = day_map.get(day_num, [])
+                tasks_here.sort(key=lambda x: x[1])
+
+                dot_row = ft.Row(
+                    [
+                        ft.Container(
+                            width=6, height=6,
+                            bgcolor=ft.Colors.GREEN_500,
+                            border_radius=3,
+                        )
+                        for _ in tasks_here[:3]
+                    ],
+                    spacing=2,
+                    tight=True,
+                ) if tasks_here else ft.Container(height=6)
+
+                tooltip_txt = "\n".join(
+                    f"{adt.strftime('%H:%M')} – {t['title']}"
+                    for t, adt in tasks_here
+                ) if tasks_here else None
+
+                cell = ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Container(
+                                content=ft.Text(
+                                    str(day_num),
+                                    size=12,
+                                    color=ft.Colors.ORANGE_400 if is_today else ft.Colors.ON_SURFACE,
+                                    weight=ft.FontWeight.BOLD if is_today else ft.FontWeight.NORMAL,
+                                    text_align=ft.TextAlign.CENTER,
+                                ),
+                                bgcolor=ft.Colors.with_opacity(0.18, ft.Colors.ORANGE_400) if is_today else None,
+                                border_radius=12,
+                                width=24,
+                                height=24,
+                                alignment=ft.Alignment(0, 0),
+                            ),
+                            dot_row,
+                        ],
+                        spacing=2,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    expand=True,
+                    padding=ft.padding.symmetric(horizontal=2, vertical=4),
+                    border=ft.border.all(
+                        1,
+                        ft.Colors.with_opacity(0.08, ft.Colors.ON_SURFACE),
+                    ),
+                    border_radius=4,
+                    tooltip=tooltip_txt,
+                )
+                week_cells.append(cell)
+                day_num += 1
+
+                if len(week_cells) == 7:
+                    grid_rows.append(ft.Row(week_cells[:], expand=True, spacing=2))
+                    week_cells = []
+
+            # Pad last partial week
+            if week_cells:
+                while len(week_cells) < 7:
+                    week_cells.append(ft.Container(expand=True))
+                grid_rows.append(ft.Row(week_cells, expand=True, spacing=2))
+
+            return ft.Container(
+                content=ft.Column(grid_rows, spacing=3),
+                padding=ft.padding.all(8),
+            )
+
+        # ── Period label helper ───────────────────────────────────────
+        def _period_label() -> str:
+            ref = _cs["ref"]
+            v   = _cs["view"]
+            if v == "daily":
+                return f"{_DAYS_EN[ref.weekday()]}, {ref.day:02d} {_MONTHS_EN[ref.month - 1]} {ref.year}"
+            elif v == "weekly":
+                monday = ref - timedelta(days=ref.weekday())
+                sunday = monday + timedelta(days=6)
+                if monday.month == sunday.month:
+                    return f"{monday.day} – {sunday.day} {_MONTHS_EN[sunday.month - 1]} {sunday.year}"
+                return (f"{monday.day} {_MONTHS_SHORT_EN[monday.month - 1]} – "
+                        f"{sunday.day} {_MONTHS_SHORT_EN[sunday.month - 1]} {sunday.year}")
+            else:
+                return f"{_MONTHS_EN[ref.month - 1]} {ref.year}"
+
+        # ── Navigation ────────────────────────────────────────────────
+        period_lbl = ft.Text(_period_label(), size=14, weight=ft.FontWeight.W_600, width=260, text_align=ft.TextAlign.CENTER)
+        cal_body   = ft.Container(expand=True)
+
+        def _rebuild() -> None:
+            period_lbl.value = _period_label()
+            year_btn.text = str(_cs["ref"].year)
+            v = _cs["view"]
+            if v == "daily":
+                cal_body.content = _build_daily()
+            elif v == "weekly":
+                cal_body.content = _build_weekly()
+            else:
+                cal_body.content = _build_monthly()
+            page.update()
+
+        def _nav_prev(_) -> None:
+            v = _cs["view"]
+            if v == "daily":
+                _cs["ref"] -= timedelta(days=1)
+            elif v == "weekly":
+                _cs["ref"] -= timedelta(weeks=1)
+            else:
+                ref = _cs["ref"]
+                if ref.month == 1:
+                    _cs["ref"] = ref.replace(year=ref.year - 1, month=12)
+                else:
+                    _cs["ref"] = ref.replace(month=ref.month - 1)
+            _rebuild()
+
+        def _nav_next(_) -> None:
+            v = _cs["view"]
+            if v == "daily":
+                _cs["ref"] += timedelta(days=1)
+            elif v == "weekly":
+                _cs["ref"] += timedelta(weeks=1)
+            else:
+                ref = _cs["ref"]
+                if ref.month == 12:
+                    _cs["ref"] = ref.replace(year=ref.year + 1, month=1)
+                else:
+                    _cs["ref"] = ref.replace(month=ref.month + 1)
+            _rebuild()
+
+        def _nav_today(_) -> None:
+            _cs["ref"] = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            _rebuild()
+
+        # ── View-switch buttons ───────────────────────────────────────
+        _VIEW_KEYS   = ["daily", "weekly", "monthly"]
+        _VIEW_LABELS = {"daily": "Day", "weekly": "Week", "monthly": "Month"}
+        _view_btns: dict = {}
+
+        def _set_view(vk: str) -> None:
+            _cs["view"] = vk
+            for k, b in _view_btns.items():
+                if k == vk:
+                    b.style = ft.ButtonStyle(
+                        bgcolor=ft.Colors.GREEN_600,
+                        color=ft.Colors.WHITE,
+                        padding=ft.padding.symmetric(horizontal=10, vertical=6),
+                    )
+                else:
+                    b.style = ft.ButtonStyle(
+                        color=ft.Colors.GREEN_600,
+                        side={ft.ControlState.DEFAULT: ft.BorderSide(1, ft.Colors.GREEN_600)},
+                        padding=ft.padding.symmetric(horizontal=10, vertical=6),
+                    )
+            _rebuild()
+
+        for vk in _VIEW_KEYS:
+            b = ft.ElevatedButton(
+                _VIEW_LABELS[vk],
+                on_click=lambda _, v=vk: _set_view(v),
+                style=ft.ButtonStyle(
+                    bgcolor=ft.Colors.GREEN_600 if vk == "weekly" else ft.Colors.TRANSPARENT,
+                    color=ft.Colors.WHITE if vk == "weekly" else ft.Colors.GREEN_600,
+                    side=None if vk == "weekly" else {ft.ControlState.DEFAULT: ft.BorderSide(1, ft.Colors.GREEN_600)},
+                    padding=ft.padding.symmetric(horizontal=10, vertical=6),
+                ),
+                elevation=0 if vk != "weekly" else 2,
+            )
+            _view_btns[vk] = b
+
+        # ── Year-month picker ─────────────────────────────────────────
+        year_btn = ft.TextButton(
+            str(_cs["ref"].year),
+            style=ft.ButtonStyle(
+                color=ft.Colors.ON_SURFACE,
+                padding=ft.padding.symmetric(horizontal=6, vertical=4),
+                text_style=ft.TextStyle(size=13, weight=ft.FontWeight.W_600),
+            ),
+        )
+
+        def _open_year_picker(_) -> None:
+            _yp = {"year": _cs["ref"].year}
+            year_lbl   = ft.Text(str(_yp["year"]), size=22, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER, width=80)
+            months_col = ft.Column([], spacing=4)
+
+            def _refresh_months() -> None:
+                selected_month = _cs["ref"].month if _yp["year"] == _cs["ref"].year else None
+                rows = []
+                for row_i in range(4):
+                    cells = []
+                    for col_i in range(3):
+                        m = row_i * 3 + col_i + 1
+                        is_sel = (m == selected_month)
+                        cells.append(
+                            ft.Container(
+                                content=ft.Text(
+                                    _MONTHS_SHORT_EN[m - 1],
+                                    size=13,
+                                    weight=ft.FontWeight.W_600 if is_sel else ft.FontWeight.NORMAL,
+                                    color=ft.Colors.WHITE if is_sel else ft.Colors.ON_SURFACE,
+                                    text_align=ft.TextAlign.CENTER,
+                                ),
+                                bgcolor=ft.Colors.GREEN_600 if is_sel else None,
+                                border_radius=6,
+                                border=ft.border.all(1, ft.Colors.with_opacity(0.15, ft.Colors.ON_SURFACE)) if not is_sel else None,
+                                width=68,
+                                height=34,
+                                alignment=ft.Alignment(0, 0),
+                                ink=True,
+                                on_click=lambda _, mo=m: _pick_month(mo),
+                            )
+                        )
+                    rows.append(ft.Row(cells, spacing=6, alignment=ft.MainAxisAlignment.CENTER))
+                months_col.controls = rows
+                page.update()
+
+            def _pick_month(m: int) -> None:
+                y = _yp["year"]
+                try:
+                    _cs["ref"] = _cs["ref"].replace(year=y, month=m, day=1)
+                except ValueError:
+                    _cs["ref"] = _cs["ref"].replace(year=y, month=m, day=1)
+                yp_dlg.open = False
+                year_btn.text = str(y)
+                _rebuild()
+
+            def _year_up(_) -> None:
+                _yp["year"] += 1
+                year_lbl.value = str(_yp["year"])
+                _refresh_months()
+
+            def _year_down(_) -> None:
+                _yp["year"] -= 1
+                year_lbl.value = str(_yp["year"])
+                _refresh_months()
+
+            def _close_yp(_) -> None:
+                yp_dlg.open = False
+                page.update()
+
+            _refresh_months()
+
+            yp_dlg = ft.AlertDialog(
+                modal=True,
+                title=None,
+                content=ft.Column(
+                    [
+                        ft.Row(
+                            [
+                                ft.IconButton(
+                                    icon=ft.Icons.KEYBOARD_ARROW_UP,
+                                    icon_size=22,
+                                    tooltip="Next year",
+                                    on_click=_year_up,
+                                ),
+                                year_lbl,
+                                ft.IconButton(
+                                    icon=ft.Icons.KEYBOARD_ARROW_DOWN,
+                                    icon_size=22,
+                                    tooltip="Previous year",
+                                    on_click=_year_down,
+                                ),
+                            ],
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=4,
+                        ),
+                        ft.Divider(height=6),
+                        months_col,
+                    ],
+                    tight=True,
+                    spacing=8,
+                    width=260,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                actions=[
+                    ft.TextButton("Cancel", on_click=_close_yp),
+                ],
+                actions_alignment=ft.MainAxisAlignment.CENTER,
+            )
+            page.overlay.append(yp_dlg)
+            yp_dlg.open = True
+            page.update()
+
+        year_btn.on_click = _open_year_picker
+
+        nav_row = ft.Row(
+            [
+                ft.IconButton(
+                    icon=ft.Icons.CHEVRON_LEFT,
+                    icon_size=20,
+                    tooltip="Previous",
+                    on_click=_nav_prev,
+                ),
+                period_lbl,
+                ft.IconButton(
+                    icon=ft.Icons.CHEVRON_RIGHT,
+                    icon_size=20,
+                    tooltip="Next",
+                    on_click=_nav_next,
+                ),
+                ft.Container(width=8),
+                year_btn,
+                ft.Container(width=4),
+                ft.TextButton(
+                    "Today",
+                    on_click=_nav_today,
+                    style=ft.ButtonStyle(color=ft.Colors.ORANGE_400),
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=0,
+        )
+
+        view_row = ft.Row(
+            list(_view_btns.values()),
+            spacing=4,
+            alignment=ft.MainAxisAlignment.CENTER,
+        )
+
+        def _close_cal(_) -> None:
+            cal_dlg.open = False
+            page.update()
+
+        # Build initial body
+        cal_body.content = _build_weekly()
+
+        cal_dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Row(
+                [
+                    ft.Icon(ft.Icons.CALENDAR_MONTH, color=ft.Colors.GREEN_500),
+                    ft.Text("Alarm Calendar", weight=ft.FontWeight.BOLD),
+                ],
+                spacing=10,
+            ),
+            content=ft.Column(
+                [
+                    ft.Row(
+                        [nav_row, ft.Container(expand=True), view_row],
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    ft.Divider(height=6),
+                    cal_body,
+                ],
+                tight=True,
+                spacing=8,
+                width=680,
+            ),
+            actions=[
+                ft.TextButton("Close", on_click=_close_cal),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.overlay.append(cal_dlg)
+        cal_dlg.open = True
+        page.update()
+
+    if calendar_btn:
+        calendar_btn.on_click = _open_calendar_dialog
 
     # ── Root ─────────────────────────────────────────────────────────────────
 

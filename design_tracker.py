@@ -1738,7 +1738,21 @@ def build_design_tracker(page: ft.Page, config: dict,
             bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.BLUE),
             content_padding=ft.padding.symmetric(horizontal=10, vertical=8),
         )
-        add_entry_btn = ft.IconButton(icon=ft.Icons.ADD_COMMENT_OUTLINED, tooltip="Add update")
+        save_entry_btn = ft.FilledButton(
+            "Save update",
+            icon=ft.Icons.SAVE_OUTLINED,
+            disabled=True,
+            style=ft.ButtonStyle(
+                bgcolor={
+                    ft.ControlState.DEFAULT:  ft.Colors.BLUE_600,
+                    ft.ControlState.DISABLED: ft.Colors.with_opacity(0.35, ft.Colors.BLUE_600),
+                },
+                color={
+                    ft.ControlState.DEFAULT:  ft.Colors.WHITE,
+                    ft.ControlState.DISABLED: ft.Colors.with_opacity(0.4, ft.Colors.WHITE),
+                },
+            ),
+        )
 
         # ── Tag input row ──────────────────────────────────────────────────────
         _staged_tags: list[str] = []
@@ -1838,8 +1852,7 @@ def build_design_tracker(page: ft.Page, config: dict,
 
         def _on_new_entry_change(_e) -> None:
             has_text = bool((new_entry_field.value or "").strip())
-            add_entry_btn.icon    = ft.Icons.SAVE_OUTLINED if has_text else ft.Icons.ADD_COMMENT_OUTLINED
-            add_entry_btn.tooltip = "Save update" if has_text else "Add update"
+            save_entry_btn.disabled = not has_text
             tag_input.disabled  = not has_text
             add_tag_btn.disabled = not has_text
             if not has_text and _staged_tags:
@@ -1863,8 +1876,7 @@ def build_design_tracker(page: ft.Page, config: dict,
             new_entry_field.value  = ""
             _staged_tags.clear()
             _refresh_tag_chips()
-            add_entry_btn.icon     = ft.Icons.ADD_COMMENT_OUTLINED
-            add_entry_btn.tooltip  = "Add update"
+            save_entry_btn.disabled = True
             tag_input.disabled     = True
             add_tag_btn.disabled   = True
             _edit_state["editing"] = False
@@ -1874,16 +1886,16 @@ def build_design_tracker(page: ft.Page, config: dict,
             _update_save_btn()
             _refresh_history()
 
-        add_entry_btn.on_click = _add_history_entry_cb
+        save_entry_btn.on_click = _add_history_entry_cb
 
         history_section = ft.Column(
             [
                 ft.Text("History", size=12, weight=ft.FontWeight.W_600,
                         color=ft.Colors.GREY_600),
                 history_entries_col,
-                ft.Row([new_entry_field, add_entry_btn], spacing=4,
-                       vertical_alignment=ft.CrossAxisAlignment.START),
+                new_entry_field,
                 tags_section,
+                ft.Row([save_entry_btn], alignment=ft.MainAxisAlignment.END),
             ],
             spacing=6,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
@@ -2461,12 +2473,39 @@ def build_design_tracker(page: ft.Page, config: dict,
             scroll=ft.ScrollMode.AUTO,
             height=min(140, len(all_tags) * 34),
         ) if all_tags else ft.Text("No tags found", size=12, color=ft.Colors.GREY_500, italic=True)
+        _tags_panel_open = {"open": bool(_active_filters["tags"])}
+        tags_body_container = ft.Container(content=tags_body, visible=_tags_panel_open["open"])
+        tags_chevron = ft.Icon(
+            ft.Icons.EXPAND_LESS if _tags_panel_open["open"] else ft.Icons.EXPAND_MORE,
+            size=16, color=ft.Colors.GREY_500,
+        )
+        def _toggle_tags_panel(_e=None):
+            _tags_panel_open["open"] = not _tags_panel_open["open"]
+            tags_body_container.visible = _tags_panel_open["open"]
+            tags_chevron.name = ft.Icons.EXPAND_LESS if _tags_panel_open["open"] else ft.Icons.EXPAND_MORE
+            page.update()
         tags_section = ft.Column(
             [
-                ft.Text("Tags", size=12, weight=ft.FontWeight.W_600, color=ft.Colors.GREY_600),
-                tags_body,
+                ft.TextButton(
+                    content=ft.Row(
+                        [
+                            ft.Text("Tags", size=12, weight=ft.FontWeight.W_600,
+                                    color=ft.Colors.GREY_600),
+                            tags_chevron,
+                        ],
+                        spacing=4,
+                        tight=True,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    on_click=_toggle_tags_panel,
+                    style=ft.ButtonStyle(
+                        padding=ft.padding.symmetric(vertical=2, horizontal=0),
+                        overlay_color=ft.Colors.TRANSPARENT,
+                    ),
+                ),
+                tags_body_container,
             ],
-            spacing=4,
+            spacing=2,
         )
 
         _OPT_STYLE = ft.ButtonStyle(color={

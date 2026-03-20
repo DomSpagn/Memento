@@ -64,7 +64,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
 
     # ── Step 2 – Output folder ───────────────────────────────────
     path_field = ft.TextField(
-        label="Output Path",
+        label="Installation Path",
         value=config["OutputPath"],
         expand=True,
         on_change=lambda e: config.update({"OutputPath": e.data}),

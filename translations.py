@@ -22,8 +22,8 @@ ITALIAN: dict = {
     "User Manual":              "Manuale utente",
     "The user manual will be available in a future release.":
         "Il manuale utente sarà disponibile in una versione futura.",
-    "Output Path":              "Percorso di output",
-    "Output Path…":             "Percorso di output…",
+    "Installation Path":         "Percorso d'installazione",
+    "Installation Path…":        "Percorso d'installazione…",
     "Browse…":                  "Sfoglia…",
     "Cancel":                   "Annulla",
     "Save":                     "Salva",
@@ -42,7 +42,7 @@ ITALIAN: dict = {
     "Select language:":         "Seleziona lingua:",
     "English":                  "Inglese",
     "Italian":                  "Italiano",
-    "Select Output Folder":     "Seleziona cartella di output",
+    "Select Installation Folder": "Seleziona cartella d'installazione",
     "Back to list":             "Torna alla lista",
     # CmdBar position options
     "Top":                      "Alto",

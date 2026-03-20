@@ -112,9 +112,9 @@
       font-size: 1.0rem; font-weight: 600; color: #3d4f72;
       margin: 22px 0 8px 0;
     }
-    p { margin-bottom: 14px; }
+    p { margin-bottom: 14px; text-align: justify; }
     ul, ol { margin: 0 0 14px 22px; }
-    li { margin-bottom: 4px; }
+    li { margin-bottom: 4px; text-align: justify; }
 
     /* ── Intro box ──────────────────────────────────────────────────── */
     .intro-box {
@@ -488,7 +488,7 @@
           <li>
             <a href="#s5">Settings Reference</a>
             <ul class="sub-toc">
-              <li><a href="#s5-1">Output Path</a></li>
+              <li><a href="#s5-1">Installation Path</a></li>
               <li><a href="#s5-2">Command Bar Position</a></li>
               <li><a href="#s5-3">Language</a></li>
               <li><a href="#s5-4">Theme</a></li>
@@ -567,7 +567,7 @@
     <h3 id="s1-3">1.3 Output Folder Structure</h3>
     <p>After the wizard completes, Memento creates the following structure on disk:</p>
     <pre style="background:#1a2035;color:#c8d0e0;padding:16px 20px;border-radius:8px;font-size:.87rem;overflow-x:auto;">
-{OutputPath}/
+{InstallationPath}/
 └── Memento/
     ├── TaskTracker/
     │   ├── db/
@@ -632,7 +632,7 @@
     </p>
     <ul>
       <li>
-        <strong>Output Path…</strong> — Change the root folder where Memento stores data.
+        <strong>Installation Path…</strong> — Change the root folder where Memento stores data.
         Contains a text field showing the current path and a Browse… folder button.
         Buttons: <kbd>Cancel</kbd> &nbsp;|&nbsp; <kbd>Save</kbd>.
       </li>
@@ -821,7 +821,7 @@
     <h4>Files</h4>
     <p>
       Click <strong>Attach File</strong> (📎) to open a file picker. The chosen file is
-      <strong>copied</strong> to <code>{OutputPath}/Memento/TaskTracker/attachments/</code>.
+      <strong>copied</strong> to <code>{InstallationPath}/Memento/TaskTracker/attachments/</code>.
       Each attachment is listed with a clickable filename (opens with the system default
       application) and a delete button (removes the attachment from the list and from disk).
     </p>
@@ -1006,7 +1006,7 @@
     </p>
     <p>
       Attachments are copied to
-      <code>{OutputPath}/Memento/DesignTracker/attachments/</code>.
+      <code>{InstallationPath}/Memento/DesignTracker/attachments/</code>.
     </p>
 
     <h3 id="s4-5">4.5 History Log</h3>
@@ -1049,14 +1049,14 @@
     <!-- ══════════════════════════════════════════════════════ -->
     <h2 id="s5">5 · Settings Reference</h2>
 
-    <h3 id="s5-1">5.1 Output Path</h3>
+    <h3 id="s5-1">5.1 Installation Path</h3>
     <p>
-      Access via <em>Settings → Output Path…</em>. This is the root directory where Memento
-      creates its <code>Memento/</code> folder. Changing this setting tells Memento where to look
+      Access via <em>Settings → Installation Path…</em>. This is the root folder where Memento
+      creates its <code>Memento/</code> sub-folder. Changing this setting tells Memento where to look
       for existing databases and where to create new ones.
     </p>
     <div class="warn">
-      ⚠️ &nbsp;Changing the output path does <strong>not</strong> automatically move your existing
+      ⚠️ &nbsp;Changing the installation path does <strong>not</strong> automatically move your existing
       data. If you have existing tasks or designs, manually move the
       <code>{OldPath}/Memento/</code> folder to the new location <em>before</em> clicking Save.
     </div>
@@ -1156,7 +1156,7 @@
 
     <h3 id="s7-1">7.1 Folder Structure</h3>
     <pre style="background:#1a2035;color:#c8d0e0;padding:16px 20px;border-radius:8px;font-size:.87rem;overflow-x:auto;">
-{OutputPath}/
+{InstallationPath}/
 └── Memento/
     ├── TaskTracker/
     │   ├── db/
@@ -1183,7 +1183,7 @@
     <table>
       <tr><th>Key</th><th>Type</th><th>Values</th><th>Set by</th></tr>
       <tr><td><code>Theme</code></td><td>string</td><td><code>"Dark"</code> | <code>"Light"</code></td><td>Wizard, theme toggle</td></tr>
-      <tr><td><code>OutputPath</code></td><td>string</td><td>Absolute folder path</td><td>Wizard, Settings → Output Path…</td></tr>
+      <tr><td><code>OutputPath</code></td><td>string</td><td>Absolute folder path</td><td>Wizard, Settings → Installation Path…</td></tr>
       <tr><td><code>StartWith</code></td><td>string</td><td><code>"TaskTracker"</code> | <code>"DesignTracker"</code></td><td>Wizard, tracker switcher</td></tr>
       <tr><td><code>CmdBarPosition</code></td><td>string</td><td><code>"Top"</code> | <code>"Bottom"</code> | <code>"Left"</code> | <code>"Right"</code></td><td>Settings → Command Bar…</td></tr>
       <tr><td><code>Language</code></td><td>string</td><td><code>"en"</code> | <code>"it"</code></td><td>Settings → Language…</td></tr>

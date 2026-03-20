@@ -173,14 +173,14 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         from pathlib import Path as _Path
 
         path_field = ft.TextField(
-            label="Output Path",
+            label=t("Installation Path"),
             value=config.get("OutputPath", ""),
             expand=True,
         )
         dir_picker = ft.FilePicker()
 
         async def browse(_) -> None:
-            path = await dir_picker.get_directory_path(dialog_title="Select Output Folder")
+            path = await dir_picker.get_directory_path(dialog_title=t("Select Installation Folder"))
             if path:
                 path_field.value = path
                 page.update()
@@ -198,7 +198,7 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             modal=True,
             title=ft.Row(
                 [ft.Icon(ft.Icons.FOLDER_OPEN, color=ft.Colors.BLUE_400),
-                 ft.Text(t("Output Path"), weight=ft.FontWeight.BOLD)],
+                 ft.Text(t("Installation Path"), weight=ft.FontWeight.BOLD)],
                 spacing=10,
             ),
             content=ft.Row(
@@ -416,7 +416,7 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             # ── Settings menu ────────────────────────────────────
             _popup(ft.Icons.SETTINGS_OUTLINED, t("Settings"), [
                 ft.PopupMenuItem(
-                    content=ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN, size=16), ft.Text(t("Output Path…"))], spacing=8),
+                    content=ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN, size=16), ft.Text(t("Installation Path…"))], spacing=8),
                     on_click=show_output_path,
                 ),
                 ft.PopupMenuItem(

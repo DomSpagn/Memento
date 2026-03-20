@@ -12,6 +12,8 @@ Responsibilities:
 
 import asyncio
 import os
+import subprocess
+import sys
 from datetime import datetime
 import flet as ft
 from config_manager import save_config
@@ -20,7 +22,7 @@ from design_tracker import build_design_tracker
 import translations
 from translations import t
 
-APP_VERSION = "v0.3"
+APP_VERSION = "v1.0"
 BUILD_DATE  = datetime.fromtimestamp(os.path.getmtime(__file__)).strftime("%d/%m/%Y")
 APP_AUTHOR  = "Domenico Spagnuolo"
 
@@ -427,6 +429,10 @@ def show_main_app(page: ft.Page, config: dict) -> None:
                     content=ft.Row([ft.Icon(ft.Icons.LANGUAGE, size=16), ft.Text(t("Language…"))], spacing=8),
                     on_click=lambda _: _show_language_dialog(),
                 ),
+                ft.PopupMenuItem(
+                    content=ft.Row([ft.Icon(ft.Icons.POWER_SETTINGS_NEW, size=16), ft.Text(t("Auto-start…"))], spacing=8),
+                    on_click=lambda _: _show_autostart_dialog(),
+                ),
             ]),
             # ── Theme toggle ─────────────────────────────────────
             ft.IconButton(
@@ -499,20 +505,105 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         cmdbar_dlg.open = True
         page.update()
 
-    def _show_language_dialog() -> None:
-        _LANG_OPTIONS = [("en", "English"), ("it", "Italian")]
-        lang_dd = ft.Dropdown(
-            label=t("Language"),
-            value=config.get("Language", "en"),
-            options=[
-                ft.dropdown.Option(key=code, text=t(label), style=_OPT_STYLE)
-                for code, label in _LANG_OPTIONS
+    def _show_autostart_dialog() -> None:
+        current = config.get("AutoStart", False)
+        sw = ft.Switch(value=current, active_color=ft.Colors.GREEN_400)
+
+        def _save_autostart(_) -> None:
+            enabled = sw.value
+            config["AutoStart"] = enabled
+            save_config(config)
+            script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tray_app.py")
+            cmd = "--install" if enabled else "--remove"
+            subprocess.Popen(
+                [sys.executable, script, cmd],
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            close_dlg(autostart_dlg)
+
+        autostart_dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Row(
+                [ft.Icon(ft.Icons.POWER_SETTINGS_NEW, color=ft.Colors.GREEN_400),
+                 ft.Text(t("Auto-start"), weight=ft.FontWeight.BOLD)],
+                spacing=10,
+            ),
+            content=ft.Column(
+                [
+                    ft.Text(t("Enable automatic startup at system boot"), size=13),
+                    ft.Row(
+                        [sw],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                    ),
+                ],
+                tight=True, spacing=16, width=380,
+            ),
+            actions=[
+                ft.TextButton(t("Cancel"), on_click=lambda _: close_dlg(autostart_dlg)),
+                ft.FilledButton(t("Apply"), on_click=_save_autostart),
             ],
-            width=200,
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.overlay.append(autostart_dlg)
+        autostart_dlg.open = True
+        page.update()
+
+    def _show_language_dialog() -> None:
+        _selected = {"lang": config.get("Language", "en")}
+
+        # ── Flag emoji buttons ────────────────────────────────────
+        _FLAGS = {"en": "🇬🇧", "it": "🇮🇹"}
+        _NAMES = {"en": "English", "it": "Italiano"}
+
+        def _btn_style(code: str) -> ft.ButtonStyle:
+            selected = _selected["lang"] == code
+            return ft.ButtonStyle(
+                bgcolor=ft.Colors.BLUE_100 if selected else ft.Colors.TRANSPARENT,
+                side=ft.BorderSide(
+                    width=2,
+                    color=ft.Colors.BLUE_400 if selected else ft.Colors.OUTLINE,
+                ),
+                shape=ft.RoundedRectangleBorder(radius=10),
+                padding=ft.padding.symmetric(horizontal=20, vertical=14),
+            )
+
+        _img_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Images")
+        btn_en = ft.ElevatedButton(
+            content=ft.Column(
+                [
+                    ft.Image(src=os.path.join(_img_dir, "eng.png"), width=56, height=56),
+                    ft.Text("English", size=13, weight=ft.FontWeight.W_500),
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=4,
+                tight=True,
+            ),
+            style=_btn_style("en"),
+        )
+        btn_it = ft.ElevatedButton(
+            content=ft.Column(
+                [
+                    ft.Image(src=os.path.join(_img_dir, "ita.png"), width=56, height=56),
+                    ft.Text("Italiano", size=13, weight=ft.FontWeight.W_500),
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=4,
+                tight=True,
+            ),
+            style=_btn_style("it"),
         )
 
+        def _select(code: str) -> None:
+            _selected["lang"] = code
+            btn_en.style = _btn_style("en")
+            btn_it.style = _btn_style("it")
+            page.update()
+
+        btn_en.on_click = lambda _: _select("en")
+        btn_it.on_click = lambda _: _select("it")
+
         def _save_lang(_) -> None:
-            new_lang = lang_dd.value or "en"
+            new_lang = _selected["lang"]
             config["Language"] = new_lang
             save_config(config)
             lang_dlg.open = False
@@ -531,8 +622,16 @@ def show_main_app(page: ft.Page, config: dict) -> None:
                 spacing=10,
             ),
             content=ft.Column(
-                [ft.Text(t("Select language:"), size=13), lang_dd],
-                tight=True, spacing=12, width=260,
+                [
+                    ft.Text(t("Select language:"), size=13),
+                    ft.Row(
+                        [btn_en, btn_it],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        spacing=20,
+                    ),
+                ],
+                tight=True, spacing=16, width=300,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
             actions=[
                 ft.TextButton(t("Cancel"), on_click=lambda _: close_dlg(lang_dlg)),

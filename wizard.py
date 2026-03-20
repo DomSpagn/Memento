@@ -7,6 +7,8 @@ Guides the user through two steps:
 """
 
 import flet as ft
+import subprocess
+import sys
 from pathlib import Path
 from typing import Callable
 
@@ -19,6 +21,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
         "Theme": "Dark",
         "OutputPath": str(Path.home() / "Documents"),
         "StartWith": "TaskTracker",
+        "AutoStart": False,
     }
     state: dict = {"step": 0}
 
@@ -52,7 +55,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
         [
             ft.Text("Theme Selection", size=20, weight=ft.FontWeight.BOLD),
             ft.Text(
-                "Step 1 of 3  —  Choose your preferred display mode",
+                "Step 1 of 4  —  Choose your preferred display mode",
                 size=12,
                 color=ft.Colors.GREY_600,
             ),
@@ -81,7 +84,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
         [
             ft.Text("Output Folder", size=20, weight=ft.FontWeight.BOLD),
             ft.Text(
-                "Step 2 of 3  —  Select where Memento will save its files",
+                "Step 2 of 4  —  Select where Memento will save its files",
                 size=12,
                 color=ft.Colors.GREY_600,
             ),
@@ -150,7 +153,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
         [
             ft.Text("Starting Application", size=20, weight=ft.FontWeight.BOLD),
             ft.Text(
-                "Step 3 of 3  —  Choose which tracker to open at startup",
+                "Step 4 of 4  —  Choose which tracker to open at startup",
                 size=12,
                 color=ft.Colors.GREY_600,
             ),
@@ -183,11 +186,44 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
         spacing=10,
     )
 
-    steps = [step_1, step_2, step_3]
+    # ── Step 4 – Auto-start ──────────────────────────────────────
+    autostart_switch = ft.Switch(
+        value=False,
+        active_color=ft.Colors.GREEN_400,
+        on_change=lambda e: config.update({"AutoStart": e.control.value}),
+    )
+
+    step_4 = ft.Column(
+        [
+            ft.Text("Auto-start", size=20, weight=ft.FontWeight.BOLD),
+            ft.Text(
+                "Step 3 of 4  —  Enable automatic startup at system boot",
+                size=12,
+                color=ft.Colors.GREY_600,
+            ),
+            ft.Divider(height=16),
+            ft.Text(
+                "If enabled, Memento's system-tray process will start automatically "
+                "when Windows boots.",
+                size=12,
+                color=ft.Colors.GREY_500,
+            ),
+            ft.Row(
+                [
+                    ft.Text("Enable automatic startup at system boot", size=13),
+                    autostart_switch,
+                ],
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            ),
+        ],
+        spacing=10,
+    )
+
+    steps = [step_1, step_2, step_4, step_3]
 
     # ── Navigation widgets ───────────────────────────────────────
-    step_label   = ft.Text("Step 1 of 3", size=12, color=ft.Colors.GREY_600)
-    progress_bar = ft.ProgressBar(value=1/3, expand=True)
+    step_label   = ft.Text("Step 1 of 4", size=12, color=ft.Colors.GREY_600)
+    progress_bar = ft.ProgressBar(value=1/4, expand=True)
     btn_back     = ft.OutlinedButton("← Back",    visible=False)
     btn_next     = ft.ElevatedButton("Next →")
     btn_finish   = ft.ElevatedButton("Finish  ✓", visible=False)
@@ -220,6 +256,12 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
 
     def on_finish(_) -> None:
         _create_structure(config["OutputPath"])
+        if config.get("AutoStart", False):
+            script = str(Path(__file__).parent / "tray_app.py")
+            subprocess.Popen(
+                [sys.executable, script, "--install"],
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
         on_complete(config)
 
     btn_back.on_click   = on_back

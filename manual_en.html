@@ -492,6 +492,7 @@
               <li><a href="#s5-2">Command Bar Position</a></li>
               <li><a href="#s5-3">Language</a></li>
               <li><a href="#s5-4">Theme</a></li>
+              <li><a href="#s5-5">Auto-start</a></li>
             </ul>
           </li>
           <li>
@@ -536,17 +537,17 @@
     <p>
       The first time you launch Memento (by running <code>python main.py</code>), the
       <strong>Setup Wizard</strong> opens automatically because no configuration file exists yet.
-      It walks you through three steps:
+      It walks you through four steps:
     </p>
 
-    <h4>Step 1 of 3 — Theme</h4>
+    <h4>Step 1 of 4 — Theme</h4>
     <p>
       Choose between <strong>Dark Mode</strong> (default) and <strong>Light Mode</strong>.
       The application immediately applies the selected theme so you can preview it before
       confirming. Your choice is saved to the configuration file.
     </p>
 
-    <h4>Step 2 of 3 — Output Folder</h4>
+    <h4>Step 2 of 4 — Output Folder</h4>
     <p>
       Choose the root folder where Memento will store all its data (databases, attachments, etc.).
       A <code>Memento/</code> sub-folder is created automatically under the path you choose.
@@ -554,14 +555,22 @@
       Click the folder icon button to open a system directory picker.
     </p>
 
-    <h4>Step 3 of 3 — Starting Application</h4>
+    <h4>Step 3 of 4 — Starting Application</h4>
     <p>
       Select which tracker should be shown when Memento starts:
       <strong>Task Tracker</strong> or <strong>Design Tracker</strong>.
       Click <strong>Finish ✓</strong> to complete the wizard; the main window opens immediately.
     </p>
+
+    <h4>Step 4 of 4 — Auto-start</h4>
+    <p>
+      Enable or disable automatic startup of Memento's system-tray process at Windows boot.
+      Toggle the <strong>on/off switch</strong> to your preference. If enabled, the command
+      <code>python tray_app.py --install</code> is run immediately in the background; if
+      disabled, no action is taken during first-run setup.
+    </p>
     <div class="note">
-      ℹ️ &nbsp;You can change all three of these preferences later via the Settings menu.
+      ℹ️ &nbsp;You can change all four of these preferences later via the Settings menu.
     </div>
 
     <h3 id="s1-3">1.3 Output Folder Structure</h3>
@@ -628,7 +637,7 @@
     <h3 id="s2-3">2.3 Settings Menu</h3>
     <p>
       Click the ⚙ icon on the right side of the app bar to open the Settings pop-up menu.
-      It contains three items:
+      It contains four items:
     </p>
     <ul>
       <li>
@@ -644,6 +653,11 @@
         <strong>Language…</strong> — Switch the interface language between English and Italian.
         Buttons: <kbd>Cancel</kbd> &nbsp;|&nbsp; <kbd>Apply</kbd>.
         Applying the change rebuilds the entire UI immediately.
+      </li>
+      <li>
+        <strong>Auto-start…</strong> — Enable or disable automatic startup of the system-tray process
+        at Windows boot. An on/off toggle switch is shown in the pop-up.
+        Buttons: <kbd>Cancel</kbd> &nbsp;|&nbsp; <kbd>Apply</kbd>.
       </li>
     </ul>
 
@@ -1088,6 +1102,32 @@
       <strong>Dark</strong> and <strong>Light</strong> mode. The change is instant and
       persisted immediately. You can also set the initial theme in the first-run wizard.
     </p>
+
+    <h3 id="s5-5">5.5 Auto-start</h3>
+    <p>
+      Access via <em>Settings → Auto-start…</em>. Controls whether Memento's system-tray
+      process (<code>tray_app.py</code>) is registered to start automatically when Windows boots.
+    </p>
+    <ul>
+      <li>
+        <strong>Toggle ON</strong> — runs <code>python tray_app.py --install</code> in the
+        background, which registers the tray app in the Windows registry startup key.
+      </li>
+      <li>
+        <strong>Toggle OFF</strong> — runs <code>python tray_app.py --remove</code> in the
+        background, which removes the startup entry.
+      </li>
+    </ul>
+    <p>
+      The preference is saved in <code>mem_conf.json</code> under the key
+      <code>AutoStart</code> (boolean). The same option is available during the first-run
+      wizard (Step 4 of 4).
+    </p>
+    <div class="note">
+      ℹ️ &nbsp; <code>tray_app.py --install</code> adds an entry to
+      <code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code>, so the tray
+      process starts for the current user only, without requiring administrator rights.
+    </div>
 
     <hr class="divider" />
 

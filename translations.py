@@ -173,6 +173,11 @@ ITALIAN: dict = {
     "Today":                    "Oggi",
     "Yesterday":                "Ieri",
     "days ago":                 "giorni fa",
+    # auto-start
+    "Auto-start\u2026":          "Avvio Automatico\u2026",
+    "Auto-start":               "Avvio Automatico",
+    "Enable automatic startup at system boot":
+        "Abilita l'esecuzione automatica all'avvio del sistema",
 }
 
 

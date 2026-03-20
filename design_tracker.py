@@ -1807,16 +1807,10 @@ def build_design_tracker(page: ft.Page, config: dict,
         save_entry_btn = ft.FilledButton(
             t("Save update"),
             icon=ft.Icons.SAVE_OUTLINED,
-            disabled=True,
+            visible=False,
             style=ft.ButtonStyle(
-                bgcolor={
-                    ft.ControlState.DEFAULT:  ft.Colors.BLUE_600,
-                    ft.ControlState.DISABLED: ft.Colors.with_opacity(0.35, ft.Colors.BLUE_600),
-                },
-                color={
-                    ft.ControlState.DEFAULT:  ft.Colors.WHITE,
-                    ft.ControlState.DISABLED: ft.Colors.with_opacity(0.4, ft.Colors.WHITE),
-                },
+                bgcolor={ft.ControlState.DEFAULT: ft.Colors.BLUE_600},
+                color={ft.ControlState.DEFAULT: ft.Colors.WHITE},
             ),
         )
 
@@ -1918,7 +1912,7 @@ def build_design_tracker(page: ft.Page, config: dict,
 
         def _on_new_entry_change(_e) -> None:
             has_text = bool((new_entry_field.value or "").strip())
-            save_entry_btn.disabled = not has_text
+            save_entry_btn.visible = has_text
             tag_input.disabled  = not has_text
             add_tag_btn.disabled = not has_text
             if not has_text and _staged_tags:
@@ -1942,7 +1936,7 @@ def build_design_tracker(page: ft.Page, config: dict,
             new_entry_field.value  = ""
             _staged_tags.clear()
             _refresh_tag_chips()
-            save_entry_btn.disabled = True
+            save_entry_btn.visible = False
             tag_input.disabled     = True
             add_tag_btn.disabled   = True
             _edit_state["editing"] = False

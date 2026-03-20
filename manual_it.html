@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Memento – Manuale Utente</title>
+  <style>
+    /* ── Reset & base ───────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+      background: #f4f6f9;
+      color: #1e2330;
+      line-height: 1.7;
+    }
+
+    /* ── Layout wrapper ─────────────────────────────────────────────── */
+    .page-wrap {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar (TOC) ──────────────────────────────────────────────── */
+    .sidebar {
+      width: 280px;
+      min-width: 280px;
+      background: #1a2035;
+      color: #c8d0e0;
+      padding: 28px 0 60px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    .sidebar-logo {
+      text-align: center;
+      padding: 0 20px 24px 20px;
+      border-bottom: 1px solid #2d3652;
+    }
+    .sidebar-logo .app-name {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #ff8c42;
+      letter-spacing: 1px;
+    }
+    .sidebar-logo .version {
+      font-size: 0.78rem;
+      color: #6a7a9b;
+      margin-top: 2px;
+    }
+    .toc-title {
+      padding: 20px 20px 8px 20px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #4e5d80;
+    }
+    .sidebar nav ul { list-style: none; }
+    .sidebar nav > ul > li { margin: 0; }
+    .sidebar nav a {
+      display: block;
+      padding: 5px 20px;
+      color: #8a9bbf;
+      text-decoration: none;
+      font-size: 0.88rem;
+      transition: color .15s, background .15s;
+      border-left: 3px solid transparent;
+    }
+    .sidebar nav a:hover {
+      color: #ff8c42;
+      background: rgba(255,140,66,.07);
+      border-left-color: #ff8c42;
+    }
+    .sidebar nav .sub a {
+      padding-left: 38px;
+      font-size: 0.82rem;
+      color: #6a7a9b;
+    }
+    .sidebar nav .sub a:hover { color: #ff8c42; }
+    .sidebar nav .section-label {
+      padding: 14px 20px 4px 20px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #3d4f72;
+    }
+
+    /* ── Main content ───────────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      padding: 48px 56px 80px 56px;
+      max-width: 900px;
+    }
+
+    /* ── Typography ─────────────────────────────────────────────────── */
+    h1 { font-size: 2.2rem; font-weight: 800; color: #ff8c42; margin-bottom: 8px; }
+    h2 {
+      font-size: 1.5rem; font-weight: 700; color: #1e2330;
+      margin: 52px 0 16px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    h3 {
+      font-size: 1.15rem; font-weight: 700; color: #2d3a5a;
+      margin: 32px 0 12px 0;
+    }
+    h4 {
+      font-size: 1.0rem; font-weight: 600; color: #3d4f72;
+      margin: 22px 0 8px 0;
+    }
+    p { margin-bottom: 14px; }
+    ul, ol { margin: 0 0 14px 22px; }
+    li { margin-bottom: 4px; }
+
+    /* ── Intro box ──────────────────────────────────────────────────── */
+    .intro-box {
+      background: linear-gradient(135deg, #1a2035 0%, #242d4a 100%);
+      color: #c8d0e0;
+      border-radius: 12px;
+      padding: 36px 40px;
+      margin-bottom: 40px;
+      border-left: 5px solid #ff8c42;
+    }
+    .intro-box h1 { color: #ff8c42; margin-bottom: 10px; }
+    .intro-box p { color: #99aacb; margin-bottom: 10px; }
+    .intro-box .badges { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    .badge {
+      background: rgba(255,140,66,.15);
+      color: #ff8c42;
+      border: 1px solid rgba(255,140,66,.3);
+      border-radius: 20px;
+      padding: 3px 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    /* ── Inline TOC ─────────────────────────────────────────────────── */
+    .toc-inline {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 28px 36px;
+      margin-bottom: 48px;
+    }
+    .toc-inline h2 {
+      margin-top: 0;
+      border: none;
+      font-size: 1.15rem;
+      color: #ff8c42;
+    }
+    .toc-inline ol {
+      margin-left: 0;
+      padding-left: 0;
+      list-style: none;
+      counter-reset: section;
+    }
+    .toc-inline > ol > li {
+      counter-increment: section;
+      margin-bottom: 6px;
+    }
+    .toc-inline > ol > li::before {
+      content: counter(section) ". ";
+      font-weight: 700;
+      color: #ff8c42;
+    }
+    .toc-inline > ol > li > a {
+      color: #2d3a5a;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .toc-inline > ol > li > a:hover { color: #ff8c42; text-decoration: underline; }
+    .toc-inline .sub-toc {
+      list-style: none;
+      padding-left: 20px;
+      margin: 6px 0 0 0;
+      counter-reset: subsection;
+    }
+    .toc-inline .sub-toc li {
+      counter-increment: subsection;
+      margin-bottom: 3px;
+      font-size: 0.86rem;
+    }
+    .toc-inline .sub-toc li::before {
+      content: counter(section) "." counter(subsection) "  ";
+      color: #8a9bbf;
+      font-weight: 600;
+    }
+    .toc-inline .sub-toc a {
+      color: #5a6a90;
+      text-decoration: none;
+    }
+    .toc-inline .sub-toc a:hover { color: #ff8c42; text-decoration: underline; }
+
+    /* ── Callout / note boxes ───────────────────────────────────────── */
+    .note {
+      background: #eff6ff;
+      border-left: 4px solid #3b82f6;
+      border-radius: 6px;
+      padding: 12px 18px;
+      margin: 16px 0;
+      font-size: 0.9rem;
+      color: #1e40af;
+    }
+    .tip {
+      background: #f0fdf4;
+      border-left: 4px solid #22c55e;
+      border-radius: 6px;
+      padding: 12px 18px;
+      margin: 16px 0;
+      font-size: 0.9rem;
+      color: #166534;
+    }
+    .warn {
+      background: #fff7ed;
+      border-left: 4px solid #f97316;
+      border-radius: 6px;
+      padding: 12px 18px;
+      margin: 16px 0;
+      font-size: 0.9rem;
+      color: #9a3412;
+    }
+
+    /* ── Tables ─────────────────────────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px 0;
+      font-size: 0.88rem;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    th {
+      background: #1a2035;
+      color: #c8d0e0;
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.82rem;
+      letter-spacing: .5px;
+    }
+    td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #f0f2f7;
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #fafbfd; }
+
+    /* ── Keyboard shortcuts ─────────────────────────────────────────── */
+    kbd {
+      background: #e8ecf4;
+      border: 1px solid #c4cdd8;
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-family: monospace;
+      font-size: 0.83rem;
+      color: #2d3a5a;
+    }
+
+    /* ── Code / path ────────────────────────────────────────────────── */
+    code {
+      background: #e8ecf4;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.85rem;
+      color: #c0392b;
+    }
+
+    /* ── Status chips ───────────────────────────────────────────────── */
+    .chip {
+      display: inline-block;
+      border-radius: 12px;
+      padding: 1px 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin: 1px 2px;
+    }
+    .chip-open    { background: #dbeafe; color: #1d4ed8; }
+    .chip-prog    { background: #ffedd5; color: #c2410c; }
+    .chip-hold    { background: #ede9fe; color: #7c3aed; }
+    .chip-closed  { background: #dcfce7; color: #15803d; }
+
+    /* ── Section divider ─────────────────────────────────────────────── */
+    .divider { border: none; border-top: 1px solid #e2e8f0; margin: 40px 0; }
+
+    /* ── Footer ─────────────────────────────────────────────────────── */
+    .footer {
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 0.8rem;
+      color: #8a9bbf;
+      text-align: center;
+    }
+    .footer a { color: #ff8c42; text-decoration: none; }
+
+    /* ── Responsive ─────────────────────────────────────────────────── */
+    @media (max-width: 820px) {
+      .sidebar { display: none; }
+      .main { padding: 28px 20px 60px 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- ════════════════════════ SIDEBAR ════════════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="app-name">MEMENTO</div>
+      <div class="version">Manuale Utente – IT</div>
+    </div>
+    <p class="toc-title">Indice</p>
+    <nav>
+      <ul>
+        <li><a href="#intro">Introduzione</a></li>
+        <li><a href="#indice">Indice dei contenuti</a></li>
+
+        <li class="section-label">Avvio</li>
+        <li><a href="#s1">1 · Per iniziare</a></li>
+        <li class="sub">
+          <ul>
+            <li><a href="#s1-1">Requisiti di sistema</a></li>
+            <li><a href="#s1-2">Procedura guidata iniziale</a></li>
+            <li><a href="#s1-3">Cartella di output</a></li>
+          </ul>
+        </li>
+
+        <li class="section-label">Interfaccia</li>
+        <li><a href="#s2">2 · Finestra principale</a></li>
+        <li class="sub">
+          <ul>
+            <li><a href="#s2-1">Selettore modulo</a></li>
+            <li><a href="#s2-2">Barra degli strumenti</a></li>
+            <li><a href="#s2-3">Menu Impostazioni</a></li>
+            <li><a href="#s2-4">Tema e menu Aiuto</a></li>
+          </ul>
+        </li>
+
+        <li class="section-label">Task Tracker</li>
+        <li><a href="#s3">3 · Task Tracker</a></li>
+        <li class="sub">
+          <ul>
+            <li><a href="#s3-1">Tabella Task</a></li>
+            <li><a href="#s3-2">Creare un nuovo Task</a></li>
+            <li><a href="#s3-3">Modificare un Task</a></li>
+            <li><a href="#s3-4">Sezione Allarme</a></li>
+            <li><a href="#s3-5">Editor Descrizione</a></li>
+            <li><a href="#s3-6">Elementi correlati e file</a></li>
+            <li><a href="#s3-7">Cronologia</a></li>
+            <li><a href="#s3-8">Eliminare un Task</a></li>
+            <li><a href="#s3-9">Filtro e Ricerca</a></li>
+            <li><a href="#s3-10">Grafico stati</a></li>
+            <li><a href="#s3-11">Calendario allarmi</a></li>
+          </ul>
+        </li>
+
+        <li class="section-label">Design Tracker</li>
+        <li><a href="#s4">4 · Design Tracker</a></li>
+        <li class="sub">
+          <ul>
+            <li><a href="#s4-1">Tabella Design</a></li>
+            <li><a href="#s4-2">Creare un nuovo Design</a></li>
+            <li><a href="#s4-3">Modificare un Design</a></li>
+            <li><a href="#s4-4">Descrizione, Correlati e File</a></li>
+            <li><a href="#s4-5">Cronologia</a></li>
+            <li><a href="#s4-6">Eliminare un Design</a></li>
+            <li><a href="#s4-7">Filtro e Ricerca</a></li>
+            <li><a href="#s4-8">Grafico stati</a></li>
+          </ul>
+        </li>
+
+        <li class="section-label">Sistema</li>
+        <li><a href="#s5">5 · Impostazioni</a></li>
+        <li><a href="#s6">6 · Icona di sistema</a></li>
+        <li class="sub">
+          <ul>
+            <li><a href="#s6-1">Icona e menu contestuale</a></li>
+            <li><a href="#s6-2">Notifiche allarme</a></li>
+            <li><a href="#s6-3">Avvio con Windows</a></li>
+          </ul>
+        </li>
+        <li><a href="#s7">7 · Dati e archiviazione</a></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <!-- ════════════════════════ MAIN ════════════════════════ -->
+  <main class="main">
+
+    <!-- ── Introduzione ── -->
+    <section id="intro">
+      <div class="intro-box">
+        <h1>Memento</h1>
+        <p style="font-size:1.05rem; color:#c8d0e0; margin-bottom:6px;">
+          Manuale Utente &nbsp;·&nbsp; Italiano
+        </p>
+        <p>
+          <strong>Memento</strong> è un'applicazione desktop per team di ingegneria che devono
+          gestire attività e documenti tecnici in un unico ambiente. Offre due moduli dedicati:
+          il <strong>Task Tracker</strong> per la gestione delle attività e il
+          <strong>Design Tracker</strong> per i documenti di progettazione hardware o software
+          (schemi elettrici, layout PCB, block diagram, ecc.).
+        </p>
+        <p>
+          Tutti i dati sono archiviati localmente in database <strong>SQLite</strong> all'interno
+          di una cartella a tua scelta. Gli allegati vengono copiati automaticamente in quella
+          cartella. L'applicazione esegue anche un processo in background nella
+          <strong>barra delle applicazioni</strong> di Windows che invia notifiche toast per
+          gli allarmi dei Task anche quando la finestra principale è chiusa.
+        </p>
+        <div class="badges">
+          <span class="badge">Python + Flet</span>
+          <span class="badge">SQLite</span>
+          <span class="badge">Windows</span>
+          <span class="badge">EN / IT</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Indice ── -->
+    <section id="indice">
+      <div class="toc-inline">
+        <h2>📋 Indice dei contenuti</h2>
+        <ol>
+          <li>
+            <a href="#s1">Per iniziare</a>
+            <ul class="sub-toc">
+              <li><a href="#s1-1">Requisiti di sistema</a></li>
+              <li><a href="#s1-2">Procedura guidata di configurazione iniziale</a></li>
+              <li><a href="#s1-3">Struttura della cartella di output</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#s2">Finestra principale</a>
+            <ul class="sub-toc">
+              <li><a href="#s2-1">Selettore modulo</a></li>
+              <li><a href="#s2-2">Barra degli strumenti</a></li>
+              <li><a href="#s2-3">Menu Impostazioni</a></li>
+              <li><a href="#s2-4">Tema e menu Aiuto</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#s3">Task Tracker</a>
+            <ul class="sub-toc">
+              <li><a href="#s3-1">Tabella dei Task</a></li>
+              <li><a href="#s3-2">Creare un nuovo Task</a></li>
+              <li><a href="#s3-3">Modificare un Task – Campi intestazione</a></li>
+              <li><a href="#s3-4">Sezione Allarme</a></li>
+              <li><a href="#s3-5">Editor Descrizione e testo formattato</a></li>
+              <li><a href="#s3-6">Elementi correlati e allegati</a></li>
+              <li><a href="#s3-7">Cronologia</a></li>
+              <li><a href="#s3-8">Eliminare un Task</a></li>
+              <li><a href="#s3-9">Filtrare e cercare Task</a></li>
+              <li><a href="#s3-10">Grafico distribuzione stati</a></li>
+              <li><a href="#s3-11">Calendario allarmi</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#s4">Design Tracker</a>
+            <ul class="sub-toc">
+              <li><a href="#s4-1">Tabella dei Design</a></li>
+              <li><a href="#s4-2">Creare un nuovo Design</a></li>
+              <li><a href="#s4-3">Modificare un Design – Campi intestazione</a></li>
+              <li><a href="#s4-4">Descrizione, elementi correlati e allegati</a></li>
+              <li><a href="#s4-5">Cronologia</a></li>
+              <li><a href="#s4-6">Eliminare un Design</a></li>
+              <li><a href="#s4-7">Filtrare e cercare Design</a></li>
+              <li><a href="#s4-8">Grafico distribuzione stati</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#s5">Riferimento Impostazioni</a>
+            <ul class="sub-toc">
+              <li><a href="#s5-1">Percorso di output</a></li>
+              <li><a href="#s5-2">Posizione barra comandi</a></li>
+              <li><a href="#s5-3">Lingua</a></li>
+              <li><a href="#s5-4">Tema</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#s6">Icona di sistema e notifiche allarme</a>
+            <ul class="sub-toc">
+              <li><a href="#s6-1">Icona e menu contestuale</a></li>
+              <li><a href="#s6-2">Controllo allarmi in background</a></li>
+              <li><a href="#s6-3">Avvio automatico con Windows</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#s7">Dati e archiviazione</a>
+            <ul class="sub-toc">
+              <li><a href="#s7-1">Struttura delle cartelle</a></li>
+              <li><a href="#s7-2">File di configurazione</a></li>
+              <li><a href="#s7-3">Database</a></li>
+            </ul>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- SEZIONE 1 – Per iniziare                              -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="s1">1 · Per iniziare</h2>
+
+    <h3 id="s1-1">1.1 Requisiti di sistema</h3>
+    <table>
+      <tr><th>Componente</th><th>Requisito</th></tr>
+      <tr><td>Sistema operativo</td><td>Windows 10 o Windows 11 (64-bit)</td></tr>
+      <tr><td>Python</td><td>3.10 o versione successiva</td></tr>
+      <tr><td>Librerie principali</td><td><code>flet</code>, <code>pystray</code>, <code>Pillow</code></td></tr>
+      <tr><td>Display</td><td>Minimo 1280 × 768 consigliato</td></tr>
+    </table>
+    <p>Installare le dipendenze con:</p>
+    <p><code>pip install -r requirements.txt</code></p>
+
+    <h3 id="s1-2">1.2 Procedura guidata di configurazione iniziale</h3>
+    <p>
+      Al primo avvio di Memento (eseguendo <code>python main.py</code>), si
+      apre automaticamente la <strong>Procedura guidata</strong> perché non esiste ancora
+      alcun file di configurazione. Essa guida l'utente attraverso tre passaggi:
+    </p>
+
+    <h4>Passo 1 di 3 — Tema</h4>
+    <p>
+      Scegliere tra <strong>Modalità scura</strong> (impostazione predefinita) e
+      <strong>Modalità chiara</strong>.
+      L'applicazione applica immediatamente il tema scelto affinché tu possa visualizzarlo
+      in anteprima. La scelta viene salvata nel file di configurazione.
+    </p>
+
+    <h4>Passo 2 di 3 — Cartella di output</h4>
+    <p>
+      Scegliere la cartella radice in cui Memento archivierà tutti i suoi dati
+      (database, allegati, ecc.). Viene creata automaticamente una sotto-cartella
+      <code>Memento/</code> nel percorso indicato.
+      Il valore predefinito è <code>~/Documenti</code>.
+      Fare clic sull'icona cartella per aprire il selettore di directory di sistema.
+    </p>
+
+    <h4>Passo 3 di 3 — Applicazione di avvio</h4>
+    <p>
+      Selezionare quale modulo mostrare all'avvio di Memento:
+      <strong>Task Tracker</strong> o <strong>Design Tracker</strong>.
+      Fare clic su <strong>Fine ✓</strong> per completare la procedura guidata;
+      la finestra principale si apre immediatamente.
+    </p>
+    <div class="note">
+      ℹ️ &nbsp;Tutte e tre le preferenze possono essere modificate in seguito tramite il menu Impostazioni.
+    </div>
+
+    <h3 id="s1-3">1.3 Struttura della cartella di output</h3>
+    <p>Al termine della procedura guidata, Memento crea la seguente struttura su disco:</p>
+    <pre style="background:#1a2035;color:#c8d0e0;padding:16px 20px;border-radius:8px;font-size:.87rem;overflow-x:auto;">
+{PercorsoDiOutput}/
+└── Memento/
+    ├── TaskTracker/
+    │   ├── db/
+    │   │   └── tasks.db         ← Database SQLite
+    │   └── attachments/         ← Allegati dei Task
+    └── DesignTracker/
+        ├── db/
+        │   └── designs.db       ← Database SQLite
+        └── attachments/         ← Allegati dei Design
+    </pre>
+
+    <hr class="divider" />
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- SEZIONE 2 – Finestra principale                       -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="s2">2 · Finestra principale</h2>
+    <p>
+      La finestra principale è composta da una <strong>barra dell'applicazione</strong> in alto
+      e da un'area di contenuto centrale che commuta tra la vista Task Tracker e la vista
+      Design Tracker.
+    </p>
+
+    <h3 id="s2-1">2.1 Selettore modulo</h3>
+    <p>
+      Sul lato sinistro della barra dell'applicazione è presente un pulsante segmentato con
+      due segmenti:
+    </p>
+    <ul>
+      <li><strong>Task Tracker</strong> — cursore arancione scuro</li>
+      <li><strong>Design Tracker</strong> — cursore blu</li>
+    </ul>
+    <p>
+      Fare clic su un segmento per passare al relativo modulo. L'ultima selezione viene salvata
+      nel file di configurazione (chiave <code>StartWith</code>) e ripristinata al successivo
+      avvio.
+    </p>
+
+    <h3 id="s2-2">2.2 Barra degli strumenti</h3>
+    <p>
+      La barra degli strumenti può essere posizionata in quattro punti — <strong>Alto</strong>
+      (predefinito), <strong>Basso</strong>, <strong>Sinistra</strong> o <strong>Destra</strong>
+      — tramite <em>Impostazioni → Posizione barra comandi…</em>.
+    </p>
+
+    <h4>Barra Task Tracker</h4>
+    <table>
+      <tr><th>Pulsante</th><th>Icona</th><th>Colore</th><th>Abilitato quando</th></tr>
+      <tr><td>Nuovo Task</td><td>Aggiungi task</td><td>Verde</td><td>Sempre</td></tr>
+      <tr><td>Modifica Task</td><td>Modifica nota</td><td>Blu</td><td>Una riga è selezionata</td></tr>
+      <tr><td>Elimina Task</td><td>Elimina</td><td>Rosso</td><td>Una riga è selezionata</td></tr>
+      <tr><td>Grafico stati</td><td>Grafico a torta</td><td>Viola</td><td>Almeno un Task esiste</td></tr>
+      <tr><td>Calendario</td><td>Calendario</td><td>Verde</td><td>Almeno un allarme attivo esiste</td></tr>
+      <tr><td>Filtro</td><td>Filtro lista</td><td>Grigio / Arancione (attivo)</td><td>Sempre</td></tr>
+      <tr><td>Cerca</td><td>Cerca</td><td>Grigio / Blu (attivo)</td><td>Sempre</td></tr>
+    </table>
+
+    <h4>Barra Design Tracker</h4>
+    <p>Identica alla barra Task Tracker, ad eccezione del pulsante Calendario
+    (i Design non hanno allarmi).</p>
+
+    <h3 id="s2-3">2.3 Menu Impostazioni</h3>
+    <p>
+      Fare clic sull'icona ⚙ sul lato destro della barra dell'applicazione per aprire
+      il menu a comparsa Impostazioni. Contiene tre voci:
+    </p>
+    <ul>
+      <li>
+        <strong>Percorso di output…</strong> — Modifica la cartella radice in cui Memento
+        archivia i dati. Contiene un campo di testo con il percorso corrente e un pulsante
+        Sfoglia…. Pulsanti: <kbd>Annulla</kbd> &nbsp;|&nbsp; <kbd>Salva</kbd>.
+      </li>
+      <li>
+        <strong>Posizione barra comandi…</strong> — Scegliere dove posizionare la barra degli
+        strumenti (Alto / Basso / Sinistra / Destra).
+        Pulsanti: <kbd>Annulla</kbd> &nbsp;|&nbsp; <kbd>Applica</kbd>.
+      </li>
+      <li>
+        <strong>Lingua…</strong> — Cambiare la lingua dell'interfaccia tra Inglese e Italiano.
+        Pulsanti: <kbd>Annulla</kbd> &nbsp;|&nbsp; <kbd>Applica</kbd>.
+        L'applicazione della modifica ricostruisce immediatamente l'intera interfaccia.
+      </li>
+    </ul>
+
+    <h3 id="s2-4">2.4 Tema e menu Aiuto</h3>
+    <ul>
+      <li>
+        <strong>Interruttore tema</strong> (icona 🌙 / ☀️) — Commuta tra modalità Scura e
+        Chiara in tempo reale. La preferenza viene salvata immediatamente nel file di configurazione.
+      </li>
+      <li>
+        <strong>Menu Aiuto</strong> (icona ?) — Contiene due voci:
+        <ul>
+          <li><strong>Informazioni</strong> — Mostra la versione dell'applicazione, la data di
+              compilazione e l'autore.</li>
+          <li><strong>Manuale utente</strong> — Apre questo manuale.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <hr class="divider" />
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- SEZIONE 3 – Task Tracker                              -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="s3">3 · Task Tracker</h2>
+    <p>
+      Il Task Tracker gestisce le attività di lavoro. Ogni Task possiede un titolo, un progetto,
+      uno stato, un allarme opzionale, una descrizione, elementi correlati, allegati e una
+      cronologia degli aggiornamenti.
+    </p>
+
+    <h3 id="s3-1">3.1 Tabella dei Task</h3>
+    <p>I Task vengono visualizzati in una tabella ordinabile con le seguenti colonne:</p>
+    <table>
+      <tr><th>Colonna</th><th>Ordinabile</th><th>Note</th></tr>
+      <tr><td>#</td><td>—</td><td>ID intero auto-incrementato</td></tr>
+      <tr><td>Titolo</td><td>—</td><td>Link cliccabile (testo arancione) — apre la vista dettaglio</td></tr>
+      <tr><td>Progetto</td><td>↕</td><td>Testo libero</td></tr>
+      <tr><td>Aperto</td><td>↕</td><td>Data e ora ISO, testo grigio</td></tr>
+      <tr><td>Modificato</td><td>↕</td><td>Data e ora ISO, testo grigio</td></tr>
+      <tr><td>Chiuso</td><td>↕</td><td>Popolato quando lo stato è impostato su Chiuso</td></tr>
+      <tr><td>Stato</td><td>↕</td><td>Chip colorato (vedi sotto)</td></tr>
+      <tr><td>Allarme</td><td>—</td><td>🔔 verde = allarme attivo; 🔕 rosso = nessun allarme o già attivato</td></tr>
+    </table>
+    <p>Colori degli stati:</p>
+    <p>
+      <span class="chip chip-open">Aperto</span>
+      <span class="chip chip-prog">In corso</span>
+      <span class="chip chip-hold">In attesa</span>
+      <span class="chip chip-closed">Chiuso</span>
+    </p>
+    <p>
+      Fare clic su una riga per <strong>selezionarla</strong> (evidenziazione blu) e abilitare
+      i pulsanti Modifica ed Elimina nella barra degli strumenti. Fare clic sulla stessa riga
+      di nuovo per deselezionarla. Fare clic sul link del titolo arancione per
+      <strong>aprire il Task</strong> senza selezionarlo.
+    </p>
+    <div class="tip">
+      💡 &nbsp;Le intestazioni delle colonne con le frecce ↕ sono cliccabili — fare clic una
+      volta per ordinare in modo crescente, di nuovo per l'ordine decrescente, una terza volta
+      per tornare all'ordine predefinito.
+    </div>
+
+    <h3 id="s3-2">3.2 Creare un nuovo Task</h3>
+    <p>
+      Fare clic sul pulsante <strong>Nuovo Task</strong> (icona + verde) per aprire la
+      finestra di dialogo <em>Nuovo Task</em>.
+    </p>
+    <h4>Campi obbligatori</h4>
+    <ul>
+      <li><strong>Titolo</strong> — Il nome del Task (messo a fuoco automaticamente all'apertura).</li>
+      <li>
+        <strong>Progetto</strong> — Il progetto a cui appartiene il Task. Durante la digitazione,
+        un menu a tendina di completamento automatico mostra fino a 6 suggerimenti dai progetti
+        esistenti. Fare clic su un suggerimento per riempire il campo.
+      </li>
+      <li>
+        <strong>Stato</strong> — Menu a tendina:
+        <span class="chip chip-open">Aperto</span>
+        <span class="chip chip-prog">In corso</span>
+        <span class="chip chip-hold">In attesa</span>
+        <span class="chip chip-closed">Chiuso</span>. Predefinito: Aperto.
+      </li>
+    </ul>
+    <p>
+      Il pulsante <kbd>Salva</kbd> è disabilitato finché tutti e tre i campi obbligatori
+      non sono compilati.
+    </p>
+    <h4>Campi facoltativi</h4>
+    <ul>
+      <li><strong>Allarme</strong> — Vedere <a href="#s3-4">§ 3.4 Sezione Allarme</a>.</li>
+      <li><strong>Descrizione</strong> — Testo libero multiriga (3–5 righe).</li>
+      <li><strong>Task Correlati</strong> — Collega Task esistenti tramite ID.</li>
+      <li><strong>Design Correlati</strong> — Collega Design esistenti tramite ID.</li>
+      <li><strong>File</strong> — Allega uno o più file.</li>
+    </ul>
+
+    <h3 id="s3-3">3.3 Modificare un Task</h3>
+    <p>
+      Aprire un Task facendo clic sul suo <strong>link del titolo</strong> nella tabella
+      oppure selezionando la sua riga e premendo il pulsante <strong>Modifica Task</strong>.
+      Si apre la vista dettaglio a pagina intera con una freccia <em>"← Indietro"</em>
+      nella barra dell'applicazione e il numero del Task come titolo di pagina.
+    </p>
+    <p>Tutti i campi dell'intestazione sono immediatamente modificabili:</p>
+    <table>
+      <tr><th>Campo</th><th>Tipo</th></tr>
+      <tr><td>Titolo</td><td>Campo di testo in linea (larghezza intera, stile sottolineato)</td></tr>
+      <tr><td>Progetto</td><td>Campo di testo in linea + menu a tendina di completamento automatico</td></tr>
+      <tr><td>Stato</td><td>Menu a tendina (Aperto / In corso / In attesa / Chiuso)</td></tr>
+    </table>
+    <p>
+      Dopo aver apportato le modifiche, fare clic su <kbd>Salva</kbd> nella barra delle azioni
+      in fondo alla pagina. <kbd>Annulla</kbd> ripristina le modifiche non salvate.
+      <kbd>Elimina</kbd> (rosso) rimuove definitivamente il Task.
+    </p>
+
+    <h3 id="s3-4">3.4 Sezione Allarme</h3>
+    <p>
+      La sezione Allarme è disponibile sia nella finestra di dialogo <em>Nuovo Task</em>
+      sia nella vista dettaglio. Consente di pianificare una notifica toast di Windows per
+      il Task.
+    </p>
+    <table>
+      <tr><th>Controllo</th><th>Descrizione</th></tr>
+      <tr><td>Campo data</td><td>Inserire una data nel formato <code>AAAA-MM-GG</code></td></tr>
+      <tr><td>Pulsante 📅 Calendario</td><td>Apre un selettore di date — intervallo: oggi → 31 dic 2035</td></tr>
+      <tr><td>Campi HH / MM</td><td>Ore e minuti (solo numeri, massimo 2 caratteri ciascuno)</td></tr>
+      <tr><td>Menu Prima di</td><td>Attiva l'allarme <em>N</em> minuti/ore prima dell'orario impostato:<br/>
+        All'orario dell'allarme · 5 min · 15 min · 30 min · 1 ora · 2 ore prima</td></tr>
+      <tr><td>Pulsante 🔕 Cancella allarme</td><td>Azzera tutti i campi dell'allarme</td></tr>
+      <tr><td>Interruttore</td><td>Verde quando un allarme è impostato e l'orario è nel futuro</td></tr>
+    </table>
+    <div class="warn">
+      ⚠️ &nbsp;Le notifiche di allarme vengono consegnate solo dal processo dell'icona di sistema
+      (<code>tray_app.py</code>). Se il processo non è in esecuzione, gli allarmi verranno comunque
+      contrassegnati come attivati nel database, ma non apparirà alcuna notifica sullo schermo.
+    </div>
+
+    <h3 id="s3-5">3.5 Editor Descrizione e testo formattato</h3>
+    <p>
+      La sezione <em>Descrizione</em> supporta la formattazione del testo. Quando non
+      è presente alcun contenuto, l'editor si apre direttamente. Quando è presente del
+      contenuto, viene visualizzato in forma renderizzata; fare clic sul pulsante
+      <strong>Modifica</strong> per attivare la modalità di modifica.
+    </p>
+    <p>La barra degli strumenti di formattazione (visibile durante la modifica)
+    fornisce le seguenti azioni:</p>
+    <table>
+      <tr><th>Pulsante</th><th>Markup prodotto</th><th>Effetto</th></tr>
+      <tr><td>Grassetto</td><td><code>**testo**</code></td><td>Testo in grassetto</td></tr>
+      <tr><td>Corsivo</td><td><code>*testo*</code></td><td>Testo in corsivo</td></tr>
+      <tr><td>Sottolineato</td><td><code>&lt;u&gt;testo&lt;/u&gt;</code></td><td>Testo sottolineato</td></tr>
+      <tr><td>Elenco puntato</td><td>Prefisso <code>• </code></td><td>Riga con punto elenco</td></tr>
+      <tr><td>Elenco numerato</td><td>Prefisso <code>N. </code></td><td>Lista numerata automatica</td></tr>
+      <tr><td>Colore testo</td><td><code>[color=#RRGGBB]testo[/color]</code></td><td>9 colori predefiniti</td></tr>
+      <tr><td>Aumenta rientro</td><td>4 spazi iniziali</td><td>Blocco citazione / annidato</td></tr>
+      <tr><td>Riduci rientro</td><td>Rimuove 4 spazi iniziali</td><td>Rimuove il rientro</td></tr>
+    </table>
+    <div class="tip">
+      💡 &nbsp;Selezionare il testo prima di fare clic su un pulsante di formattazione per
+      racchiudere la selezione. Senza selezione, viene inserito un segnaposto.
+    </div>
+
+    <h3 id="s3-6">3.6 Elementi correlati e allegati</h3>
+
+    <h4>Task Correlati</h4>
+    <p>
+      Nella sezione <em>Task Correlati</em>, digitare il numero ID di un Task nel campo
+      di input e fare clic sul pulsante verde ✓ (o premere Invio) per creare un collegamento
+      bidirezionale tra il Task corrente e quello di riferimento. Ogni Task collegato viene
+      mostrato come: <code>#ID &nbsp; Titolo Task</code> con un pulsante 🔗 per rimuoverlo.
+    </p>
+    <p>Messaggi di errore in linea:</p>
+    <ul>
+      <li><em>Inserire un numero valido</em> — input non numerico</li>
+      <li><em>Già aggiunto</em> — l'ID è già collegato</li>
+      <li><em>Task non trovato</em> — non esiste nessun Task con quell'ID</li>
+    </ul>
+
+    <h4>Design Correlati</h4>
+    <p>Stesso comportamento dei Task Correlati, ma collega i Design. Inserire un ID Design.</p>
+
+    <h4>File</h4>
+    <p>
+      Fare clic su <strong>Allega file</strong> (📎) per aprire un selettore file. Il file
+      scelto viene <strong>copiato</strong> in
+      <code>{PercorsoOutput}/Memento/TaskTracker/attachments/</code>.
+      Ogni allegato è elencato con un nome file cliccabile (apre il file con l'applicazione
+      predefinita del sistema) e un pulsante Elimina (rimuove l'allegato dall'elenco e dal disco).
+    </p>
+
+    <h3 id="s3-7">3.7 Cronologia</h3>
+    <p>
+      La sezione Cronologia in fondo alla vista dettaglio fornisce un registro cronologico
+      degli aggiornamenti. È utile per tracciare note di avanzamento, decisioni e cambiamenti
+      di stato nel tempo.
+    </p>
+
+    <h4>Aggiunta di un nuovo aggiornamento</h4>
+    <ol>
+      <li>Digitare l'aggiornamento nel campo di testo <em>Scrivi un aggiornamento…</em>
+          (sfondo bluastro, 2–4 righe).</li>
+      <li>Aggiungere facoltativamente <strong>hashtag</strong>: inserire un tag nel campo
+          <code>#tag</code> e fare clic sul pulsante +. I chip del tag appaiono sotto il campo;
+          fare clic su × per rimuoverne uno.</li>
+      <li>Fare clic su <strong>Salva aggiornamento</strong> (pulsante blu).
+          I tag vengono aggiunti automaticamente al corpo dell'aggiornamento.</li>
+    </ol>
+
+    <h4>Aggiornamenti esistenti</h4>
+    <p>Ogni aggiornamento storico è visualizzato come una scheda con:</p>
+    <ul>
+      <li><strong>Intestazione</strong>: data relativa (Oggi / Ieri / N giorni fa) + numero aggiornamento + pulsanti Modifica / Salva / Annulla + Elimina.</li>
+      <li><strong>Corpo</strong>: il testo dell'aggiornamento (sola lettura per impostazione predefinita; fare clic su Modifica per modificarlo).</li>
+      <li><strong>File allegati</strong>: file collegati a quell'aggiornamento specifico, con gli stessi controlli allega/apri/elimina della sezione File principale.</li>
+    </ul>
+
+    <h3 id="s3-8">3.8 Eliminare un Task</h3>
+    <p>
+      Fare clic sul pulsante rosso <kbd>Elimina</kbd> nella barra delle azioni (in fondo alla
+      vista dettaglio), oppure selezionare una riga nella tabella e premere il pulsante Elimina
+      della barra degli strumenti. Appare una finestra di dialogo di conferma:
+      <em>"Sei sicuro di voler eliminare definitivamente questo Task?"</em>
+    </p>
+    <div class="warn">
+      ⚠️ &nbsp;L'eliminazione è <strong>permanente</strong>. Il record del Task, tutti gli
+      aggiornamenti della cronologia e tutti i file allegati sul disco vengono rimossi.
+      Questa azione non può essere annullata.
+    </div>
+
+    <h3 id="s3-9">3.9 Filtrare e cercare Task</h3>
+
+    <h4>Filtro</h4>
+    <p>
+      Fare clic sul pulsante <strong>Filtro</strong> della barra degli strumenti per aprire
+      la finestra di dialogo <em>Filtra Task</em>.
+      Usare i menu a tendina per restringere l'elenco:
+    </p>
+    <ul>
+      <li><strong>Progetto</strong> — nomi di progetto distinti</li>
+      <li><strong>Aperto / Modificato / Chiuso</strong> — date distinte</li>
+      <li><strong>Stato</strong> — opzioni con codifica colore</li>
+      <li><strong>Tag</strong> (sezione espandibile) — caselle di controllo per ogni hashtag
+          usato in qualsiasi riga della cronologia</li>
+    </ul>
+    <p>
+      Fare clic su <kbd>Applica</kbd> per filtrare la tabella. Un banner arancione
+      <em>"Filtro attivo"</em> appare sopra la tabella mentre un filtro è abilitato.
+      Fare clic su <strong>Cancella</strong> nel banner (o <kbd>Reimposta</kbd> nella finestra
+      di dialogo) per rimuovere tutti i filtri.
+    </p>
+
+    <h4>Ricerca</h4>
+    <p>
+      Fare clic sul pulsante <strong>Cerca</strong> della barra degli strumenti per aprire
+      un banner di ricerca sotto la barra dell'applicazione.
+      La ricerca è <strong>full-text</strong> e copre: titolo, progetto, stato, descrizione,
+      titoli di Task correlati, titoli di Design correlati, nomi dei file allegati, testi
+      degli aggiornamenti della cronologia e nomi dei file allegati alla cronologia.
+    </p>
+    <p>Chiudere il banner di ricerca facendo clic su × o premendo di nuovo il pulsante Cerca.</p>
+
+    <h3 id="s3-10">3.10 Grafico distribuzione stati</h3>
+    <p>
+      Fare clic su <strong>Grafico stati</strong> (icona grafico a torta) per aprire la
+      finestra di dialogo <em>Distribuzione stati</em>. Mostra un grafico a ciambella dei
+      Task raggruppati per stato.
+    </p>
+    <table>
+      <tr><th>Controllo</th><th>Descrizione</th></tr>
+      <tr><td>Periodo</td><td>Ultimo giorno · Ultima settimana · Ultimo mese · Ultimo anno</td></tr>
+      <tr><td>Progetto</td><td>Tutti i progetti oppure un progetto specifico</td></tr>
+    </table>
+    <p>La legenda del grafico mostra ogni stato, il conteggio e la percentuale.
+    Le percentuali sono etichettate sulle fette ≥ 7%.</p>
+
+    <h3 id="s3-11">3.11 Calendario allarmi</h3>
+    <p>
+      Fare clic sul pulsante <strong>Calendario</strong> (icona calendario, verde) per aprire
+      il <em>Calendario allarmi</em>. Visualizza tutti i Task con un
+      <strong>allarme attivo non ancora attivato</strong>.
+    </p>
+
+    <h4>Modalità di visualizzazione</h4>
+    <table>
+      <tr><th>Modalità</th><th>Descrizione</th></tr>
+      <tr><td>Giorno</td><td>Elenco di tutti gli allarmi del giorno selezionato con i loro orari</td></tr>
+      <tr><td>Settimana</td><td>Griglia a 7 colonne (Lun–Dom); la colonna di oggi è in arancione</td></tr>
+      <tr><td>Mese</td><td>Griglia calendario; i giorni con allarmi mostrano punti verdi (massimo 3); oggi evidenziato in arancione</td></tr>
+    </table>
+    <p>
+      Usare i pulsanti di navigazione ← / → per spostarsi nel tempo, oppure fare clic
+      sull'etichetta del periodo per aprire un selettore anno/mese.
+      Fare clic su <strong>Oggi</strong> per tornare alla data corrente.
+    </p>
+    <div class="tip">
+      💡 &nbsp;Fare doppio clic su qualsiasi chip Task nel calendario per chiudere il
+      calendario e aprire direttamente la vista dettaglio di quel Task.
+    </div>
+
+    <hr class="divider" />
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- SEZIONE 4 – Design Tracker                            -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="s4">4 · Design Tracker</h2>
+    <p>
+      Il Design Tracker gestisce i documenti di progettazione hardware e software —
+      schemi elettrici, layout PCB, block diagram e tipi personalizzati. Condivide lo
+      stesso schema strutturale del Task Tracker, ma aggiunge campi di metadati specifici
+      per i Design e <strong>non</strong> include un sistema di allarme.
+    </p>
+
+    <h3 id="s4-1">4.1 Tabella dei Design</h3>
+    <table>
+      <tr><th>Colonna</th><th>Ordinabile</th><th>Note</th></tr>
+      <tr><td>#</td><td>—</td><td>ID intero auto-incrementato</td></tr>
+      <tr><td>Nome</td><td>—</td><td>Link cliccabile — apre la vista dettaglio</td></tr>
+      <tr><td>Scheda</td><td>↕</td><td>Identificatore della scheda hardware</td></tr>
+      <tr><td>Revisione</td><td>↕</td><td>Codice revisione</td></tr>
+      <tr><td>Progetto</td><td>↕</td><td>Nome del progetto</td></tr>
+      <tr><td>Categoria</td><td>↕</td><td>Schema / PCB / Block Diagram / Altro (mostra valore personalizzato)</td></tr>
+      <tr><td>Funzione</td><td>↕</td><td>Connettività / Logica / HIL / SOM / Altro (mostra valore personalizzato)</td></tr>
+      <tr><td>Aperto</td><td>↕</td><td>Data e ora ISO, testo grigio</td></tr>
+      <tr><td>Modificato</td><td>↕</td><td>Data e ora ISO, testo grigio</td></tr>
+      <tr><td>Chiuso</td><td>↕</td><td>Popolato quando lo stato è Chiuso</td></tr>
+      <tr><td>Stato</td><td>↕</td><td>Chip colorato</td></tr>
+    </table>
+
+    <h3 id="s4-2">4.2 Creare un nuovo Design</h3>
+    <p>Fare clic su <strong>Nuovo Design</strong> per aprire la finestra di dialogo
+    <em>Nuovo Design</em>.</p>
+    <h4>Campi obbligatori</h4>
+    <table>
+      <tr><th>Campo</th><th>Tipo</th><th>Note</th></tr>
+      <tr><td>Nome</td><td>Testo</td><td>Nome del documento di Design (messo a fuoco automaticamente)</td></tr>
+      <tr><td>Progetto</td><td>Testo + completamento automatico</td><td>Stesso comportamento del campo progetto nei Task</td></tr>
+      <tr><td>Categoria</td><td>Menu a tendina</td><td>Schema · PCB · Block Diagram · Altro</td></tr>
+      <tr><td><em>Specifica categoria</em></td><td>Testo (condizionale)</td><td>Appare ed è obbligatorio quando Categoria = Altro</td></tr>
+      <tr><td>Funzione</td><td>Menu a tendina</td><td>Connettività · Logica · HIL · SOM · Altro</td></tr>
+      <tr><td><em>Specifica funzione</em></td><td>Testo (condizionale)</td><td>Appare ed è obbligatorio quando Funzione = Altro</td></tr>
+      <tr><td>Stato</td><td>Menu a tendina</td><td>Aperto · In corso · In attesa · Chiuso</td></tr>
+    </table>
+    <h4>Campi facoltativi</h4>
+    <ul>
+      <li><strong>Scheda</strong> — Identificatore della scheda hardware (testo libero)</li>
+      <li><strong>Revisione</strong> — Codice revisione (testo libero)</li>
+      <li><strong>Descrizione</strong> — Testo multiriga</li>
+      <li><strong>Design Correlati</strong> — Collega altri Design tramite ID</li>
+      <li><strong>Task Correlati</strong> — Collega Task tramite ID</li>
+      <li><strong>File</strong> — Allegati</li>
+    </ul>
+
+    <h3 id="s4-3">4.3 Modificare un Design</h3>
+    <p>
+      Aprire un Design facendo clic sul suo <strong>link del nome</strong> oppure usando il
+      pulsante Modifica Design della barra degli strumenti.
+      La vista dettaglio a pagina intera mostra tutti i campi dell'intestazione come
+      controlli in linea modificabili:
+    </p>
+    <table>
+      <tr><th>Campo</th><th>Tipo</th></tr>
+      <tr><td>Nome</td><td>Campo di testo</td></tr>
+      <tr><td>Scheda</td><td>Campo di testo</td></tr>
+      <tr><td>Revisione</td><td>Campo di testo</td></tr>
+      <tr><td>Progetto</td><td>Campo di testo + completamento automatico</td></tr>
+      <tr><td>Categoria</td><td>Menu a tendina + campo "Specifica…" facoltativo</td></tr>
+      <tr><td>Funzione</td><td>Menu a tendina + campo "Specifica…" facoltativo</td></tr>
+      <tr><td>Stato</td><td>Menu a tendina</td></tr>
+    </table>
+    <p>
+      Il pulsante <kbd>Salva</kbd> nella barra delle azioni diventa attivo non appena
+      un campo viene modificato. <kbd>Annulla</kbd> ripristina tutte le modifiche non salvate.
+    </p>
+    <div class="note">
+      ℹ️ &nbsp;I Design non hanno una sezione Allarme. La data di chiusura viene impostata
+      automaticamente quando lo Stato viene cambiato in
+      <span class="chip chip-closed">Chiuso</span>.
+    </div>
+
+    <h3 id="s4-4">4.4 Descrizione, elementi correlati e allegati</h3>
+    <p>
+      Queste sezioni funzionano in modo identico alle loro controparti nel Task Tracker.
+      La vista dettaglio del Design le mostra in quest'ordine:
+      Descrizione → Design Correlati → Task Correlati → File → Cronologia.
+    </p>
+    <p>
+      Gli allegati vengono copiati in
+      <code>{PercorsoOutput}/Memento/DesignTracker/attachments/</code>.
+    </p>
+
+    <h3 id="s4-5">4.5 Cronologia</h3>
+    <p>
+      Il comportamento è identico alla cronologia del Task Tracker (vedere
+      <a href="#s3-7">§ 3.7</a>).
+      È possibile scrivere aggiornamenti, aggiungere hashtag e allegare file per ogni
+      aggiornamento.
+    </p>
+
+    <h3 id="s4-6">4.6 Eliminare un Design</h3>
+    <p>
+      Fare clic sul pulsante rosso <kbd>Elimina</kbd> nella barra delle azioni oppure
+      premere il pulsante Elimina Design della barra degli strumenti.
+      Appare una finestra di dialogo di conferma prima dell'eliminazione.
+      Tutti i record del Design, gli aggiornamenti della cronologia e i file allegati
+      sul disco vengono rimossi definitivamente.
+    </p>
+
+    <h3 id="s4-7">4.7 Filtrare e cercare Design</h3>
+    <h4>Filtro</h4>
+    <p>La finestra di dialogo Filtro per i Design include tutte le opzioni del Task Tracker
+    più due menu a tendina aggiuntivi:</p>
+    <ul>
+      <li><strong>Scheda</strong> — nomi di scheda distinti</li>
+      <li><strong>Categoria</strong> — Schema · PCB · Block Diagram · Altro</li>
+      <li><strong>Funzione</strong> — Connettività · Logica · HIL · SOM · Altro</li>
+    </ul>
+
+    <h4>Ricerca</h4>
+    <p>
+      Ricerca full-text su: nome, scheda, revisione, progetto, categoria, funzione,
+      descrizione, nomi di Design correlati, titoli di Task correlati, nomi dei file allegati,
+      testi della cronologia e nomi dei file allegati alla cronologia.
+    </p>
+
+    <h3 id="s4-8">4.8 Grafico distribuzione stati</h3>
+    <p>
+      Strutturalmente identico al grafico del Task Tracker. Filtra per data di apertura
+      nell'intervallo di tempo selezionato e per progetto.
+    </p>
+
+    <hr class="divider" />
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- SEZIONE 5 – Impostazioni                              -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="s5">5 · Riferimento Impostazioni</h2>
+
+    <h3 id="s5-1">5.1 Percorso di output</h3>
+    <p>
+      Accedere tramite <em>Impostazioni → Percorso di output…</em>. Questa è la directory
+      radice in cui Memento crea la sua cartella <code>Memento/</code>. La modifica di questa
+      impostazione indica a Memento dove cercare i database esistenti e dove crearne di nuovi.
+    </p>
+    <div class="warn">
+      ⚠️ &nbsp;La modifica del percorso di output <strong>non</strong> sposta automaticamente
+      i dati esistenti. Se si hanno Task o Design esistenti, spostare manualmente la cartella
+      <code>{VecchioPercorso}/Memento/</code> nella nuova posizione <em>prima</em> di fare
+      clic su Salva.
+    </div>
+
+    <h3 id="s5-2">5.2 Posizione barra comandi</h3>
+    <p>
+      Accedere tramite <em>Impostazioni → Posizione barra comandi…</em>. Sposta la barra
+      degli strumenti in una delle quattro posizioni:
+      <strong>Alto</strong> (predefinito), <strong>Basso</strong>, <strong>Sinistra</strong>,
+      <strong>Destra</strong>. La modifica ha effetto immediatamente dopo aver fatto clic
+      su <kbd>Applica</kbd>.
+    </p>
+
+    <h3 id="s5-3">5.3 Lingua</h3>
+    <p>
+      Accedere tramite <em>Impostazioni → Lingua…</em>. Lingue supportate:
+    </p>
+    <ul>
+      <li><strong>Inglese</strong> (predefinito)</li>
+      <li><strong>Italiano</strong> — tutta l'interfaccia utente è tradotta,
+          ad eccezione delle parole <em>Task</em>, <em>Design</em> e <em>Tracker</em>,
+          che rimangono in inglese per coerenza.</li>
+    </ul>
+    <p>
+      Fare clic su <kbd>Applica</kbd> ricostruisce immediatamente l'intera interfaccia;
+      non è richiesto alcun riavvio. La preferenza di lingua viene memorizzata in
+      <code>mem_conf.json</code>.
+    </p>
+
+    <h3 id="s5-4">5.4 Tema</h3>
+    <p>
+      Fare clic sull'icona 🌙 / ☀️ nell'area in alto a destra della barra dell'applicazione
+      per passare dalla modalità <strong>Scura</strong> a quella <strong>Chiara</strong> e
+      viceversa. Il cambiamento è immediato e viene reso persistente immediatamente.
+      È anche possibile impostare il tema iniziale nella procedura guidata al primo avvio.
+    </p>
+
+    <hr class="divider" />
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- SEZIONE 6 – Icona di sistema                          -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="s6">6 · Icona di sistema e notifiche allarme</h2>
+
+    <h3 id="s6-1">6.1 Icona e menu contestuale</h3>
+    <p>
+      L'applicazione icona di sistema (<code>tray_app.py</code>) è un processo in background
+      leggero che viene eseguito nell'area di notifica di Windows.
+      Richiede l'installazione di <strong>pystray</strong> e <strong>Pillow</strong>.
+    </p>
+    <p>Avviarla manualmente con:</p>
+    <p><code>python tray_app.py</code></p>
+    <p>Facendo clic destro sull'icona nella barra delle applicazioni si apre un menu contestuale:</p>
+    <table>
+      <tr><th>Voce</th><th>Azione</th></tr>
+      <tr><td><strong>Apri Memento</strong> (predefinito / doppio clic)</td><td>Avvia la finestra principale (<code>python main.py</code>)</td></tr>
+      <tr><td><em>— separatore —</em></td><td></td></tr>
+      <tr><td><strong>Esci</strong></td><td>Termina completamente il processo di sistema</td></tr>
+    </table>
+
+    <h3 id="s6-2">6.2 Controllo allarmi in background</h3>
+    <p>
+      Un thread daemon in background viene eseguito all'interno del processo di sistema
+      e controlla gli allarmi Task in sospeso:
+    </p>
+    <ul>
+      <li>Un controllo immediato viene eseguito <strong>2 secondi dopo l'avvio</strong>
+          per rilevare eventuali allarmi scattati mentre l'applicazione era chiusa.</li>
+      <li>I controlli successivi vengono eseguiti ogni <strong>30 secondi</strong>.</li>
+    </ul>
+    <p>
+      Quando un allarme Task è in scadenza, il processo invia una
+      <strong>notifica toast di Windows</strong> che mostra:
+    </p>
+    <ul>
+      <li>Riga 1: Titolo del Task</li>
+      <li>Riga 2: Nome del progetto</li>
+      <li>Icona: icona dell'applicazione Memento</li>
+    </ul>
+    <p>
+      Viene anche riprodotto un suono di sistema (<code>MB_ICONEXCLAMATION</code>).
+      Dopo la notifica, l'allarme viene contrassegnato come attivato nel database
+      affinché non si ripeta.
+    </p>
+
+    <h3 id="s6-3">6.3 Avvio automatico con Windows</h3>
+    <p>Per avviare automaticamente il processo di sistema con Windows, eseguire:</p>
+    <p><code>python tray_app.py --install</code></p>
+    <p>Questo aggiunge una voce nel registro di Windows alla chiave:</p>
+    <p><code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run\MementoTray</code></p>
+    <p>Per rimuoverla:</p>
+    <p><code>python tray_app.py --remove</code></p>
+    <div class="note">
+      ℹ️ &nbsp;I flag <code>--install</code> / <code>--remove</code> modificano solo
+      l'hive del registro <strong>dell'utente corrente</strong> (HKCU).
+      Non sono richiesti privilegi di amministratore.
+    </div>
+
+    <hr class="divider" />
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- SEZIONE 7 – Dati e archiviazione                      -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="s7">7 · Dati e archiviazione</h2>
+
+    <h3 id="s7-1">7.1 Struttura delle cartelle</h3>
+    <pre style="background:#1a2035;color:#c8d0e0;padding:16px 20px;border-radius:8px;font-size:.87rem;overflow-x:auto;">
+{PercorsoDiOutput}/
+└── Memento/
+    ├── TaskTracker/
+    │   ├── db/
+    │   │   └── tasks.db
+    │   └── attachments/
+    │       ├── &lt;id_task&gt;_&lt;nomefile&gt;
+    │       └── ...
+    └── DesignTracker/
+        ├── db/
+        │   └── designs.db
+        └── attachments/
+            ├── &lt;id_design&gt;_&lt;nomefile&gt;
+            └── ...
+    </pre>
+    <p>
+      I nomi dei file allegati sono preceduti dall'ID del record padre per evitare
+      conflitti di nomi.
+    </p>
+
+    <h3 id="s7-2">7.2 File di configurazione</h3>
+    <p>
+      La configurazione è memorizzata in <code>mem_conf.json</code> nella stessa directory
+      degli script Python. Tutte le chiavi e i loro possibili valori:
+    </p>
+    <table>
+      <tr><th>Chiave</th><th>Tipo</th><th>Valori</th><th>Impostato da</th></tr>
+      <tr><td><code>Theme</code></td><td>stringa</td><td><code>"Dark"</code> | <code>"Light"</code></td><td>Procedura guidata, interruttore tema</td></tr>
+      <tr><td><code>OutputPath</code></td><td>stringa</td><td>Percorso assoluto cartella</td><td>Procedura guidata, Impostazioni → Percorso…</td></tr>
+      <tr><td><code>StartWith</code></td><td>stringa</td><td><code>"TaskTracker"</code> | <code>"DesignTracker"</code></td><td>Procedura guidata, selettore modulo</td></tr>
+      <tr><td><code>CmdBarPosition</code></td><td>stringa</td><td><code>"Top"</code> | <code>"Bottom"</code> | <code>"Left"</code> | <code>"Right"</code></td><td>Impostazioni → Posizione barra…</td></tr>
+      <tr><td><code>Language</code></td><td>stringa</td><td><code>"en"</code> | <code>"it"</code></td><td>Impostazioni → Lingua…</td></tr>
+      <tr><td><code>window_x</code></td><td>float</td><td>Coordinata X pixel</td><td>Auto (spostamento finestra)</td></tr>
+      <tr><td><code>window_y</code></td><td>float</td><td>Coordinata Y pixel</td><td>Auto (spostamento finestra)</td></tr>
+    </table>
+    <div class="tip">
+      💡 &nbsp;La posizione della finestra viene salvata automaticamente quando si sposta
+      la finestra, in modo che il posizionamento preferito (incluse le configurazioni
+      multi-monitor) venga ripristinato al prossimo avvio.
+    </div>
+
+    <h3 id="s7-3">7.3 Database</h3>
+    <p>
+      Entrambi i moduli usano database <strong>SQLite</strong>. I database vengono creati
+      automaticamente al primo utilizzo. È possibile eseguire il backup dei dati semplicemente
+      copiando i due file <code>.db</code> e le cartelle <code>attachments/</code>.
+    </p>
+    <div class="warn">
+      ⚠️ &nbsp;Non modificare i file <code>.db</code> con strumenti SQLite esterni mentre
+      Memento è in esecuzione, poiché ciò potrebbe causare corruzione dei dati.
+    </div>
+
+    <!-- ── Footer ── -->
+    <div class="footer">
+      <p>Manuale Utente Memento &nbsp;·&nbsp; Italiano &nbsp;·&nbsp; Marzo 2026</p>
+      <p style="margin-top:6px;">
+        <a href="manual_en.html">🇬🇧 English version</a>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        <a href="#intro">↑ Torna all'inizio</a>
+      </p>
+    </div>
+
+  </main>
+</div>
+</body>
+</html>

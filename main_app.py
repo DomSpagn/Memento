@@ -119,26 +119,27 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         page.update()
 
     def show_manual(_) -> None:
-        dlg = ft.AlertDialog(
-            title=ft.Row(
-                [
-                    ft.Icon(ft.Icons.MENU_BOOK, color=ft.Colors.BLUE_400),
-                    ft.Text(t("User Manual"), weight=ft.FontWeight.BOLD),
-                ],
-                spacing=10,
-            ),
-            content=ft.Text(
-                t(t("The user manual will be available in a future release.")),
-                width=360,
-            ),
-            actions=[
-                ft.TextButton(t("Close"), on_click=lambda _: close_dlg(dlg))
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
-        page.overlay.append(dlg)
-        dlg.open = True
-        page.update()
+        lang = translations.get_lang()
+        manual_file = "manual_it.html" if lang == "it" else "manual_en.html"
+        manual_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), manual_file)
+        if os.path.exists(manual_path):
+            os.startfile(manual_path)
+        else:
+            dlg = ft.AlertDialog(
+                title=ft.Row(
+                    [
+                        ft.Icon(ft.Icons.MENU_BOOK, color=ft.Colors.BLUE_400),
+                        ft.Text(t("User Manual"), weight=ft.FontWeight.BOLD),
+                    ],
+                    spacing=10,
+                ),
+                content=ft.Text(t("The user manual will be available in a future release."), width=360),
+                actions=[ft.TextButton(t("Close"), on_click=lambda _: close_dlg(dlg))],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.overlay.append(dlg)
+            dlg.open = True
+            page.update()
 
     # ── Popup menu helpers ───────────────────────────────────────
     def _menu_btn(icon, label, on_click) -> ft.TextButton:

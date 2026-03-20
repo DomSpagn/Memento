@@ -178,6 +178,33 @@ ITALIAN: dict = {
     "Auto-start":               "Avvio Automatico",
     "Enable automatic startup at system boot":
         "Abilita l'esecuzione automatica all'avvio del sistema",
+    "If enabled, Memento's system-tray process will start automatically when Windows boots.":
+        "Se abilitato, il processo dell'icona di sistema di Memento si avvier\u00e0 automaticamente all'avvio di Windows.",
+    # wizard navigation
+    "Step":                     "Passo",
+    "of":                       "di",
+    "Back":                     "Indietro",
+    "Next":                     "Avanti",
+    "Finish":                   "Fine",
+    # wizard header
+    "First-time setup wizard":  "Procedura guidata iniziale",
+    # wizard steps
+    "Language Selection":       "Selezione lingua",
+    "Choose your preferred language":
+        "Scegli la tua lingua preferita",
+    "Theme Selection":          "Selezione tema",
+    "Choose your preferred display mode":
+        "Scegli la modalit\u00e0 di visualizzazione preferita",
+    "Dark Mode  \U0001f319":    "Modalit\u00e0 scura  \U0001f319",
+    "Light Mode  \u2600\ufe0f": "Modalit\u00e0 chiara  \u2600\ufe0f",
+    "Installation Folder":      "Cartella d'installazione",
+    "Select where Memento will save its files":
+        "Seleziona dove Memento salver\u00e0 i suoi file",
+    "A \"Memento\" folder will be created at the chosen path, containing TaskTracker and DesignTracker subfolders.":
+        "Una cartella \"Memento\" verr\u00e0 creata nel percorso scelto, contenente le sottocartelle TaskTracker e DesignTracker.",
+    "Starting Application":     "Applicazione di avvio",
+    "Choose which tracker to open at startup":
+        "Scegli quale modulo aprire all'avvio",
 }
 
 

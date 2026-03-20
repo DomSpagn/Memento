@@ -11,6 +11,7 @@ import sys
 import threading
 import time
 import flet as ft
+from translations import t
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from task_db import (
@@ -309,12 +310,12 @@ def build_task_tracker(page: ft.Page, config: dict,
         alarm_fired = int(task.get("alarm_fired") or 0)
         if not alarm_at:
             return ft.Icon(ft.Icons.NOTIFICATIONS_OFF, size=16,
-                           color=ft.Colors.RED_400, tooltip="No alarm")
+                           color=ft.Colors.RED_400, tooltip=t("No alarm"))
         if alarm_fired:
             return ft.Icon(ft.Icons.NOTIFICATIONS_OFF, size=16,
-                           color=ft.Colors.RED_400, tooltip=f"Alarm fired: {alarm_at}")
+                           color=ft.Colors.RED_400, tooltip=f"{t('Alarm fired:')} {alarm_at}")
         return ft.Icon(ft.Icons.NOTIFICATIONS_ACTIVE, size=16,
-                       color=ft.Colors.GREEN_500, tooltip=f"Alarm: {alarm_at}")
+                       color=ft.Colors.GREEN_500, tooltip=f"{t('Alarm:')} {alarm_at}")
 
     # ── Detail / Edit dialog ─────────────────────────────────────────────────
 
@@ -325,7 +326,7 @@ def build_task_tracker(page: ft.Page, config: dict,
         if is_new:
             # ── Required fields ───────────────────────────────────────────────
             title_field = ft.TextField(
-                label="Title",
+                label=t("Title"),
                 value="",
                 expand=True,
                 autofocus=True,
@@ -333,7 +334,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             )
             _new_projects = fetch_distinct_projects(output_path)
             _proj_suggestions = ft.Column([], spacing=0, visible=False)
-            project_text = ft.TextField(label="Project", value="", expand=True, dense=True)
+            project_text = ft.TextField(label=t("Project"), value="", expand=True, dense=True)
 
             def _check_required() -> None:
                 ok = (
@@ -370,7 +371,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             title_field.on_change  = lambda _: _check_required()
 
             status_dd = ft.Dropdown(
-                label="Status",
+                label=t("Status"),
                 value="Open",
                 options=[ft.dropdown.Option(s, style=ft.ButtonStyle(color={
                     ft.ControlState.HOVERED:  ft.Colors.ORANGE_400,
@@ -384,12 +385,12 @@ def build_task_tracker(page: ft.Page, config: dict,
 
             # ── Alarm ──────────────────────────────────────────────────────────
             _NEW_ALARM_BEFORE_OPTS = [
-                ("0",   "At alarm time"),
-                ("5",   "5 min before"),
-                ("15",  "15 min before"),
-                ("30",  "30 min before"),
-                ("60",  "1 hour before"),
-                ("120", "2 hours before"),
+                ("0",   t("At alarm time")),
+                ("5",   t("5 min before")),
+                ("15",  t("15 min before")),
+                ("30",  t("30 min before")),
+                ("60",  t("1 hour before")),
+                ("120", t("2 hours before")),
             ]
             new_alarm_date = ft.TextField(
                 hint_text="YYYY-MM-DD",
@@ -516,14 +517,14 @@ def build_task_tracker(page: ft.Page, config: dict,
             new_cal_btn = ft.IconButton(
                 icon=ft.Icons.CALENDAR_MONTH,
                 icon_size=18,
-                tooltip="Pick date",
+                tooltip=t("Pick date"),
                 on_click=_open_new_calendar,
                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
             )
             new_alarm_clear_btn = ft.IconButton(
                 icon=ft.Icons.ALARM_OFF,
                 icon_size=16,
-                tooltip="Clear alarm",
+                tooltip=t("Clear alarm"),
                 on_click=lambda _: (
                     setattr(new_alarm_date, 'value', ''),
                     setattr(new_alarm_hh, 'value', ''),
@@ -537,7 +538,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             )
             new_alarm_section = ft.Column(
                 [
-                    ft.Text("Alarm", size=12, weight=ft.FontWeight.W_600,
+                    ft.Text(t("Alarm"), size=12, weight=ft.FontWeight.W_600,
                             color=ft.Colors.GREY_600),
                     ft.Row(
                         [
@@ -560,7 +561,7 @@ def build_task_tracker(page: ft.Page, config: dict,
 
             # ── Description ────────────────────────────────────────────────────
             new_desc_field = ft.TextField(
-                label="Description",
+                label=t("Description"),
                 value="",
                 multiline=True,
                 min_lines=3,
@@ -583,7 +584,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                                 icon=ft.Icons.LINK_OFF,
                                 icon_size=15,
                                 icon_color=ft.Colors.RED_400,
-                                tooltip="Remove",
+                                tooltip=t("Remove"),
                                 on_click=lambda _, rid=rt["id"]: _new_remove_rel_task(rid),
                                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
                             ),
@@ -617,19 +618,19 @@ def build_task_tracker(page: ft.Page, config: dict,
                 try:
                     rid = int(raw)
                 except ValueError:
-                    new_rel_task_error.value   = "Enter a valid number"
+                    new_rel_task_error.value   = t("Enter a valid number")
                     new_rel_task_error.visible = True
                     page.update()
                     return
                 if any(r["id"] == rid for r in _staged_rel_tasks):
-                    new_rel_task_error.value   = "Already added"
+                    new_rel_task_error.value   = t("Already added")
                     new_rel_task_error.visible = True
                     page.update()
                     return
                 all_t = fetch_all_tasks(output_path)
                 target = next((t for t in all_t if t["id"] == rid), None)
                 if not target:
-                    new_rel_task_error.value   = "Task not found"
+                    new_rel_task_error.value   = t("Task not found")
                     new_rel_task_error.visible = True
                     page.update()
                     return
@@ -642,7 +643,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 icon=ft.Icons.CHECK,
                 icon_size=17,
                 icon_color=ft.Colors.GREEN_400,
-                tooltip="Add relation",
+                tooltip=t("Add relation"),
                 on_click=_new_add_rel_task,
                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
             )
@@ -650,7 +651,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 icon=ft.Icons.CLOSE,
                 icon_size=17,
                 icon_color=ft.Colors.GREY_500,
-                tooltip="Cancel",
+                tooltip=t("Cancel"),
                 on_click=lambda _: (
                     setattr(new_rel_task_input, 'value', ''),
                     setattr(new_rel_task_error, 'visible', False),
@@ -660,7 +661,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             )
             new_rel_tasks_section = ft.Column(
                 [
-                    ft.Text("Related Tasks", size=12, weight=ft.FontWeight.W_600,
+                    ft.Text(t("Related Tasks"), size=12, weight=ft.FontWeight.W_600,
                             color=ft.Colors.GREY_600),
                     staged_rel_tasks_col,
                     ft.Row(
@@ -688,7 +689,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                                 icon=ft.Icons.LINK_OFF,
                                 icon_size=15,
                                 icon_color=ft.Colors.RED_400,
-                                tooltip="Remove",
+                                tooltip=t("Remove"),
                                 on_click=lambda _, did=rd["id"]: _new_remove_rel_design(did),
                                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
                             ),
@@ -722,19 +723,19 @@ def build_task_tracker(page: ft.Page, config: dict,
                 try:
                     did = int(raw)
                 except ValueError:
-                    new_rel_design_error.value   = "Enter a valid number"
+                    new_rel_design_error.value   = t("Enter a valid number")
                     new_rel_design_error.visible = True
                     page.update()
                     return
                 if any(d["id"] == did for d in _staged_rel_designs):
-                    new_rel_design_error.value   = "Already added"
+                    new_rel_design_error.value   = t("Already added")
                     new_rel_design_error.visible = True
                     page.update()
                     return
                 all_d = fetch_all_designs(output_path)
                 target = next((d for d in all_d if d["id"] == did), None)
                 if not target:
-                    new_rel_design_error.value   = "Design not found"
+                    new_rel_design_error.value   = t("Design not found")
                     new_rel_design_error.visible = True
                     page.update()
                     return
@@ -747,7 +748,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 icon=ft.Icons.CHECK,
                 icon_size=17,
                 icon_color=ft.Colors.GREEN_400,
-                tooltip="Add design relation",
+                tooltip=t("Add design relation"),
                 on_click=_new_add_rel_design,
                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
             )
@@ -755,7 +756,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 icon=ft.Icons.CLOSE,
                 icon_size=17,
                 icon_color=ft.Colors.GREY_500,
-                tooltip="Cancel",
+                tooltip=t("Cancel"),
                 on_click=lambda _: (
                     setattr(new_rel_design_input, 'value', ''),
                     setattr(new_rel_design_error, 'visible', False),
@@ -765,7 +766,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             )
             new_rel_designs_section = ft.Column(
                 [
-                    ft.Text("Related Designs", size=12, weight=ft.FontWeight.W_600,
+                    ft.Text(t("Related Designs"), size=12, weight=ft.FontWeight.W_600,
                             color=ft.Colors.GREY_600),
                     staged_rel_designs_col,
                     ft.Row(
@@ -793,7 +794,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                                 icon=ft.Icons.DELETE_OUTLINE,
                                 icon_size=15,
                                 icon_color=ft.Colors.RED_400,
-                                tooltip="Remove",
+                                tooltip=t("Remove"),
                                 on_click=lambda _, n=sf["name"]: _new_remove_file(n),
                                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
                             ),
@@ -821,14 +822,14 @@ def build_task_tracker(page: ft.Page, config: dict,
                 _new_refresh_staged_files()
 
             new_attach_btn = ft.ElevatedButton(
-                "Attach File",
+                t("Attach File"),
                 icon=ft.Icons.ATTACH_FILE,
                 on_click=_new_attach_files,
                 style=ft.ButtonStyle(elevation=0),
             )
             new_files_section = ft.Column(
                 [
-                    ft.Text("Files", size=12, weight=ft.FontWeight.W_600,
+                    ft.Text(t("Files"), size=12, weight=ft.FontWeight.W_600,
                             color=ft.Colors.GREY_600),
                     new_attach_btn,
                     staged_files_col,
@@ -884,7 +885,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 page.update()
 
             new_save_btn = ft.FilledButton(
-                "Save",
+                t("Save"),
                 icon=ft.Icons.CHECK,
                 style=ft.ButtonStyle(
                     bgcolor={
@@ -900,7 +901,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 disabled=True,
             )
             new_cancel_btn = ft.FilledButton(
-                "Cancel",
+                t("Cancel"),
                 icon=ft.Icons.CLOSE,
                 style=ft.ButtonStyle(bgcolor=ft.Colors.GREY_600, color=ft.Colors.WHITE),
                 on_click=_new_cancel,
@@ -908,7 +909,7 @@ def build_task_tracker(page: ft.Page, config: dict,
 
             new_dlg = ft.AlertDialog(
                 modal=True,
-                title=ft.Text("New Task", weight=ft.FontWeight.BOLD),
+                title=ft.Text(t("New Task"), weight=ft.FontWeight.BOLD),
                 content=ft.Column(
                     [
                         # ── Required ──────────────────────────────────────────
@@ -1015,9 +1016,9 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         header_col = ft.Column(
             [
-                _label_row("Title:",   header_title),
-                _label_row("Project:", ft.Column([header_project, _hdr_suggestions], spacing=0)),
-                _label_row("Status:",  header_status),
+                _label_row(t("Title:"),   header_title),
+                _label_row(t("Project:"), ft.Column([header_project, _hdr_suggestions], spacing=0)),
+                _label_row(t("Status:"),  header_status),
             ],
             spacing=6,
         )
@@ -1037,12 +1038,12 @@ def build_task_tracker(page: ft.Page, config: dict,
                 pass
 
         _ALARM_BEFORE_OPTS = [
-            ("0",   "At alarm time"),
-            ("5",   "5 min before"),
-            ("15",  "15 min before"),
-            ("30",  "30 min before"),
-            ("60",  "1 hour before"),
-            ("120", "2 hours before"),
+            ("0",   t("At alarm time")),
+            ("5",   t("5 min before")),
+            ("15",  t("15 min before")),
+            ("30",  t("30 min before")),
+            ("60",  t("1 hour before")),
+            ("120", t("2 hours before")),
         ]
 
         def _alarm_future_check(date_str: str, time_str: str) -> bool:
@@ -1188,7 +1189,7 @@ def build_task_tracker(page: ft.Page, config: dict,
         )
         alarm_section = ft.Column(
             [
-                ft.Text("Alarm", size=12, weight=ft.FontWeight.W_600,
+                ft.Text(t("Alarm"), size=12, weight=ft.FontWeight.W_600,
                         color=ft.Colors.GREY_600),
                 ft.Row(
                     [
@@ -1383,7 +1384,7 @@ def build_task_tracker(page: ft.Page, config: dict,
         desc_edit_btn = ft.IconButton(
             icon=ft.Icons.EDIT_NOTE,
             icon_size=18,
-            tooltip="Edit description",
+            tooltip=t("Edit description"),
             visible=_desc_has_content,
             style=ft.ButtonStyle(
                 padding=ft.padding.symmetric(horizontal=4, vertical=4),
@@ -1394,7 +1395,7 @@ def build_task_tracker(page: ft.Page, config: dict,
         desc_save_btn = ft.IconButton(
             icon=ft.Icons.SAVE_OUTLINED,
             icon_size=18,
-            tooltip="Save description",
+            tooltip=t("Save description"),
             visible=not _desc_has_content,
             style=ft.ButtonStyle(
                 padding=ft.padding.symmetric(horizontal=4, vertical=4),
@@ -1405,7 +1406,7 @@ def build_task_tracker(page: ft.Page, config: dict,
         desc_cancel_btn = ft.IconButton(
             icon=ft.Icons.CLOSE,
             icon_size=18,
-            tooltip="Cancel editing",
+            tooltip=t("Cancel editing"),
             visible=False,
             style=ft.ButtonStyle(
                 padding=ft.padding.symmetric(horizontal=4, vertical=4),
@@ -1554,7 +1555,7 @@ def build_task_tracker(page: ft.Page, config: dict,
         color_popup = ft.PopupMenuButton(
             icon=ft.Icons.FORMAT_COLOR_TEXT,
             icon_size=18,
-            tooltip="Text color",
+            tooltip=t("Text color"),
             items=[
                 ft.PopupMenuItem(
                     content=ft.Row(
@@ -1597,7 +1598,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             [
                 ft.Row(
                     [
-                        ft.Text("Description", size=12, weight=ft.FontWeight.W_600,
+                        ft.Text(t("Description"), size=12, weight=ft.FontWeight.W_600,
                                 color=ft.Colors.GREY_600, expand=True),
                         desc_edit_btn,
                         desc_save_btn,
@@ -1732,7 +1733,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             try:
                 rid = int(raw)
             except ValueError:
-                related_error.value   = "Enter a valid number"
+                related_error.value   = t("Enter a valid number")
                 related_error.visible = True
                 page.update()
                 return
@@ -1750,7 +1751,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 return
             ok = add_related_task(output_path, task["id"], rid)
             if not ok:
-                related_error.value   = "Task not found"
+                related_error.value   = t("Task not found")
                 related_error.visible = True
                 page.update()
                 return
@@ -1773,7 +1774,7 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         related_section = ft.Column(
             [
-                ft.Text("Related Tasks", size=12, weight=ft.FontWeight.W_600,
+                ft.Text(t("Related Tasks"), size=12, weight=ft.FontWeight.W_600,
                         color=ft.Colors.GREY_600),
                 related_list_col,
                 ft.Row(
@@ -1882,13 +1883,13 @@ def build_task_tracker(page: ft.Page, config: dict,
             try:
                 did = int(raw)
             except ValueError:
-                rel_design_error.value   = "Enter a valid number"
+                rel_design_error.value   = t("Enter a valid number")
                 rel_design_error.visible = True
                 page.update()
                 return
             all_d  = fetch_all_designs(output_path)
             if not any(d["id"] == did for d in all_d):
-                rel_design_error.value   = "Design not found"
+                rel_design_error.value   = t("Design not found")
                 rel_design_error.visible = True
                 page.update()
                 return
@@ -1917,7 +1918,7 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         related_designs_section = ft.Column(
             [
-                ft.Text("Related Designs", size=12, weight=ft.FontWeight.W_600,
+                ft.Text(t("Related Designs"), size=12, weight=ft.FontWeight.W_600,
                         color=ft.Colors.GREY_600),
                 rel_designs_list_col,
                 ft.Row(
@@ -2001,10 +2002,10 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         files_section = ft.Column(
             [
-                ft.Text("Files", size=12, weight=ft.FontWeight.W_600,
+                ft.Text(t("Files"), size=12, weight=ft.FontWeight.W_600,
                         color=ft.Colors.GREY_600),
                 ft.ElevatedButton(
-                    "Attach File",
+                    t("Attach File"),
                     icon=ft.Icons.ATTACH_FILE,
                     on_click=_attach_files,
                     style=ft.ButtonStyle(elevation=0),
@@ -2025,10 +2026,10 @@ def build_task_tracker(page: ft.Page, config: dict,
                 delta = datetime.now() - dt
                 days = delta.days
                 if days == 0:
-                    return "Today"
+                    return t("Today")
                 if days == 1:
-                    return "Yesterday"
-                return f"{days} days ago"
+                    return t("Yesterday")
+                return f"{days} {t('days ago')}"
             except Exception:
                 return iso
 
@@ -2184,7 +2185,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                         ft.IconButton(
                             icon=ft.Icons.ATTACH_FILE,
                             icon_size=15,
-                            tooltip="Attach file to this entry",
+                            tooltip=t("Attach file to this entry"),
                             on_click=_attach_to_history,
                             style=ft.ButtonStyle(padding=ft.padding.all(2)),
                         ),
@@ -2216,7 +2217,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             _refresh_history()
 
         new_entry_field = ft.TextField(
-            hint_text="Write an update…",
+            hint_text=t("Write an update…"),
             multiline=True,
             min_lines=2,
             max_lines=4,
@@ -2227,7 +2228,7 @@ def build_task_tracker(page: ft.Page, config: dict,
         )
 
         save_entry_btn = ft.FilledButton(
-            "Save update",
+            t("Save update"),
             icon=ft.Icons.SAVE_OUTLINED,
             disabled=True,
             style=ft.ButtonStyle(
@@ -2257,7 +2258,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                                 icon=ft.Icons.CLOSE,
                                 icon_size=12,
                                 icon_color=ft.Colors.GREY_500,
-                                tooltip="Remove tag",
+                                tooltip=t("Remove tag"),
                                 on_click=lambda _, tag=t: _remove_tag(tag),
                                 style=ft.ButtonStyle(padding=ft.padding.all(0)),
                             ),
@@ -2297,7 +2298,7 @@ def build_task_tracker(page: ft.Page, config: dict,
         add_tag_btn = ft.IconButton(
             icon=ft.Icons.ADD,
             icon_size=16,
-            tooltip="Add tag",
+            tooltip=t("Add tag"),
             disabled=True,
             style=ft.ButtonStyle(padding=ft.padding.all(2)),
         )
@@ -2371,7 +2372,7 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         history_section = ft.Column(
             [
-                ft.Text("History", size=12, weight=ft.FontWeight.W_600,
+                ft.Text(t("History"), size=12, weight=ft.FontWeight.W_600,
                         color=ft.Colors.GREY_600),
                 history_entries_col,
                 new_entry_field,
@@ -2434,7 +2435,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             _go_back()
 
         delete_btn = ft.FilledButton(
-            "Delete",
+            t("Delete"),
             icon=ft.Icons.DELETE_OUTLINE,
             style=ft.ButtonStyle(
                 bgcolor={
@@ -2449,13 +2450,13 @@ def build_task_tracker(page: ft.Page, config: dict,
             on_click=_delete,
         )
         cancel_btn = ft.FilledButton(
-            "Cancel",
+            t("Cancel"),
             icon=ft.Icons.CLOSE,
             style=ft.ButtonStyle(bgcolor=ft.Colors.GREY_600, color=ft.Colors.WHITE),
             on_click=_cancel,
         )
         save_btn = ft.FilledButton(
-            "Save",
+            t("Save"),
             icon=ft.Icons.CHECK,
             style=ft.ButtonStyle(
                 bgcolor={
@@ -2571,13 +2572,13 @@ def build_task_tracker(page: ft.Page, config: dict,
     data_table = ft.DataTable(
         columns=[
             ft.DataColumn(ft.Text("#",        size=13, weight=_COL_HEADER), heading_row_alignment=ft.MainAxisAlignment.CENTER),
-            ft.DataColumn(ft.Text("Title",    size=13, weight=_COL_HEADER), heading_row_alignment=ft.MainAxisAlignment.CENTER),
-            ft.DataColumn(ft.Row([ft.Text("Project",  size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
-            ft.DataColumn(ft.Row([ft.Text("Opened",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
-            ft.DataColumn(ft.Row([ft.Text("Modified", size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
-            ft.DataColumn(ft.Row([ft.Text("Closed",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
-            ft.DataColumn(ft.Row([ft.Text("Status",   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
-            ft.DataColumn(ft.Text("Alarm",    size=13, weight=_COL_HEADER), heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Text(t("Title"),    size=13, weight=_COL_HEADER), heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text(t("Project"),  size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text(t("Opened"),   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text(t("Modified"), size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text(t("Closed"),   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Row([ft.Text(t("Status"),   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Text(t("Alarm"),    size=13, weight=_COL_HEADER), heading_row_alignment=ft.MainAxisAlignment.CENTER),
         ],
         rows=[],
         sort_column_index=None,
@@ -2657,11 +2658,11 @@ def build_task_tracker(page: ft.Page, config: dict,
         content=ft.Row(
             [
                 ft.Icon(ft.Icons.FILTER_LIST, size=16, color=ft.Colors.WHITE),
-                ft.Text("Filter active", size=13, color=ft.Colors.WHITE,
+                ft.Text(t("Filter active"), size=13, color=ft.Colors.WHITE,
                         weight=ft.FontWeight.W_500),
                 ft.Container(expand=True),
                 ft.TextButton(
-                    "Clear",
+                    t("Clear"),
                     style=ft.ButtonStyle(
                         color={
                             ft.ControlState.DEFAULT:  ft.Colors.WHITE,
@@ -2718,7 +2719,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                     icon=ft.Icons.CLOSE,
                     icon_size=16,
                     icon_color=ft.Colors.WHITE,
-                    tooltip="Close search",
+                    tooltip=t("Close search"),
                     on_click=_close_search,
                     style=ft.ButtonStyle(padding=ft.padding.all(4)),
                 ),
@@ -2953,24 +2954,24 @@ def build_task_tracker(page: ft.Page, config: dict,
             _update()
 
         period_dd = ft.Dropdown(
-            label="Period",
+            label=t("Period"),
             value="day",
             width=165,
             options=[
-                ft.DropdownOption(key="day",   text="Last Day"),
-                ft.DropdownOption(key="week",  text="Last Week"),
-                ft.DropdownOption(key="month", text="Last Month"),
-                ft.DropdownOption(key="year",  text="Last Year"),
+                ft.DropdownOption(key="day",   text=t("Last Day")),
+                ft.DropdownOption(key="week",  text=t("Last Week")),
+                ft.DropdownOption(key="month", text=t("Last Month")),
+                ft.DropdownOption(key="year",  text=t("Last Year")),
             ],
             on_select=_on_period_change,
         )
 
         project_dd = ft.Dropdown(
-            label="Project",
+            label=t("Project"),
             value="",
             width=185,
             options=(
-                [ft.DropdownOption(key="", text="All Projects")]
+                [ft.DropdownOption(key="", text=t("All Projects"))]
                 + [ft.DropdownOption(key=p, text=p)
                    for p in fetch_distinct_projects(output_path)]
             ),
@@ -2986,7 +2987,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             title=ft.Row(
                 [
                     ft.Icon(ft.Icons.PIE_CHART, color=ft.Colors.PURPLE_400),
-                    ft.Text("Status Distribution", weight=ft.FontWeight.BOLD),
+                    ft.Text(t("Status Distribution"), weight=ft.FontWeight.BOLD),
                 ],
                 spacing=10,
             ),
@@ -3012,7 +3013,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 width=540,
             ),
             actions=[
-                ft.TextButton("Close", on_click=_close_chart),
+                ft.TextButton(t("Close"), on_click=_close_chart),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -3040,12 +3041,12 @@ def build_task_tracker(page: ft.Page, config: dict,
 
     _confirm_dlg = ft.AlertDialog(
         modal=True,
-        title=ft.Text("Delete Task", weight=ft.FontWeight.BOLD),
-        content=ft.Text("Are you sure you want to permanently delete this task?"),
+        title=ft.Text(t("Delete Task"), weight=ft.FontWeight.BOLD),
+        content=ft.Text(t("Are you sure you want to permanently delete this task?")),
         actions=[
-            ft.TextButton("Cancel", on_click=_cancel_confirm),
+            ft.TextButton(t("Cancel"), on_click=_cancel_confirm),
             ft.FilledButton(
-                "Delete",
+                t("Delete"),
                 style=ft.ButtonStyle(bgcolor=ft.Colors.ERROR, color=ft.Colors.WHITE),
                 on_click=_confirm_delete,
             ),
@@ -3088,7 +3089,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             spacing=4,
             scroll=ft.ScrollMode.AUTO,
             height=min(140, len(all_tags) * 34),
-        ) if all_tags else ft.Text("No tags found", size=12, color=ft.Colors.GREY_500, italic=True)
+        ) if all_tags else ft.Text(t("No tags found"), size=12, color=ft.Colors.GREY_500, italic=True)
         _tags_panel_open = {"open": bool(_active_filters["tags"])}
         tags_body_container = ft.Container(content=tags_body, visible=_tags_panel_open["open"])
         tags_chevron = ft.Icon(
@@ -3105,7 +3106,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 ft.TextButton(
                     content=ft.Row(
                         [
-                            ft.Text("Tags", size=12, weight=ft.FontWeight.W_600,
+                            ft.Text(t("Tags"), size=12, weight=ft.FontWeight.W_600,
                                     color=ft.Colors.GREY_600),
                             tags_chevron,
                         ],
@@ -3150,11 +3151,11 @@ def build_task_tracker(page: ft.Page, config: dict,
                 data=key,
             )
 
-        dd_project  = _dd("Project",  "project",  projects)
-        dd_opened   = _dd("Opened",   "opened",   opened_dates)
-        dd_modified = _dd("Modified", "modified", mod_dates)
-        dd_closed   = _dd("Closed",   "closed",   closed_dates)
-        dd_status   = _dd("Status",   "status",   STATUSES, _STATUS_STYLE)
+        dd_project  = _dd(t("Project"),  "project",  projects)
+        dd_opened   = _dd(t("Opened"),   "opened",   opened_dates)
+        dd_modified = _dd(t("Modified"), "modified", mod_dates)
+        dd_closed   = _dd(t("Closed"),   "closed",   closed_dates)
+        dd_status   = _dd(t("Status"),   "status",   STATUSES, _STATUS_STYLE)
 
         def _apply(_) -> None:
             _active_filters["project"]  = dd_project.value  or ""
@@ -3178,7 +3179,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             modal=True,
             title=ft.Row(
                 [ft.Icon(ft.Icons.FILTER_LIST, color=ft.Colors.ORANGE_400),
-                 ft.Text("Filter Tasks", weight=ft.FontWeight.BOLD)],
+                 ft.Text(t("Filter Tasks"), weight=ft.FontWeight.BOLD)],
                 spacing=10,
             ),
             content=ft.Column(
@@ -3187,10 +3188,10 @@ def build_task_tracker(page: ft.Page, config: dict,
                 scroll=ft.ScrollMode.AUTO,
             ),
             actions=[
-                ft.TextButton("Reset", on_click=_reset,
+                ft.TextButton(t("Reset"), on_click=_reset,
                               style=ft.ButtonStyle(color=ft.Colors.RED_400)),
-                ft.TextButton("Cancel", on_click=lambda _: (setattr(filter_dlg, "open", False), page.update())),
-                ft.FilledButton("Apply", on_click=_apply),
+                ft.TextButton(t("Cancel"), on_click=lambda _: (setattr(filter_dlg, "open", False), page.update())),
+                ft.FilledButton(t("Apply"), on_click=_apply),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -3282,7 +3283,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 border_radius=4,
                 padding=ft.padding.symmetric(horizontal=5, vertical=3),
                 margin=ft.margin.only(bottom=2),
-                tooltip="Double-click to edit",
+                tooltip=t("Double-click to edit"),
             )
             return ft.GestureDetector(
                 content=chip,
@@ -3578,7 +3579,7 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         # ── View-switch buttons ───────────────────────────────────────
         _VIEW_KEYS   = ["daily", "weekly", "monthly"]
-        _VIEW_LABELS = {"daily": "Day", "weekly": "Week", "monthly": "Month"}
+        _VIEW_LABELS = {"daily": t("Day"), "weekly": t("Week"), "monthly": t("Month")}
         _view_btns: dict = {}
 
         def _set_view(vk: str) -> None:
@@ -3694,14 +3695,14 @@ def build_task_tracker(page: ft.Page, config: dict,
                                 ft.IconButton(
                                     icon=ft.Icons.KEYBOARD_ARROW_UP,
                                     icon_size=22,
-                                    tooltip="Next year",
+                                    tooltip=t("Next year"),
                                     on_click=_year_up,
                                 ),
                                 year_lbl,
                                 ft.IconButton(
                                     icon=ft.Icons.KEYBOARD_ARROW_DOWN,
                                     icon_size=22,
-                                    tooltip="Previous year",
+                                    tooltip=t("Previous year"),
                                     on_click=_year_down,
                                 ),
                             ],
@@ -3718,7 +3719,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
                 actions=[
-                    ft.TextButton("Cancel", on_click=_close_yp),
+                    ft.TextButton(t("Cancel"), on_click=_close_yp),
                 ],
                 actions_alignment=ft.MainAxisAlignment.CENTER,
             )
@@ -3733,14 +3734,14 @@ def build_task_tracker(page: ft.Page, config: dict,
                 ft.IconButton(
                     icon=ft.Icons.CHEVRON_LEFT,
                     icon_size=20,
-                    tooltip="Previous",
+                    tooltip=t("Previous"),
                     on_click=_nav_prev,
                 ),
                 period_lbl,
                 ft.IconButton(
                     icon=ft.Icons.CHEVRON_RIGHT,
                     icon_size=20,
-                    tooltip="Next",
+                    tooltip=t("Next"),
                     on_click=_nav_next,
                 ),
                 ft.Container(width=8),
@@ -3775,7 +3776,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             title=ft.Row(
                 [
                     ft.Icon(ft.Icons.CALENDAR_MONTH, color=ft.Colors.GREEN_500),
-                    ft.Text("Alarm Calendar", weight=ft.FontWeight.BOLD),
+                    ft.Text(t("Alarm Calendar"), weight=ft.FontWeight.BOLD),
                 ],
                 spacing=10,
             ),
@@ -3793,7 +3794,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 width=680,
             ),
             actions=[
-                ft.TextButton("Close", on_click=_close_cal),
+                ft.TextButton(t("Close"), on_click=_close_cal),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )

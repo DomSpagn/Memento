@@ -17,6 +17,8 @@ import flet as ft
 from config_manager import save_config
 from task_tracker import build_task_tracker
 from design_tracker import build_design_tracker
+import translations
+from translations import t
 
 APP_VERSION = "v0.3"
 BUILD_DATE  = datetime.fromtimestamp(os.path.getmtime(__file__)).strftime("%d/%m/%Y")
@@ -41,6 +43,9 @@ def _info_row(icon: str, label: str, value: str) -> ft.Row:
 
 def show_main_app(page: ft.Page, config: dict) -> None:
     """Build and display the main application window."""
+
+    # ── Language ─────────────────────────────────────────────────
+    translations.set_lang(config.get("Language", "en"))
 
     # ── Theme ────────────────────────────────────────────────────
     page.theme_mode = (
@@ -88,16 +93,16 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             title=ft.Row(
                 [
                     ft.Icon(ft.Icons.INFO_OUTLINE, color=ft.Colors.BLUE_400),
-                    ft.Text("About Memento", weight=ft.FontWeight.BOLD),
+                    ft.Text(t("About Memento"), weight=ft.FontWeight.BOLD),
                 ],
                 spacing=10,
             ),
             content=ft.Column(
                 [
                     ft.Divider(height=6),
-                    _info_row(ft.Icons.NEW_RELEASES,   "Version",    APP_VERSION),
-                    _info_row(ft.Icons.CALENDAR_TODAY, "Build date", BUILD_DATE),
-                    _info_row(ft.Icons.PERSON,         "Author",     APP_AUTHOR),
+                    _info_row(ft.Icons.NEW_RELEASES,   t("Version"),    APP_VERSION),
+                    _info_row(ft.Icons.CALENDAR_TODAY, t("Build date"), BUILD_DATE),
+                    _info_row(ft.Icons.PERSON,         t("Author"),     APP_AUTHOR),
                     ft.Divider(height=6),
                 ],
                 tight=True,
@@ -105,7 +110,7 @@ def show_main_app(page: ft.Page, config: dict) -> None:
                 width=360,
             ),
             actions=[
-                ft.TextButton("Close", on_click=lambda _: close_dlg(dlg))
+                ft.TextButton(t("Close"), on_click=lambda _: close_dlg(dlg))
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -118,16 +123,16 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             title=ft.Row(
                 [
                     ft.Icon(ft.Icons.MENU_BOOK, color=ft.Colors.BLUE_400),
-                    ft.Text("User Manual", weight=ft.FontWeight.BOLD),
+                    ft.Text(t("User Manual"), weight=ft.FontWeight.BOLD),
                 ],
                 spacing=10,
             ),
             content=ft.Text(
-                "The user manual will be available in a future release.",
+                t(t("The user manual will be available in a future release.")),
                 width=360,
             ),
             actions=[
-                ft.TextButton("Close", on_click=lambda _: close_dlg(dlg))
+                ft.TextButton(t("Close"), on_click=lambda _: close_dlg(dlg))
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -192,17 +197,17 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             modal=True,
             title=ft.Row(
                 [ft.Icon(ft.Icons.FOLDER_OPEN, color=ft.Colors.BLUE_400),
-                 ft.Text("Output Path", weight=ft.FontWeight.BOLD)],
+                 ft.Text(t("Output Path"), weight=ft.FontWeight.BOLD)],
                 spacing=10,
             ),
             content=ft.Row(
                 [path_field,
-                 ft.IconButton(icon=ft.Icons.FOLDER_OPEN, tooltip="Browse…", on_click=browse)],
+                 ft.IconButton(icon=ft.Icons.FOLDER_OPEN, tooltip=t("Browse…"), on_click=browse)],
                 width=460,
             ),
             actions=[
-                ft.TextButton("Cancel", on_click=lambda _: close_dlg(dlg)),
-                ft.FilledButton("Save", on_click=save_path),
+                ft.TextButton(t("Cancel"), on_click=lambda _: close_dlg(dlg)),
+                ft.FilledButton(t("Save"), on_click=save_path),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -227,13 +232,13 @@ def show_main_app(page: ft.Page, config: dict) -> None:
     # ── Task Tracker toolbar buttons (centred in AppBar) ──────────
     _cmd_pos = {"v": config.get("CmdBarPosition", "Top")}
 
-    _task_add_btn    = ft.IconButton(icon=ft.Icons.ADD_TASK,       tooltip="New Task",     icon_size=22, icon_color=ft.Colors.GREEN_400)
-    _task_edit_btn   = ft.IconButton(icon=ft.Icons.EDIT_NOTE,      tooltip="Edit Task",    icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.BLUE_400),   disabled=True)
-    _task_del_btn    = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, tooltip="Delete Task",  icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.RED_400),    disabled=True)
-    _task_chart_btn  = ft.IconButton(icon=ft.Icons.PIE_CHART,      tooltip="Status Chart", icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.PURPLE_400), disabled=True)
-    _task_cal_btn    = ft.IconButton(icon=ft.Icons.CALENDAR_MONTH, tooltip="Calendar",     icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.GREEN_500),   disabled=True)
-    _task_filter_btn = ft.IconButton(icon=ft.Icons.FILTER_LIST,    tooltip="Filter",       icon_size=22, icon_color=ft.Colors.GREY_500)
-    _task_search_btn = ft.IconButton(icon=ft.Icons.SEARCH,          tooltip="Search",       icon_size=22, icon_color=ft.Colors.GREY_500)
+    _task_add_btn    = ft.IconButton(icon=ft.Icons.ADD_TASK,       tooltip=t("New Task"),     icon_size=22, icon_color=ft.Colors.GREEN_400)
+    _task_edit_btn   = ft.IconButton(icon=ft.Icons.EDIT_NOTE,      tooltip=t("Edit Task"),    icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.BLUE_400),   disabled=True)
+    _task_del_btn    = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, tooltip=t("Delete Task"),  icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.RED_400),    disabled=True)
+    _task_chart_btn  = ft.IconButton(icon=ft.Icons.PIE_CHART,      tooltip=t("Status Chart"), icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.PURPLE_400), disabled=True)
+    _task_cal_btn    = ft.IconButton(icon=ft.Icons.CALENDAR_MONTH, tooltip=t("Calendar"),     icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.GREEN_500),   disabled=True)
+    _task_filter_btn = ft.IconButton(icon=ft.Icons.FILTER_LIST,    tooltip=t("Filter"),       icon_size=22, icon_color=ft.Colors.GREY_500)
+    _task_search_btn = ft.IconButton(icon=ft.Icons.SEARCH,          tooltip=t("Search"),       icon_size=22, icon_color=ft.Colors.GREY_500)
     _task_actions    = ft.Row(
         [_task_add_btn, _task_edit_btn, _task_del_btn, _task_chart_btn, _task_cal_btn, _task_filter_btn, _task_search_btn],
         spacing=0,
@@ -241,12 +246,12 @@ def show_main_app(page: ft.Page, config: dict) -> None:
     )
 
     # ── Design Tracker toolbar buttons ───────────────────────────
-    _design_add_btn    = ft.IconButton(icon=ft.Icons.ADD_TASK,          tooltip="New Design",    icon_size=22, icon_color=ft.Colors.GREEN_400)
-    _design_edit_btn   = ft.IconButton(icon=ft.Icons.EDIT_NOTE,        tooltip="Edit Design",   icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.BLUE_400),   disabled=True)
-    _design_del_btn    = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE,   tooltip="Delete Design", icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.RED_400),    disabled=True)
-    _design_chart_btn  = ft.IconButton(icon=ft.Icons.PIE_CHART,        tooltip="Status Chart",  icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.PURPLE_400), disabled=True)
-    _design_filter_btn = ft.IconButton(icon=ft.Icons.FILTER_LIST,      tooltip="Filter",        icon_size=22, icon_color=ft.Colors.GREY_500)
-    _design_search_btn = ft.IconButton(icon=ft.Icons.SEARCH,            tooltip="Search",        icon_size=22, icon_color=ft.Colors.GREY_500)
+    _design_add_btn    = ft.IconButton(icon=ft.Icons.ADD_TASK,          tooltip=t("New Design"),    icon_size=22, icon_color=ft.Colors.GREEN_400)
+    _design_edit_btn   = ft.IconButton(icon=ft.Icons.EDIT_NOTE,        tooltip=t("Edit Design"),   icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.BLUE_400),   disabled=True)
+    _design_del_btn    = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE,   tooltip=t("Delete Design"), icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.RED_400),    disabled=True)
+    _design_chart_btn  = ft.IconButton(icon=ft.Icons.PIE_CHART,        tooltip=t("Status Chart"),  icon_size=22, icon_color=ft.Colors.with_opacity(0.3, ft.Colors.PURPLE_400), disabled=True)
+    _design_filter_btn = ft.IconButton(icon=ft.Icons.FILTER_LIST,      tooltip=t("Filter"),        icon_size=22, icon_color=ft.Colors.GREY_500)
+    _design_search_btn = ft.IconButton(icon=ft.Icons.SEARCH,            tooltip=t("Search"),        icon_size=22, icon_color=ft.Colors.GREY_500)
     _design_actions    = ft.Row(
         [_design_add_btn, _design_edit_btn, _design_del_btn, _design_chart_btn, _design_filter_btn, _design_search_btn],
         spacing=0,
@@ -328,7 +333,7 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             content=ft.IconButton(
                 icon=ft.Icons.ARROW_BACK,
                 icon_size=20,
-                tooltip="Back to list",
+                tooltip=t("Back to list"),
                 on_click=_navigate_back,
             ),
             padding=ft.padding.only(left=4),
@@ -408,30 +413,34 @@ def show_main_app(page: ft.Page, config: dict) -> None:
         elevation=0,
         actions=[
             # ── Settings menu ────────────────────────────────────
-            _popup(ft.Icons.SETTINGS_OUTLINED, "Settings", [
+            _popup(ft.Icons.SETTINGS_OUTLINED, t("Settings"), [
                 ft.PopupMenuItem(
-                    content=ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN, size=16), ft.Text("Output Path…")], spacing=8),
+                    content=ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN, size=16), ft.Text(t("Output Path…"))], spacing=8),
                     on_click=show_output_path,
                 ),
                 ft.PopupMenuItem(
-                    content=ft.Row([ft.Icon(ft.Icons.SPACE_DASHBOARD_OUTLINED, size=16), ft.Text("Command Bar…")], spacing=8),
+                    content=ft.Row([ft.Icon(ft.Icons.SPACE_DASHBOARD_OUTLINED, size=16), ft.Text(t("Command Bar…"))], spacing=8),
                     on_click=lambda _: _show_cmdbar_dialog(),
+                ),
+                ft.PopupMenuItem(
+                    content=ft.Row([ft.Icon(ft.Icons.LANGUAGE, size=16), ft.Text(t("Language…"))], spacing=8),
+                    on_click=lambda _: _show_language_dialog(),
                 ),
             ]),
             # ── Theme toggle ─────────────────────────────────────
             ft.IconButton(
                 icon=ft.Icons.DARK_MODE if page.theme_mode == ft.ThemeMode.LIGHT else ft.Icons.LIGHT_MODE,
-                tooltip="Toggle theme",
+                tooltip=t("Toggle theme"),
                 on_click=toggle_theme,
             ),
             # ── Help menu ────────────────────────────────────────
-            _popup(ft.Icons.HELP_OUTLINE, "Help", [
+            _popup(ft.Icons.HELP_OUTLINE, t("Help"), [
                 ft.PopupMenuItem(
-                    content=ft.Row([ft.Icon(ft.Icons.INFO_OUTLINE, size=16), ft.Text("About")], spacing=8),
+                    content=ft.Row([ft.Icon(ft.Icons.INFO_OUTLINE, size=16), ft.Text(t("About"))], spacing=8),
                     on_click=show_about,
                 ),
                 ft.PopupMenuItem(
-                    content=ft.Row([ft.Icon(ft.Icons.MENU_BOOK, size=16), ft.Text("User Manual")], spacing=8),
+                    content=ft.Row([ft.Icon(ft.Icons.MENU_BOOK, size=16), ft.Text(t("User Manual"))], spacing=8),
                     on_click=show_manual,
                 ),
             ]),
@@ -453,9 +462,9 @@ def show_main_app(page: ft.Page, config: dict) -> None:
 
     def _show_cmdbar_dialog() -> None:
         pos_dd = ft.Dropdown(
-            label="Position",
+            label=t("Position"),
             value=_cmd_pos["v"],
-            options=[ft.dropdown.Option(p, style=_OPT_STYLE) for p in _POS_OPTIONS],
+            options=[ft.dropdown.Option(key=p, text=t(p), style=_OPT_STYLE) for p in _POS_OPTIONS],
             width=200,
         )
 
@@ -472,21 +481,66 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             modal=True,
             title=ft.Row(
                 [ft.Icon(ft.Icons.SPACE_DASHBOARD_OUTLINED, color=ft.Colors.ORANGE_400),
-                 ft.Text("Command Bar Position", weight=ft.FontWeight.BOLD)],
+                 ft.Text(t("Command Bar Position"), weight=ft.FontWeight.BOLD)],
                 spacing=10,
             ),
             content=ft.Column(
-                [ft.Text("Choose where the action buttons appear:", size=13), pos_dd],
+                [ft.Text(t("Choose where the action buttons appear:"), size=13), pos_dd],
                 tight=True, spacing=12, width=320,
             ),
             actions=[
-                ft.TextButton("Cancel", on_click=lambda _: close_dlg(cmdbar_dlg)),
-                ft.FilledButton("Apply", on_click=_save_cmdbar),
+                ft.TextButton(t("Cancel"), on_click=lambda _: close_dlg(cmdbar_dlg)),
+                ft.FilledButton(t("Apply"), on_click=_save_cmdbar),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
         page.overlay.append(cmdbar_dlg)
         cmdbar_dlg.open = True
+        page.update()
+
+    def _show_language_dialog() -> None:
+        _LANG_OPTIONS = [("en", "English"), ("it", "Italian")]
+        lang_dd = ft.Dropdown(
+            label=t("Language"),
+            value=config.get("Language", "en"),
+            options=[
+                ft.dropdown.Option(key=code, text=t(label), style=_OPT_STYLE)
+                for code, label in _LANG_OPTIONS
+            ],
+            width=200,
+        )
+
+        def _save_lang(_) -> None:
+            new_lang = lang_dd.value or "en"
+            config["Language"] = new_lang
+            save_config(config)
+            lang_dlg.open = False
+            page.update()
+            translations.set_lang(new_lang)
+            # Rebuild the entire UI with the new language
+            page.controls.clear()
+            page.appbar = None
+            show_main_app(page, config)
+
+        lang_dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Row(
+                [ft.Icon(ft.Icons.LANGUAGE, color=ft.Colors.BLUE_400),
+                 ft.Text(t("Language"), weight=ft.FontWeight.BOLD)],
+                spacing=10,
+            ),
+            content=ft.Column(
+                [ft.Text(t("Select language:"), size=13), lang_dd],
+                tight=True, spacing=12, width=260,
+            ),
+            actions=[
+                ft.TextButton(t("Cancel"), on_click=lambda _: close_dlg(lang_dlg)),
+                ft.FilledButton(t("Apply"), on_click=_save_lang),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.overlay.append(lang_dlg)
+        lang_dlg.open = True
         page.update()
 
     # ── Assemble final layout ────────────────────────────────────

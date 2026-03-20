@@ -2148,6 +2148,7 @@ def build_design_tracker(page: ft.Page, config: dict,
             ft.DataColumn(ft.Row([ft.Text(t("Modified"), size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
             ft.DataColumn(ft.Row([ft.Text(t("Closed"),   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
             ft.DataColumn(ft.Row([ft.Text(t("Status"),   size=13, weight=_COL_HEADER), ft.Icon(ft.Icons.UNFOLD_MORE, size=14, color=ft.Colors.GREY_500)], spacing=2), on_sort=_on_sort, heading_row_alignment=ft.MainAxisAlignment.CENTER),
+            ft.DataColumn(ft.Text(t("Report"),   size=13, weight=_COL_HEADER), heading_row_alignment=ft.MainAxisAlignment.CENTER),
         ],
         rows=[],
         sort_column_index=None,
@@ -2160,8 +2161,223 @@ def build_design_tracker(page: ft.Page, config: dict,
         expand=True,
     )
 
+    # ── PDF export helpers ────────────────────────────────────────────────────
+    def _show_snack(msg: str, color=None) -> None:
+        sb = ft.SnackBar(ft.Text(msg), bgcolor=color, open=True)
+        page.overlay.append(sb)
+        page.update()
+
+    def _generate_pdf(design: dict, save_path: str) -> None:
+        """Generate a PDF report for a design and save it to save_path."""
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import cm
+        from reportlab.lib import colors
+        from reportlab.platypus import (
+            SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+            HRFlowable,
+        )
+
+        # ── collect data ──────────────────────────────────────────────────────
+        d_id      = design["id"]
+        history   = fetch_all_history(output_path)
+        hist      = [h for h in history if h.get("design_id") == d_id]
+        d_atts    = fetch_design_attachments(output_path, d_id)
+        rels_d    = fetch_related_designs(output_path, d_id)
+        links     = fetch_design_task_links(output_path, d_id)
+        all_tasks = fetch_all_tasks(output_path)
+        task_map  = {t["id"]: t["title"] for t in all_tasks}
+
+        # ── styles ────────────────────────────────────────────────────────────
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            "DesignTitle",
+            parent=styles["Heading1"],
+            fontSize=18,
+            textColor=colors.HexColor("#1565C0"),
+            spaceAfter=4,
+        )
+        section_style = ParagraphStyle(
+            "Section",
+            parent=styles["Heading2"],
+            fontSize=12,
+            textColor=colors.HexColor("#1565C0"),
+            spaceBefore=12,
+            spaceAfter=4,
+            borderPad=2,
+        )
+        label_style = ParagraphStyle(
+            "Label",
+            parent=styles["Normal"],
+            fontSize=9,
+            textColor=colors.grey,
+            leading=12,
+        )
+        value_style = ParagraphStyle(
+            "Value",
+            parent=styles["Normal"],
+            fontSize=10,
+            leading=13,
+        )
+        body_style = ParagraphStyle(
+            "Body",
+            parent=styles["Normal"],
+            fontSize=10,
+            leading=14,
+        )
+        mono_style = ParagraphStyle(
+            "Mono",
+            parent=styles["Normal"],
+            fontSize=9,
+            fontName="Courier",
+            leading=13,
+            textColor=colors.HexColor("#333333"),
+        )
+
+        _STATUS_COLORS = {
+            "Open":        colors.HexColor("#1E88E5"),
+            "In Progress": colors.HexColor("#FB8C00"),
+            "On Hold":     colors.HexColor("#8E24AA"),
+            "Closed":      colors.HexColor("#43A047"),
+        }
+
+        def _clean(text: str) -> str:
+            """Strip markdown/custom tags for plain display in PDF."""
+            if not text:
+                return ""
+            text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
+            text = re.sub(r"\*(.*?)\*",     r"\1", text)
+            text = re.sub(r"<u>(.*?)</u>",  r"\1", text)
+            text = re.sub(r"\[color=[^\]]+\](.*?)\[/color\]", r"\1", text)
+            return text
+
+        def _fmt_dt(val) -> str:
+            if not val:
+                return "—"
+            try:
+                return datetime.fromisoformat(val).strftime("%d/%m/%Y %H:%M")
+            except (ValueError, TypeError):
+                return str(val)
+
+        # ── effective category / function ──────────────────────────────────────
+        eff_cat = (design.get("category_custom") or design.get("category") or "—").strip()
+        eff_fn  = (design.get("function_custom") or design.get("function")  or "—").strip()
+
+        # ── document ──────────────────────────────────────────────────────────
+        doc = SimpleDocTemplate(
+            save_path,
+            pagesize=A4,
+            rightMargin=2*cm, leftMargin=2*cm,
+            topMargin=2*cm,   bottomMargin=2*cm,
+        )
+        story = []
+
+        # Title
+        story.append(Paragraph(f"Design #{d_id} — {design['title']}", title_style))
+        story.append(HRFlowable(width="100%", thickness=1,
+                                color=colors.HexColor("#1565C0"), spaceAfter=8))
+
+        # ── Info grid ─────────────────────────────────────────────────────────
+        status_color = _STATUS_COLORS.get(design.get("status", ""), colors.black)
+        info_data = [
+            [Paragraph("Project",   label_style), Paragraph(design.get("project") or "—",       value_style),
+             Paragraph("Status",    label_style), Paragraph(f'<font color="{status_color.hexval() if hasattr(status_color, "hexval") else "#333333"}">{design.get("status") or "—"}</font>', value_style)],
+            [Paragraph("Board",     label_style), Paragraph(design.get("board") or "—",          value_style),
+             Paragraph("Revision",  label_style), Paragraph(design.get("revision") or "—",       value_style)],
+            [Paragraph("Category",  label_style), Paragraph(eff_cat,                              value_style),
+             Paragraph("Function",  label_style), Paragraph(eff_fn,                               value_style)],
+            [Paragraph("Opened",    label_style), Paragraph(_fmt_dt(design.get("opened_at")),     value_style),
+             Paragraph("Modified",  label_style), Paragraph(_fmt_dt(design.get("modified_at")),   value_style)],
+            [Paragraph("Closed",    label_style), Paragraph(_fmt_dt(design.get("closed_at")),     value_style),
+             Paragraph("",          label_style), Paragraph("",                                   value_style)],
+        ]
+        col_w = [2.5*cm, 6*cm, 2.5*cm, 6*cm]
+        info_tbl = Table(info_data, colWidths=col_w)
+        info_tbl.setStyle(TableStyle([
+            ("VALIGN",      (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING",  (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.HexColor("#F5F5F5"), colors.white]),
+            ("GRID",        (0, 0), (-1, -1), 0.25, colors.HexColor("#E0E0E0")),
+        ]))
+        story.append(info_tbl)
+
+        # ── Description ───────────────────────────────────────────────────────
+        desc = _clean(design.get("description") or "")
+        if desc.strip():
+            story.append(Paragraph(t("Description"), section_style))
+            story.append(HRFlowable(width="100%", thickness=0.5,
+                                    color=colors.HexColor("#BBDEFB"), spaceAfter=4))
+            for line in desc.splitlines():
+                story.append(Paragraph(line or " ", body_style))
+
+        # ── History ───────────────────────────────────────────────────────────
+        if hist:
+            story.append(Paragraph(t("History"), section_style))
+            story.append(HRFlowable(width="100%", thickness=0.5,
+                                    color=colors.HexColor("#BBDEFB"), spaceAfter=4))
+            for h in sorted(hist, key=lambda x: x.get("created_at") or ""):
+                date_str = _fmt_dt(h.get("created_at"))
+                story.append(Paragraph(f"<b>{date_str}</b>", label_style))
+                body = _clean(h.get("body") or "")
+                for line in (body or "—").splitlines():
+                    story.append(Paragraph(line or " ", body_style))
+                # history attachments
+                h_atts = fetch_history_attachments(output_path, h["id"])
+                if h_atts:
+                    names = ", ".join(a.get("orig_name") or Path(a["path"]).name for a in h_atts)
+                    story.append(Paragraph(f"  📎 {names}", mono_style))
+                story.append(Spacer(1, 4))
+
+        # ── Attachments ───────────────────────────────────────────────────────
+        if d_atts:
+            story.append(Paragraph(t("Attachments"), section_style))
+            story.append(HRFlowable(width="100%", thickness=0.5,
+                                    color=colors.HexColor("#BBDEFB"), spaceAfter=4))
+            for a in d_atts:
+                name = a.get("orig_name") or Path(a["path"]).name
+                story.append(Paragraph(f"• {name}", body_style))
+
+        # ── Related Designs ───────────────────────────────────────────────────
+        if rels_d:
+            story.append(Paragraph(t("Related Designs"), section_style))
+            story.append(HRFlowable(width="100%", thickness=0.5,
+                                    color=colors.HexColor("#BBDEFB"), spaceAfter=4))
+            for r in rels_d:
+                story.append(Paragraph(f"• #{r['id']} — {r['title']}", body_style))
+
+        # ── Related Tasks ─────────────────────────────────────────────────────
+        if links:
+            story.append(Paragraph(t("Related Tasks"), section_style))
+            story.append(HRFlowable(width="100%", thickness=0.5,
+                                    color=colors.HexColor("#BBDEFB"), spaceAfter=4))
+            for lnk in links:
+                tid   = lnk.get("task_id") or lnk.get("id")
+                title = task_map.get(tid, f"#{tid}")
+                story.append(Paragraph(f"• #{tid} — {title}", body_style))
+
+        doc.build(story)
+
     def _build_rows(designs: list[dict]) -> list[ft.DataRow]:
         def _c(ctrl): return ft.Container(content=ctrl, alignment=ft.alignment.Alignment(0, 0))
+
+        def _make_report_handler(d: dict):
+            async def _handler(_):
+                fp = ft.FilePicker()
+                result = await fp.get_directory_path(
+                    dialog_title=t("Choose folder to save PDF"),
+                )
+                if not result:
+                    return
+                safe_name = re.sub(r'[<>:"/\\|?*]', "_", d["title"])
+                save_path = str(Path(result) / f"{safe_name}.pdf")
+                try:
+                    _generate_pdf(d, save_path)
+                    _show_snack(t("PDF saved") + f": {save_path}", color=ft.Colors.GREEN_700)
+                except Exception as ex:
+                    _show_snack(f"{t('Error generating PDF')}: {ex}", color=ft.Colors.RED_700)
+            return _handler
+
         sel_id = _sel["design"]["id"] if _sel["design"] else None
         rows = []
         for d in designs:
@@ -2194,6 +2410,16 @@ def build_design_tracker(page: ft.Page, config: dict,
                         ft.DataCell(_c(ft.Text(_fmt(design["modified_at"]),       size=12, color=ft.Colors.GREY_500))),
                         ft.DataCell(_c(ft.Text(_fmt(design["closed_at"]),         size=12, color=ft.Colors.GREY_500))),
                         ft.DataCell(_c(_status_chip(design["status"]))),
+                        ft.DataCell(_c(
+                            ft.IconButton(
+                                icon=ft.Icons.PICTURE_AS_PDF,
+                                icon_color=ft.Colors.RED_400,
+                                icon_size=20,
+                                tooltip=t("Export PDF"),
+                                on_click=_make_report_handler(design),
+                                style=ft.ButtonStyle(padding=ft.padding.all(4)),
+                            )
+                        )),
                     ]
                 )
             )

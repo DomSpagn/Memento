@@ -32,8 +32,15 @@ _STARTUP_NAME = "MementoTray"
 
 
 def _startup_command() -> str:
-    """Command stored in the registry to launch this script at login."""
-    return f'"{_PYTHON}" "{os.path.abspath(__file__)}"'
+    """Command stored in the registry to launch this script at login.
+
+    Uses pythonw.exe instead of python.exe so no console window appears
+    when Windows runs this entry at login.
+    """
+    pythonw = os.path.join(os.path.dirname(_PYTHON), "pythonw.exe")
+    if not os.path.isfile(pythonw):
+        pythonw = _PYTHON  # fallback if pythonw.exe is not present
+    return f'"{pythonw}" "{os.path.abspath(__file__)}"'
 
 
 def install_startup() -> None:

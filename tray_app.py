@@ -167,6 +167,17 @@ def _quit_tray(icon, _item) -> None:
 
 
 def run_tray() -> None:
+    # Windows 11 requires DPI awareness to be set before creating the tray icon
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
+        except Exception:
+            try:
+                ctypes.windll.user32.SetProcessDPIAware()
+            except Exception:
+                pass
+
     try:
         import pystray
         from PIL import Image
@@ -175,12 +186,12 @@ def run_tray() -> None:
               "Run: pip install pystray Pillow")
         sys.exit(1)
 
-    # Load icon image (pystray needs a PIL Image)
+    # Load icon image; convert to RGBA for correct transparency on Windows 11
     try:
-        img = Image.open(_ICON_PATH)
+        img = Image.open(_ICON_PATH).convert("RGBA")
     except Exception:
         # Fallback: plain coloured square
-        img = Image.new("RGB", (64, 64), color=(255, 109, 0))
+        img = Image.new("RGBA", (64, 64), color=(255, 109, 0, 255))
 
     menu = pystray.Menu(
         pystray.MenuItem("Open Memento", _open_memento, default=True),

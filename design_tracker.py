@@ -2539,14 +2539,10 @@ def build_design_tracker(page: ft.Page, config: dict,
             data_table.rows = _build_rows(designs)
             list_area.content = ft.ListView(
                 [
-                    ft.Row(
-                        [
-                            ft.Container(
-                                content=data_table,
-                                padding=ft.padding.symmetric(horizontal=24, vertical=12),
-                            )
-                        ],
-                        scroll=ft.ScrollMode.AUTO,
+                    ft.Container(
+                        content=data_table,
+                        padding=ft.padding.symmetric(horizontal=24, vertical=12),
+                        expand=True,
                     )
                 ],
                 expand=True,

@@ -1823,7 +1823,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                 ft.Container(
                     content=ft.Row(
                         [
-                            ft.Text(f"#{t}", size=12, color=ft.Colors.BLUE_300,
+                            ft.Text(f"#{tag}", size=12, color=ft.Colors.BLUE_300,
                                     weight=ft.FontWeight.W_500,
                                     no_wrap=True),
                             ft.IconButton(
@@ -1831,7 +1831,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                                 icon_size=12,
                                 icon_color=ft.Colors.GREY_500,
                                 tooltip=t("Remove tag"),
-                                on_click=lambda _, tag=t: _remove_tag(tag),
+                                on_click=lambda _, tag=tag: _remove_tag(tag),
                                 style=ft.ButtonStyle(padding=ft.padding.all(0)),
                             ),
                         ],
@@ -1845,7 +1845,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                     padding=ft.padding.only(left=8, right=2, top=2, bottom=2),
                     # no fixed width — let the container shrink-wrap to content
                 )
-                for t in _staged_tags
+                for tag in _staged_tags
             ]
             page.update()
 
@@ -2311,24 +2311,6 @@ def build_design_tracker(page: ft.Page, config: dict,
             for line in desc.splitlines():
                 story.append(Paragraph(line or " ", body_style))
 
-        # ── History ───────────────────────────────────────────────────────────
-        if hist:
-            story.append(Paragraph(t("History"), section_style))
-            story.append(HRFlowable(width="100%", thickness=0.5,
-                                    color=colors.HexColor("#BBDEFB"), spaceAfter=4))
-            for h in sorted(hist, key=lambda x: x.get("created_at") or ""):
-                date_str = _fmt_dt(h.get("created_at"))
-                story.append(Paragraph(f"<b>{date_str}</b>", label_style))
-                body = _clean(h.get("body") or "")
-                for line in (body or "—").splitlines():
-                    story.append(Paragraph(line or " ", body_style))
-                # history attachments
-                h_atts = fetch_history_attachments(output_path, h["id"])
-                if h_atts:
-                    names = ", ".join(a.get("orig_name") or Path(a["path"]).name for a in h_atts)
-                    story.append(Paragraph(f"  📎 {names}", mono_style))
-                story.append(Spacer(1, 4))
-
         # ── Attachments ───────────────────────────────────────────────────────
         if d_atts:
             story.append(Paragraph(t("Attachments"), section_style))
@@ -2356,6 +2338,24 @@ def build_design_tracker(page: ft.Page, config: dict,
                 title = task_map.get(tid, f"#{tid}")
                 story.append(Paragraph(f"• #{tid} — {title}", body_style))
 
+        # ── History ───────────────────────────────────────────────────────────
+        if hist:
+            story.append(Paragraph(t("History"), section_style))
+            story.append(HRFlowable(width="100%", thickness=0.5,
+                                    color=colors.HexColor("#BBDEFB"), spaceAfter=4))
+            for h in sorted(hist, key=lambda x: x.get("created_at") or ""):
+                date_str = _fmt_dt(h.get("created_at"))
+                story.append(Paragraph(f"<b>{date_str}</b>", label_style))
+                body = _clean(h.get("body") or "")
+                for line in (body or "—").splitlines():
+                    story.append(Paragraph(line or " ", body_style))
+                # history attachments
+                h_atts = fetch_history_attachments(output_path, h["id"])
+                if h_atts:
+                    names = ", ".join(a.get("orig_name") or Path(a["path"]).name for a in h_atts)
+                    story.append(Paragraph(f"  📎 {names}", mono_style))
+                story.append(Spacer(1, 4))
+
         doc.build(story)
 
     def _build_rows(designs: list[dict]) -> list[ft.DataRow]:
@@ -2363,14 +2363,15 @@ def build_design_tracker(page: ft.Page, config: dict,
 
         def _make_report_handler(d: dict):
             async def _handler(_):
-                fp = ft.FilePicker()
-                result = await fp.get_directory_path(
-                    dialog_title=t("Choose folder to save PDF"),
-                )
-                if not result:
-                    return
                 safe_name = re.sub(r'[<>:"/\\|?*]', "_", d["title"])
-                save_path = str(Path(result) / f"{safe_name}.pdf")
+                fp = ft.FilePicker()
+                save_path = await fp.save_file(
+                    dialog_title=t("Save PDF as"),
+                    file_name=f"{safe_name}.pdf",
+                    allowed_extensions=["pdf"],
+                )
+                if not save_path:
+                    return
                 try:
                     _generate_pdf(d, save_path)
                     _show_snack(t("PDF saved") + f": {save_path}", color=ft.Colors.GREEN_700)

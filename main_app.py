@@ -124,7 +124,7 @@ def show_main_app(page: ft.Page, config: dict) -> None:
     def show_manual(_) -> None:
         lang = translations.get_lang()
         manual_file = "manual_it.html" if lang == "it" else "manual_en.html"
-        _base = (os.path.dirname(sys.executable) if getattr(sys, 'frozen', False)
+        _base = (sys._MEIPASS if getattr(sys, 'frozen', False)
                  else os.path.dirname(os.path.abspath(__file__)))
         manual_path = os.path.join(_base, "User Manuals", manual_file)
         if os.path.exists(manual_path):
@@ -149,7 +149,7 @@ def show_main_app(page: ft.Page, config: dict) -> None:
     def show_release_notes(_) -> None:
         lang = translations.get_lang()
         rn_file = "release_notes_it.html" if lang == "it" else "release_notes_en.html"
-        _base = (os.path.dirname(sys.executable) if getattr(sys, 'frozen', False)
+        _base = (sys._MEIPASS if getattr(sys, 'frozen', False)
                  else os.path.dirname(os.path.abspath(__file__)))
         rn_path = os.path.join(_base, "ReleaseNotes", rn_file)
         if os.path.exists(rn_path):

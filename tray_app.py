@@ -21,9 +21,15 @@ import threading
 import argparse
 
 # ── resolve paths ────────────────────────────────────────────────────────────
-_HERE = os.path.dirname(os.path.abspath(__file__))
+# When frozen (PyInstaller --onedir), sys.executable points to MementoTray.exe
+# and all bundled resources sit alongside it.
+if getattr(sys, 'frozen', False):
+    _HERE = os.path.dirname(sys.executable)
+else:
+    _HERE = os.path.dirname(os.path.abspath(__file__))
+
 _ICON_PATH = os.path.join(_HERE, "Images", "memento.ico")
-_MAIN_SCRIPT = os.path.join(_HERE, "main.py")
+_MAIN_SCRIPT = os.path.join(_HERE, "main.py")   # only used in dev mode
 _PYTHON = sys.executable
 
 # ── startup registry helpers ──────────────────────────────────────────────────
@@ -34,9 +40,11 @@ _STARTUP_NAME = "MementoTray"
 def _startup_command() -> str:
     """Command stored in the registry to launch this script at login.
 
-    Uses pythonw.exe instead of python.exe so no console window appears
-    when Windows runs this entry at login.
+    When packaged, the command is simply the MementoTray.exe path.
+    In development, uses pythonw.exe so no console window appears.
     """
+    if getattr(sys, 'frozen', False):
+        return f'"{sys.executable}"'
     pythonw = os.path.join(os.path.dirname(_PYTHON), "pythonw.exe")
     if not os.path.isfile(pythonw):
         pythonw = _PYTHON  # fallback if pythonw.exe is not present
@@ -69,12 +77,11 @@ def remove_startup() -> None:
 # ── config / DB helpers ───────────────────────────────────────────────────────
 
 def _load_output_path() -> str | None:
-    """Read OutputPath from mem_conf.json; return None if missing."""
-    import json
-    cfg_file = os.path.join(_HERE, "mem_conf.json")
+    """Read OutputPath from the config file via config_manager."""
+    sys.path.insert(0, _HERE)
     try:
-        with open(cfg_file, "r", encoding="utf-8") as f:
-            return json.load(f).get("OutputPath")
+        from config_manager import load_config
+        return load_config().get("OutputPath")
     except Exception:
         return None
 
@@ -156,10 +163,15 @@ def _alarm_checker_loop(stop_event: threading.Event) -> None:
 
 def _open_memento(_icon, _item) -> None:
     """Launch the main Memento application."""
-    subprocess.Popen(
-        [_PYTHON, _MAIN_SCRIPT],
-        creationflags=subprocess.CREATE_NO_WINDOW,
-    )
+    if getattr(sys, 'frozen', False):
+        # When packaged, Memento.exe is in the same installation directory.
+        memento_exe = os.path.join(_HERE, "Memento.exe")
+        subprocess.Popen([memento_exe], creationflags=subprocess.CREATE_NO_WINDOW)
+    else:
+        subprocess.Popen(
+            [_PYTHON, _MAIN_SCRIPT],
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
 
 
 def _quit_tray(icon, _item) -> None:

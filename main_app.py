@@ -23,7 +23,8 @@ import translations
 from translations import t
 
 APP_VERSION = "v1.0"
-BUILD_DATE  = datetime.fromtimestamp(os.path.getmtime(__file__)).strftime("%d/%m/%Y")
+_mtime_src  = sys.executable if getattr(sys, 'frozen', False) else __file__
+BUILD_DATE  = datetime.fromtimestamp(os.path.getmtime(_mtime_src)).strftime("%d/%m/%Y")
 APP_AUTHOR  = "Domenico Spagnuolo"
 
 
@@ -123,7 +124,9 @@ def show_main_app(page: ft.Page, config: dict) -> None:
     def show_manual(_) -> None:
         lang = translations.get_lang()
         manual_file = "manual_it.html" if lang == "it" else "manual_en.html"
-        manual_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), manual_file)
+        _base = (os.path.dirname(sys.executable) if getattr(sys, 'frozen', False)
+                 else os.path.dirname(os.path.abspath(__file__)))
+        manual_path = os.path.join(_base, "User Manuals", manual_file)
         if os.path.exists(manual_path):
             os.startfile(manual_path)
         else:
@@ -513,12 +516,18 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             enabled = sw.value
             config["AutoStart"] = enabled
             save_config(config)
-            script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tray_app.py")
             cmd = "--install" if enabled else "--remove"
-            subprocess.Popen(
-                [sys.executable, script, cmd],
-                creationflags=subprocess.CREATE_NO_WINDOW,
-            )
+            if getattr(sys, 'frozen', False):
+                # Packaged: launch the installed MementoTray.exe
+                tray_exe = os.path.join(os.path.dirname(sys.executable), "MementoTray.exe")
+                subprocess.Popen([tray_exe, cmd],
+                                 creationflags=subprocess.CREATE_NO_WINDOW)
+            else:
+                script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tray_app.py")
+                subprocess.Popen(
+                    [sys.executable, script, cmd],
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
             close_dlg(autostart_dlg)
 
         autostart_dlg = ft.AlertDialog(

@@ -1,2 +1,18 @@
-__pychache__/
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+.venv/
+
+# Configuration (contains user-specific paths)
 mem_conf.json
+
+# ── Build / packaging ────────────────────────────────────────────────────────
+# PyInstaller intermediate build artefacts
+build/
+dist/
+
+# Inno Setup compiler output (generated installer executable)
+installer/Output/

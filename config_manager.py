@@ -5,8 +5,20 @@ Handles reading and writing the Memento configuration file (mem_conf.json).
 
 import json
 import os
+import sys
 
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mem_conf.json")
+# When running as a packaged executable (PyInstaller), store the config in
+# %APPDATA%\Memento so that the app can write to it even when installed in
+# a protected folder such as Program Files.
+# In development mode the config lives next to the source files as before.
+if getattr(sys, 'frozen', False):
+    CONFIG_FILE = os.path.join(
+        os.environ.get("APPDATA", os.path.expanduser("~")),
+        "Memento",
+        "mem_conf.json",
+    )
+else:
+    CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mem_conf.json")
 
 
 def config_exists() -> bool:

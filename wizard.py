@@ -408,11 +408,17 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
     def on_finish(_) -> None:
         _create_structure(config["OutputPath"])
         if config.get("AutoStart", False):
-            script = str(Path(__file__).parent / "tray_app.py")
-            subprocess.Popen(
-                [sys.executable, script, "--install"],
-                creationflags=subprocess.CREATE_NO_WINDOW,
-            )
+            if getattr(sys, 'frozen', False):
+                # Packaged: launch the installed MementoTray.exe
+                tray_exe = str(Path(sys.executable).parent / "MementoTray.exe")
+                subprocess.Popen([tray_exe, "--install"],
+                                 creationflags=subprocess.CREATE_NO_WINDOW)
+            else:
+                script = str(Path(__file__).parent / "tray_app.py")
+                subprocess.Popen(
+                    [sys.executable, script, "--install"],
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
         on_complete(config)
 
     btn_back.on_click   = on_back

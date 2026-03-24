@@ -81,6 +81,16 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             config["window_x"] = page.window.left
             config["window_y"] = page.window.top
             await asyncio.to_thread(save_config, config)
+        elif event_type == ft.WindowEventType.CLOSE:
+            # Persist final position, then hard-kill the process so no zombie
+            # remains in Task Manager after the window is closed.
+            config["window_x"] = page.window.left
+            config["window_y"] = page.window.top
+            try:
+                save_config(config)
+            except Exception:
+                pass
+            os._exit(0)
 
     page.window.on_event = on_window_event
 

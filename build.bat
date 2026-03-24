@@ -66,9 +66,33 @@ echo ============================================================
 echo  Build completata.
 echo  Eseguibile principale : dist\Memento\Memento.exe
 echo  Eseguibile tray        : dist\Memento\MementoTray.exe
-echo.
-echo  Passo successivo: apri installer\Memento_Setup.iss con
-echo  Inno Setup e compila per generare il file di installazione.
 echo ============================================================
+
+REM -- Compilazione installer Inno Setup ----------------------
+echo.
+echo === Compilazione installer Inno Setup ===
+
+REM Cerca ISCC.exe nei percorsi di installazione standard
+set "ISCC="
+if exist "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" (
+    set "ISCC=C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+) else if exist "C:\Program Files\Inno Setup 6\ISCC.exe" (
+    set "ISCC=C:\Program Files\Inno Setup 6\ISCC.exe"
+)
+
+if not defined ISCC (
+    echo [AVVISO] ISCC.exe non trovato. Apri manualmente:
+    echo          installer\Memento_Setup.iss con Inno Setup.
+echo.
+) else (
+    "%ISCC%" installer\Memento_Setup.iss
+    if errorlevel 1 (
+        echo [ERRORE] Compilazione installer fallita.
+        exit /b 1
+    )
+    echo.
+    echo  Installer generato in: installer\Output\
+echo ============================================================
+)
 
 endlocal

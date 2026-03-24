@@ -1016,6 +1016,17 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         header_col = ft.Column(
             [
+                ft.Row(
+                    [ft.Container(expand=True),
+                     ft.IconButton(
+                         icon=ft.Icons.DELETE_OUTLINE,
+                         icon_color=ft.Colors.RED_400,
+                         icon_size=18,
+                         tooltip=t("Delete"),
+                         on_click=lambda _e: _delete(_e),
+                     )],
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
                 _label_row(t("Title:"),   header_title),
                 _label_row(t("Project:"), ft.Column([header_project, _hdr_suggestions], spacing=0)),
                 _label_row(t("Status:"),  header_status),
@@ -1231,36 +1242,6 @@ def build_task_tracker(page: ft.Page, config: dict,
         _edit_state = {"dirty": False, "editing": not _desc_has_content}
 
         def _update_save_btn() -> None:
-            if _main_btns["save"]:
-                # Title and Project must always be non-empty
-                fields_ok = (
-                    bool(header_title.value.strip())
-                    and bool(header_project.value.strip())
-                )
-                header_changed = (
-                    header_title.value.strip() != _orig["title"]
-                    or header_project.value.strip() != _orig["project"]
-                    or (header_status.value or "") != _orig["status"]
-                )
-                alarm_at_new = _build_alarm_at()
-                new_fired = 0 if alarm_switch.value else 1
-                alarm_changed = (
-                    alarm_at_new is not None
-                    and alarm_at_new != ""
-                    and (
-                        alarm_at_new != _orig["alarm_at"]
-                        or int(alarm_before_dd.value or 0) != _orig["alarm_before"]
-                        or new_fired != _orig["alarm_fired"]
-                    )
-                ) or (
-                    alarm_at_new == "" and _orig["alarm_at"] != ""
-                )
-                can_save = fields_ok and (
-                    header_changed or alarm_changed or (
-                        _edit_state["dirty"] and not _edit_state["editing"]
-                    )
-                )
-                _main_btns["save"].disabled = not can_save
             page.update()
 
         def _on_alarm_time_change(_e) -> None:
@@ -1997,6 +1978,8 @@ def build_task_tracker(page: ft.Page, config: dict,
                 shutil.copy2(str(src), str(dest))
                 add_attachment(output_path, task["id"], dest_name, src.name)
             _refresh_attach()
+            _edit_state["dirty"] = True
+            _update_save_btn()
 
         _refresh_attach()
 
@@ -2263,46 +2246,30 @@ def build_task_tracker(page: ft.Page, config: dict,
             entry_attach_btn = ft.IconButton(
                 icon=ft.Icons.ATTACH_FILE, icon_size=15,
                 tooltip=t("Attach file to this entry"),
-                visible=False,
                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
             )
-            entry_save_btn = ft.FilledButton(
-                t("Save update"),
-                icon=ft.Icons.SAVE_OUTLINED,
-                visible=False,
-                style=ft.ButtonStyle(
-                    bgcolor={ft.ControlState.DEFAULT: ft.Colors.BLUE_600},
-                    color={ft.ControlState.DEFAULT: ft.Colors.WHITE},
-                ),
+
+            del_entry_btn = ft.IconButton(
+                icon=ft.Icons.DELETE_OUTLINE, icon_size=15,
+                icon_color=ft.Colors.RED_400,
+                tooltip=t("Delete entry"),
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
             )
 
             edit_body_btn = ft.IconButton(
                 icon=ft.Icons.EDIT_NOTE, icon_size=15,
-                tooltip="Edit",
-                style=ft.ButtonStyle(padding=ft.padding.all(2)),
-            )
-            cancel_body_btn = ft.IconButton(
-                icon=ft.Icons.CLOSE, icon_size=15,
-                tooltip="Cancel",
-                visible=False,
-                style=ft.ButtonStyle(padding=ft.padding.all(2)),
-            )
-            del_entry_btn = ft.IconButton(
-                icon=ft.Icons.DELETE_OUTLINE, icon_size=15,
-                icon_color=ft.Colors.RED_400,
-                tooltip="Delete entry",
+                tooltip=t("Edit"),
                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
             )
 
             def _entry_reset_edit_ui():
                 """Restore entry card to read-only state."""
                 body_txt.read_only = True
-                edit_body_btn.visible = True
-                cancel_body_btn.visible = False
+                edit_body_btn.icon = ft.Icons.EDIT_NOTE
+                edit_body_btn.tooltip = t("Edit")
+                edit_body_btn.on_click = _on_edit_body
                 entry_edit_toolbar.visible = False
                 entry_tags_section.visible = False
-                entry_attach_btn.visible = False
-                entry_save_btn.visible = False
                 _entry_staged_tags.clear()
                 _entry_refresh_chips()
                 _edit_state["editing"] = False
@@ -2314,8 +2281,9 @@ def build_task_tracker(page: ft.Page, config: dict,
 
             def _on_edit_body(_e):
                 body_txt.read_only = False
-                edit_body_btn.visible = False
-                cancel_body_btn.visible = True
+                edit_body_btn.icon = ft.Icons.CHECK
+                edit_body_btn.tooltip = t("Save")
+                edit_body_btn.on_click = _on_save_body
                 _edit_state["editing"] = True
                 if _main_btns["delete"]:
                     _main_btns["delete"].disabled = True
@@ -2324,12 +2292,9 @@ def build_task_tracker(page: ft.Page, config: dict,
                 page.update()
 
             def _on_body_change(_e):
-                """Show/hide extra controls based on whether body has been modified."""
                 has_text = bool((body_txt.value or "").strip())
                 entry_edit_toolbar.visible = has_text
                 entry_tags_section.visible = has_text
-                entry_attach_btn.visible   = has_text
-                entry_save_btn.visible     = has_text
                 page.update()
 
             body_txt.on_change = _on_body_change
@@ -2344,19 +2309,20 @@ def build_task_tracker(page: ft.Page, config: dict,
                 _entry_reset_edit_ui()
                 _refresh_history()
 
-            def _on_cancel_body(_e, orig=entry["body"]):
-                body_txt.value = orig
-                _entry_reset_edit_ui()
-                page.update()
+            edit_body_btn.on_click = _on_edit_body
 
             def _on_del_entry(_e, eid=entry["id"]):
+                for hatt in fetch_history_attachments(output_path, eid):
+                    fname = remove_history_attachment(output_path, hatt["id"])
+                    if fname:
+                        try:
+                            (history_attach_dir / fname).unlink(missing_ok=True)
+                        except OSError:
+                            pass
                 delete_history_entry(output_path, eid)
                 _refresh_history()
 
-            edit_body_btn.on_click   = _on_edit_body
-            entry_save_btn.on_click  = _on_save_body
-            cancel_body_btn.on_click = _on_cancel_body
-            del_entry_btn.on_click   = _on_del_entry
+            del_entry_btn.on_click = _on_del_entry
 
             async def _attach_to_history(_e, eid=entry["id"], hac=h_att_col):
                 fp = ft.FilePicker()
@@ -2369,7 +2335,10 @@ def build_task_tracker(page: ft.Page, config: dict,
                     dest_name = f"h{eid}_{src.name}"
                     shutil.copy2(str(src), str(history_attach_dir / dest_name))
                     add_history_attachment(output_path, eid, dest_name, src.name)
+                _edit_state["editing"] = False
+                _edit_state["dirty"] = True
                 _refresh_history()
+                _update_save_btn()
 
             entry_attach_btn.on_click = _attach_to_history
 
@@ -2384,9 +2353,9 @@ def build_task_tracker(page: ft.Page, config: dict,
                                 ft.Text(f"#{index}", size=11,
                                         color=ft.Colors.GREY_500,
                                         weight=ft.FontWeight.W_600),
-                                edit_body_btn,
-                                cancel_body_btn,
+                                entry_attach_btn,
                                 del_entry_btn,
+                                edit_body_btn,
                             ],
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,
                             spacing=2,
@@ -2395,10 +2364,6 @@ def build_task_tracker(page: ft.Page, config: dict,
                         body_txt,
                         h_att_col,
                         entry_tags_section,
-                        ft.Row(
-                            [entry_attach_btn, ft.Container(expand=True), entry_save_btn],
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                        ),
                     ],
                     spacing=4,
                     horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
@@ -2644,17 +2609,42 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         new_entry_field.on_change = _on_new_entry_change
 
+        _new_entry_attachments: list[str] = []
+        _new_staged_files_col = ft.Column([], spacing=3)
+
+        def _refresh_new_staged_files() -> None:
+            _new_staged_files_col.controls = [
+                ft.Row(
+                    [
+                        ft.Icon(ft.Icons.ATTACH_FILE, size=13, color=ft.Colors.GREY_500),
+                        ft.Text(Path(fp).name, size=12, expand=True),
+                        ft.IconButton(
+                            icon=ft.Icons.CLOSE, icon_size=12,
+                            tooltip=t("Remove"),
+                            on_click=lambda _, p=fp: _remove_new_staged_att(p),
+                            style=ft.ButtonStyle(padding=ft.padding.all(0)),
+                        ),
+                    ],
+                    spacing=4,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                )
+                for fp in _new_entry_attachments
+            ]
+            page.update()
+
+        def _remove_new_staged_att(path: str) -> None:
+            if path in _new_entry_attachments:
+                _new_entry_attachments.remove(path)
+            _refresh_new_staged_files()
+
         async def _on_new_attach(_e):
             fp = ft.FilePicker()
             files = await fp.pick_files(allow_multiple=True)
             if not files:
                 return
-            # store temporarily in _new_entry_attachments; actually saved on save_entry_btn
             for f in files:
                 _new_entry_attachments.append(f.path)
-            page.update()
-
-        _new_entry_attachments: list[str] = []
+            _refresh_new_staged_files()
 
         new_attach_btn = ft.IconButton(
             icon=ft.Icons.ATTACH_FILE, icon_size=15,
@@ -2668,6 +2658,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             _staged_tags.clear()
             _refresh_tag_chips()
             _new_entry_attachments.clear()
+            _refresh_new_staged_files()
             save_entry_btn.visible     = False
             hist_entry_toolbar.visible = False
             tags_section.visible       = False
@@ -2689,7 +2680,7 @@ def build_task_tracker(page: ft.Page, config: dict,
 
         def _add_history_entry(_e) -> None:
             text = new_entry_field.value or ""
-            if not text.strip():
+            if not text.strip() and not _new_entry_attachments:
                 return
             if _staged_tags:
                 text = text.rstrip() + "\n" + " ".join(f"#{tg}" for tg in _staged_tags)
@@ -2718,6 +2709,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             [
                 hist_entry_toolbar,
                 new_entry_field,
+                _new_staged_files_col,
                 tags_section,
                 ft.Row(
                     [new_attach_btn, ft.Container(expand=True),
@@ -2893,21 +2885,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 expand=True,
             )
             _refresh_attach()
-            _action_bar = ft.Container(
-                content=ft.Row(
-                    [delete_btn, cancel_btn, save_btn],
-                    alignment=ft.MainAxisAlignment.SPACE_EVENLY,
-                ),
-                padding=ft.padding.symmetric(horizontal=32, vertical=10),
-                bgcolor=ft.Colors.SURFACE_CONTAINER,
-            )
-            detail_outer = ft.Column(
-                [detail_view, _action_bar],
-                spacing=0,
-                expand=True,
-                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
-            )
-            on_open_task(detail_outer, f"Task  #{task['id']}")
+            on_open_task(detail_view, f"Task  #{task['id']}")
         else:
             # ── Dialog fallback ───────────────────────────────────────────────
             dlg = ft.AlertDialog(
@@ -2938,7 +2916,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                     height=700,
                     expand=True,
                 ),
-                actions=[delete_btn, cancel_btn, save_btn],
+                actions=[],
                 actions_alignment=ft.MainAxisAlignment.SPACE_EVENLY,
             )
             _dlg_ref["dlg"] = dlg

@@ -146,6 +146,31 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             dlg.open = True
             page.update()
 
+    def show_release_notes(_) -> None:
+        lang = translations.get_lang()
+        rn_file = "release_notes_it.html" if lang == "it" else "release_notes_en.html"
+        _base = (os.path.dirname(sys.executable) if getattr(sys, 'frozen', False)
+                 else os.path.dirname(os.path.abspath(__file__)))
+        rn_path = os.path.join(_base, "ReleaseNotes", rn_file)
+        if os.path.exists(rn_path):
+            os.startfile(rn_path)
+        else:
+            dlg = ft.AlertDialog(
+                title=ft.Row(
+                    [
+                        ft.Icon(ft.Icons.NEW_RELEASES, color=ft.Colors.BLUE_400),
+                        ft.Text(t("Release Notes"), weight=ft.FontWeight.BOLD),
+                    ],
+                    spacing=10,
+                ),
+                content=ft.Text(t("Release notes not found."), width=360),
+                actions=[ft.TextButton(t("Close"), on_click=lambda _: close_dlg(dlg))],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.overlay.append(dlg)
+            dlg.open = True
+            page.update()
+
     # ── Popup menu helpers ───────────────────────────────────────
     def _menu_btn(icon, label, on_click) -> ft.TextButton:
         return ft.TextButton(
@@ -452,6 +477,10 @@ def show_main_app(page: ft.Page, config: dict) -> None:
                 ft.PopupMenuItem(
                     content=ft.Row([ft.Icon(ft.Icons.MENU_BOOK, size=16), ft.Text(t("User Manual"))], spacing=8),
                     on_click=show_manual,
+                ),
+                ft.PopupMenuItem(
+                    content=ft.Row([ft.Icon(ft.Icons.NEW_RELEASES, size=16), ft.Text(t("Release Notes"))], spacing=8),
+                    on_click=show_release_notes,
                 ),
             ]),
             ft.Container(width=4),

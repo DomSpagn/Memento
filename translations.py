@@ -22,6 +22,8 @@ ITALIAN: dict = {
     "User Manual":              "Manuale utente",
     "The user manual will be available in a future release.":
         "Il manuale utente sarà disponibile in una versione futura.",
+    "Release Notes":            "Note di rilascio",
+    "Release notes not found.": "File note di rilascio non trovato.",
     "Installation Path":         "Percorso d'installazione",
     "Installation Path…":        "Percorso d'installazione…",
     "Browse…":                  "Sfoglia…",

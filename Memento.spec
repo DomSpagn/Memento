@@ -24,6 +24,8 @@ a = Analysis(
         ('Images',          'Images'),
         (os.path.join('User Manuals', 'manual_en.html'), 'User Manuals'),
         (os.path.join('User Manuals', 'manual_it.html'), 'User Manuals'),
+        (os.path.join('ReleaseNotes', 'release_notes_en.html'), 'ReleaseNotes'),
+        (os.path.join('ReleaseNotes', 'release_notes_it.html'), 'ReleaseNotes'),
         ('translations.py', '.'),
         (_flet_path,         'flet'),
         (_flet_desktop_path, 'flet_desktop'),

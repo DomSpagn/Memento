@@ -1670,6 +1670,13 @@ def build_design_tracker(page: ft.Page, config: dict,
                 spacing=3,
             )
 
+            _body_cursor: dict = {"pos": 0}
+
+            def _on_body_sel_change(e) -> None:
+                sel = body_txt.selection
+                if sel is not None:
+                    _body_cursor["pos"] = sel.extent_offset
+
             body_txt = ft.TextField(
                 value=entry["body"],
                 multiline=True,
@@ -1679,18 +1686,224 @@ def build_design_tracker(page: ft.Page, config: dict,
                 border=ft.InputBorder.NONE,
                 content_padding=ft.padding.symmetric(horizontal=8, vertical=6),
                 expand=True,
+                on_selection_change=_on_body_sel_change,
+            )
+
+            async def _entry_insert(text: str) -> None:
+                cur = body_txt.value or ""
+                pos = min(_body_cursor["pos"], len(cur))
+                new_val = cur[:pos] + text + cur[pos:]
+                new_pos = pos + len(text)
+                body_txt.value = new_val
+                body_txt.selection = ft.TextSelection(base_offset=new_pos, extent_offset=new_pos)
+                _body_cursor["pos"] = new_pos
+                page.update()
+
+            async def _entry_fmt(prefix: str, suffix: str, placeholder: str) -> None:
+                await _entry_insert(f"{prefix}{placeholder}{suffix}")
+
+            async def _entry_bold(_e):      await _entry_fmt("**",  "**",   "bold text")
+            async def _entry_italic(_e):    await _entry_fmt("*",   "*",    "italic text")
+            async def _entry_underline(_e): await _entry_fmt("<u>", "</u>", "underlined text")
+
+            async def _entry_bullet(_e) -> None:
+                cur = body_txt.value or ""
+                pos = min(_body_cursor["pos"], len(cur))
+                ls = cur.rfind('\n', 0, pos) + 1
+                body_txt.value = cur[:ls] + "\u2022 " + cur[ls:]
+                page.update()
+
+            async def _entry_numbered(_e) -> None:
+                cur = body_txt.value or ""
+                count = len(re.findall(r"^\d+\.\s", cur, re.MULTILINE))
+                pos = min(_body_cursor["pos"], len(cur))
+                ls = cur.rfind('\n', 0, pos) + 1
+                body_txt.value = cur[:ls] + f"{count + 1}. " + cur[ls:]
+                page.update()
+
+            async def _entry_quote(_e) -> None:
+                cur = body_txt.value or ""
+                pos = min(_body_cursor["pos"], len(cur))
+                ls = cur.rfind('\n', 0, pos) + 1
+                body_txt.value = cur[:ls] + "    " + cur[ls:]
+                page.update()
+
+            async def _entry_remove_quotes(_e) -> None:
+                cur = body_txt.value or ""
+                lines = [ln[4:] if ln.startswith("    ") else ln for ln in cur.splitlines()]
+                body_txt.value = "\n".join(lines)
+                page.update()
+
+            def _make_entry_color_handler(hex_color):
+                async def _h(_e): await _entry_fmt(f"[color={hex_color}]", "[/color]", "text")
+                return _h
+
+            entry_color_popup = ft.PopupMenuButton(
+                icon=ft.Icons.FORMAT_COLOR_TEXT,
+                icon_size=18,
+                tooltip=t("Text color"),
+                items=[
+                    ft.PopupMenuItem(
+                        content=ft.Row(
+                            [ft.Container(width=14, height=14, bgcolor=hx, border_radius=2),
+                             ft.Text(nm, size=12)],
+                            spacing=6,
+                        ),
+                        on_click=_make_entry_color_handler(hx),
+                    )
+                    for hx, nm in _COLOR_OPTS
+                ],
+            )
+
+            entry_edit_toolbar = ft.Container(
+                visible=False,
+                content=ft.Row(
+                    [
+                        _tb_btn(ft.Icons.FORMAT_BOLD,            "Bold",          _entry_bold),
+                        _tb_btn(ft.Icons.FORMAT_ITALIC,          "Italic",        _entry_italic),
+                        _tb_btn(ft.Icons.FORMAT_UNDERLINED,      "Underline",     _entry_underline),
+                        ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
+                        _tb_btn(ft.Icons.FORMAT_LIST_BULLETED,   "Bullet list",   _entry_bullet),
+                        _tb_btn(ft.Icons.FORMAT_LIST_NUMBERED,   "Numbered list", _entry_numbered),
+                        ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
+                        entry_color_popup,
+                        ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
+                        _tb_btn(ft.Icons.FORMAT_INDENT_INCREASE, "Quote",         _entry_quote),
+                        _tb_btn(ft.Icons.FORMAT_INDENT_DECREASE, "Remove quote",  _entry_remove_quotes),
+                    ],
+                    spacing=0,
+                    tight=True,
+                ),
+                border=ft.border.only(bottom=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT)),
+                padding=ft.padding.symmetric(horizontal=4, vertical=2),
+            )
+
+            # ── Per-entry tag staging ──────────────────────────────────────
+            _entry_staged_tags: list[str] = []
+            _entry_tags_chips_row = ft.Row([], spacing=6, wrap=True)
+
+            def _entry_refresh_chips() -> None:
+                _entry_tags_chips_row.controls = [
+                    ft.Container(
+                        content=ft.Row(
+                            [
+                                ft.Text(f"#{tn}", size=12, color=ft.Colors.BLUE_300,
+                                        weight=ft.FontWeight.W_500, no_wrap=True),
+                                ft.IconButton(
+                                    icon=ft.Icons.CLOSE, icon_size=12,
+                                    icon_color=ft.Colors.GREY_500,
+                                    tooltip=t("Remove tag"),
+                                    on_click=lambda _, tn=tn: _entry_remove_tag(tn),
+                                    style=ft.ButtonStyle(padding=ft.padding.all(0)),
+                                ),
+                            ],
+                            spacing=2,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            tight=True,
+                        ),
+                        bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.BLUE_400),
+                        border=ft.border.all(1, ft.Colors.with_opacity(0.3, ft.Colors.BLUE_400)),
+                        border_radius=12,
+                        padding=ft.padding.only(left=8, right=2, top=2, bottom=2),
+                    )
+                    for tn in _entry_staged_tags
+                ]
+                page.update()
+
+            def _entry_remove_tag(tag: str) -> None:
+                if tag in _entry_staged_tags:
+                    _entry_staged_tags.remove(tag)
+                _entry_refresh_chips()
+
+            def _entry_on_tag_input_change(e) -> None:
+                if " " in (e.control.value or ""):
+                    e.control.value = (e.control.value or "").replace(" ", "")
+                    e.control.update()
+
+            entry_tag_input = ft.TextField(
+                hint_text="#tag",
+                width=120, dense=True, border_radius=6,
+                content_padding=ft.padding.symmetric(horizontal=8, vertical=6),
+                on_change=_entry_on_tag_input_change,
+            )
+            entry_add_tag_btn = ft.IconButton(
+                icon=ft.Icons.ADD, icon_size=16,
+                tooltip=t("Add tag"),
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+            )
+
+            def _entry_do_add_tag(_e=None) -> None:
+                raw = (entry_tag_input.value or "").strip().lstrip("#")
+                if not raw:
+                    return
+                tag = raw.split()[0].lower()
+                if tag and tag not in _entry_staged_tags:
+                    _entry_staged_tags.append(tag)
+                    _entry_refresh_chips()
+                entry_tag_input.value = ""
+                page.update()
+
+            entry_tag_input.on_submit = lambda _e: _entry_do_add_tag()
+            entry_add_tag_btn.on_click = _entry_do_add_tag
+
+            entry_tags_section = ft.Column(
+                [
+                    ft.Row(
+                        [
+                            ft.Icon(ft.Icons.TAG, size=15, color=ft.Colors.GREY_500),
+                            entry_tag_input,
+                            entry_add_tag_btn,
+                        ],
+                        spacing=4,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    _entry_tags_chips_row,
+                ],
+                spacing=4,
+                visible=False,
+            )
+
+            entry_attach_btn = ft.IconButton(
+                icon=ft.Icons.ATTACH_FILE, icon_size=15,
+                tooltip=t("Attach file to this entry"),
+                visible=False,
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+            )
+            entry_save_btn = ft.FilledButton(
+                t("Save update"),
+                icon=ft.Icons.SAVE_OUTLINED,
+                visible=False,
+                style=ft.ButtonStyle(
+                    bgcolor={ft.ControlState.DEFAULT: ft.Colors.BLUE_600},
+                    color={ft.ControlState.DEFAULT: ft.Colors.WHITE},
+                ),
             )
 
             edit_body_btn   = ft.IconButton(icon=ft.Icons.EDIT_NOTE,      icon_size=15, tooltip=t("Edit"),   style=ft.ButtonStyle(padding=ft.padding.all(2)))
-            save_body_btn   = ft.IconButton(icon=ft.Icons.SAVE_OUTLINED,  icon_size=15, tooltip=t("Save"),   visible=False, style=ft.ButtonStyle(padding=ft.padding.all(2)))
             cancel_body_btn = ft.IconButton(icon=ft.Icons.CLOSE,          icon_size=15, tooltip=t("Cancel"), visible=False, style=ft.ButtonStyle(padding=ft.padding.all(2)))
             del_entry_btn   = ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, icon_size=15, icon_color=ft.Colors.RED_400, tooltip=t("Delete entry"), style=ft.ButtonStyle(padding=ft.padding.all(2)))
 
-            def _on_edit_body(_e, bt=body_txt, eb=edit_body_btn, sb=save_body_btn, cb=cancel_body_btn):
-                bt.read_only = False
-                eb.visible = False
-                sb.visible = True
-                cb.visible = True
+            def _entry_reset_edit_ui():
+                body_txt.read_only = True
+                edit_body_btn.visible  = True
+                cancel_body_btn.visible = False
+                entry_edit_toolbar.visible = False
+                entry_tags_section.visible = False
+                entry_attach_btn.visible   = False
+                entry_save_btn.visible     = False
+                _entry_staged_tags.clear()
+                _entry_refresh_chips()
+                _edit_state["editing"] = False
+                if _main_btns["delete"]:
+                    _main_btns["delete"].disabled = False
+                if _main_btns["save"]:
+                    _main_btns["save"].disabled = False
+                _update_save_btn()
+
+            def _on_edit_body(_e):
+                body_txt.read_only = False
+                edit_body_btn.visible  = False
+                cancel_body_btn.visible = True
                 _edit_state["editing"] = True
                 if _main_btns["delete"]:
                     _main_btns["delete"].disabled = True
@@ -1698,37 +1911,37 @@ def build_design_tracker(page: ft.Page, config: dict,
                     _main_btns["save"].disabled = True
                 page.update()
 
-            def _on_save_body(_e, eid=entry["id"], bt=body_txt,
-                              eb=edit_body_btn, sb=save_body_btn, cb=cancel_body_btn):
-                update_history_entry(output_path, eid, bt.value or "")
-                bt.read_only = True
-                eb.visible = True
-                sb.visible = False
-                cb.visible = False
-                _edit_state["editing"] = False
-                _edit_state["dirty"]   = True
-                if _main_btns["delete"]:
-                    _main_btns["delete"].disabled = False
-                _update_save_btn()
+            def _on_body_change(_e):
+                has_text = bool((body_txt.value or "").strip())
+                entry_edit_toolbar.visible = has_text
+                entry_tags_section.visible = has_text
+                entry_attach_btn.visible   = has_text
+                entry_save_btn.visible     = has_text
+                page.update()
 
-            def _on_cancel_body(_e, orig=entry["body"], bt=body_txt,
-                                eb=edit_body_btn, sb=save_body_btn, cb=cancel_body_btn):
-                bt.value = orig
-                bt.read_only = True
-                eb.visible = True
-                sb.visible = False
-                cb.visible = False
-                _edit_state["editing"] = False
-                if _main_btns["delete"]:
-                    _main_btns["delete"].disabled = False
-                _update_save_btn()
+            body_txt.on_change = _on_body_change
+
+            def _on_save_body(_e, eid=entry["id"]):
+                text = body_txt.value or ""
+                if _entry_staged_tags:
+                    text = text.rstrip() + "\n" + " ".join(f"#{tg}" for tg in _entry_staged_tags)
+                    body_txt.value = text
+                update_history_entry(output_path, eid, text)
+                _edit_state["dirty"] = True
+                _entry_reset_edit_ui()
+                _refresh_history()
+
+            def _on_cancel_body(_e, orig=entry["body"]):
+                body_txt.value = orig
+                _entry_reset_edit_ui()
+                page.update()
 
             def _on_del_entry(_e, eid=entry["id"]):
                 delete_history_entry(output_path, eid)
                 _refresh_history()
 
             edit_body_btn.on_click   = _on_edit_body
-            save_body_btn.on_click   = _on_save_body
+            entry_save_btn.on_click  = _on_save_body
             cancel_body_btn.on_click = _on_cancel_body
             del_entry_btn.on_click   = _on_del_entry
 
@@ -1745,6 +1958,8 @@ def build_design_tracker(page: ft.Page, config: dict,
                     add_history_attachment(output_path, eid, dest_name, src.name)
                 _refresh_history()
 
+            entry_attach_btn.on_click = _attach_to_history
+
             return ft.Container(
                 content=ft.Column(
                     [
@@ -1754,19 +1969,18 @@ def build_design_tracker(page: ft.Page, config: dict,
                                         color=ft.Colors.GREY_500, expand=True),
                                 ft.Text(f"#{index}", size=11, color=ft.Colors.GREY_500,
                                         weight=ft.FontWeight.W_600),
-                                edit_body_btn, save_body_btn, cancel_body_btn, del_entry_btn,
+                                edit_body_btn, cancel_body_btn, del_entry_btn,
                             ],
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,
                             spacing=2,
                         ),
+                        entry_edit_toolbar,
                         body_txt,
                         h_att_col,
-                        ft.IconButton(
-                            icon=ft.Icons.ATTACH_FILE,
-                            icon_size=15,
-                            tooltip=t("Attach file to this entry"),
-                            on_click=_attach_to_history,
-                            style=ft.ButtonStyle(padding=ft.padding.all(2)),
+                        entry_tags_section,
+                        ft.Row(
+                            [entry_attach_btn, ft.Container(expand=True), entry_save_btn],
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
                         ),
                     ],
                     spacing=4,
@@ -1794,6 +2008,105 @@ def build_design_tracker(page: ft.Page, config: dict,
                     pass
             _refresh_history()
 
+        # ── History entry cursor tracking ──────────────────────────────────
+        _cursor_hist: dict = {"pos": 0}
+
+        def _on_hist_sel_change(e) -> None:
+            sel = new_entry_field.selection
+            if sel is not None:
+                _cursor_hist["pos"] = sel.extent_offset
+
+        async def _hist_insert(text: str) -> None:
+            cur = new_entry_field.value or ""
+            pos = min(_cursor_hist["pos"], len(cur))
+            new_val = cur[:pos] + text + cur[pos:]
+            new_pos = pos + len(text)
+            new_entry_field.value = new_val
+            new_entry_field.selection = ft.TextSelection(
+                base_offset=new_pos, extent_offset=new_pos
+            )
+            _cursor_hist["pos"] = new_pos
+            page.update()
+
+        async def _hist_fmt(prefix: str, suffix: str, placeholder: str) -> None:
+            await _hist_insert(f"{prefix}{placeholder}{suffix}")
+
+        async def _on_hist_bold(_e):      await _hist_fmt("**",  "**",    "bold text")
+        async def _on_hist_italic(_e):    await _hist_fmt("*",   "*",     "italic text")
+        async def _on_hist_underline(_e): await _hist_fmt("<u>", "</u>",  "underlined text")
+
+        async def _on_hist_bullet(_e) -> None:
+            cur = new_entry_field.value or ""
+            pos = min(_cursor_hist["pos"], len(cur))
+            ls = cur.rfind('\n', 0, pos) + 1
+            new_entry_field.value = cur[:ls] + "\u2022 " + cur[ls:]
+            page.update()
+
+        async def _on_hist_numbered(_e) -> None:
+            cur = new_entry_field.value or ""
+            count = len(re.findall(r"^\d+\.\s", cur, re.MULTILINE))
+            pos = min(_cursor_hist["pos"], len(cur))
+            ls = cur.rfind('\n', 0, pos) + 1
+            new_entry_field.value = cur[:ls] + f"{count + 1}. " + cur[ls:]
+            page.update()
+
+        async def _on_hist_quote(_e) -> None:
+            cur = new_entry_field.value or ""
+            pos = min(_cursor_hist["pos"], len(cur))
+            ls = cur.rfind('\n', 0, pos) + 1
+            new_entry_field.value = cur[:ls] + "    " + cur[ls:]
+            page.update()
+
+        async def _on_hist_remove_quotes(_e) -> None:
+            cur = new_entry_field.value or ""
+            lines = [ln[4:] if ln.startswith("    ") else ln for ln in cur.splitlines()]
+            new_entry_field.value = "\n".join(lines)
+            page.update()
+
+        def _make_hist_color_handler(hex_color):
+            async def _h(_e): await _hist_fmt(f"[color={hex_color}]", "[/color]", "text")
+            return _h
+
+        hist_color_popup = ft.PopupMenuButton(
+            icon=ft.Icons.FORMAT_COLOR_TEXT,
+            icon_size=18,
+            tooltip=t("Text color"),
+            items=[
+                ft.PopupMenuItem(
+                    content=ft.Row(
+                        [ft.Container(width=14, height=14, bgcolor=hx, border_radius=2),
+                         ft.Text(nm, size=12)],
+                        spacing=6,
+                    ),
+                    on_click=_make_hist_color_handler(hx),
+                )
+                for hx, nm in _COLOR_OPTS
+            ],
+        )
+
+        hist_entry_toolbar = ft.Container(
+            visible=False,
+            content=ft.Row(
+                [
+                    _tb_btn(ft.Icons.FORMAT_BOLD,            "Bold",          _on_hist_bold),
+                    _tb_btn(ft.Icons.FORMAT_ITALIC,          "Italic",        _on_hist_italic),
+                    _tb_btn(ft.Icons.FORMAT_UNDERLINED,      "Underline",     _on_hist_underline),
+                    ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
+                    _tb_btn(ft.Icons.FORMAT_LIST_BULLETED,   "Bullet list",   _on_hist_bullet),
+                    _tb_btn(ft.Icons.FORMAT_LIST_NUMBERED,   "Numbered list", _on_hist_numbered),
+                    ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
+                    hist_color_popup,
+                    ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
+                    _tb_btn(ft.Icons.FORMAT_INDENT_INCREASE, "Quote",         _on_hist_quote),
+                    _tb_btn(ft.Icons.FORMAT_INDENT_DECREASE, "Remove quote",  _on_hist_remove_quotes),
+                ],
+                spacing=0,
+                tight=True,
+            ),
+            border=ft.border.only(bottom=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT)),
+            padding=ft.padding.symmetric(horizontal=4, vertical=2),
+        )
+
         new_entry_field = ft.TextField(
             hint_text=t("Write an update…"),
             multiline=True,
@@ -1803,6 +2116,7 @@ def build_design_tracker(page: ft.Page, config: dict,
             border_radius=6,
             bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.BLUE),
             content_padding=ft.padding.symmetric(horizontal=10, vertical=8),
+            on_selection_change=_on_hist_sel_change,
         )
         save_entry_btn = ft.FilledButton(
             t("Save update"),
@@ -1908,54 +2222,129 @@ def build_design_tracker(page: ft.Page, config: dict,
                 _tags_chips_row,
             ],
             spacing=4,
+            visible=False,
         )
 
         def _on_new_entry_change(_e) -> None:
-            has_text = bool((new_entry_field.value or "").strip())
-            save_entry_btn.visible = has_text
-            tag_input.disabled  = not has_text
-            add_tag_btn.disabled = not has_text
-            if not has_text and _staged_tags:
-                _staged_tags.clear()
-                _refresh_tag_chips()
-            _edit_state["editing"] = has_text
-            if _main_btns["delete"]:
-                _main_btns["delete"].disabled = has_text
-            _update_save_btn()
+            pass
 
         new_entry_field.on_change = _on_new_entry_change
+
+        async def _on_new_attach(_e):
+            fp = ft.FilePicker()
+            files = await fp.pick_files(allow_multiple=True)
+            if not files:
+                return
+            for f in files:
+                _new_entry_attachments.append(f.path)
+            page.update()
+
+        _new_entry_attachments: list[str] = []
+
+        new_attach_btn = ft.IconButton(
+            icon=ft.Icons.ATTACH_FILE, icon_size=15,
+            tooltip=t("Attach file to this entry"),
+            on_click=_on_new_attach,
+            style=ft.ButtonStyle(padding=ft.padding.all(2)),
+        )
+
+        def _hide_new_entry_panel() -> None:
+            new_entry_field.value = ""
+            _staged_tags.clear()
+            _refresh_tag_chips()
+            _new_entry_attachments.clear()
+            save_entry_btn.visible     = False
+            hist_entry_toolbar.visible = False
+            tags_section.visible       = False
+            new_attach_btn.visible     = False
+            tag_input.disabled         = True
+            add_tag_btn.disabled       = True
+            new_entry_panel.visible    = False
+            add_update_btn.visible     = True
+            _edit_state["editing"]     = False
+            if _main_btns["delete"]:
+                _main_btns["delete"].disabled = False
+            if _main_btns["save"]:
+                _main_btns["save"].disabled = False
+            _update_save_btn()
+
+        def _on_cancel_new_entry(_e) -> None:
+            _hide_new_entry_panel()
+            page.update()
 
         def _add_history_entry_cb(_e) -> None:
             text = new_entry_field.value or ""
             if not text.strip():
                 return
-            # Append tags if any
             if _staged_tags:
-                text = text.rstrip() + "\n" + " ".join(f"#{t}" for t in _staged_tags)
-            add_history_entry(output_path, design["id"], text)
-            new_entry_field.value  = ""
-            _staged_tags.clear()
-            _refresh_tag_chips()
-            save_entry_btn.visible = False
-            tag_input.disabled     = True
-            add_tag_btn.disabled   = True
-            _edit_state["editing"] = False
-            _edit_state["dirty"]   = True
-            if _main_btns["delete"]:
-                _main_btns["delete"].disabled = False
-            _update_save_btn()
+                text = text.rstrip() + "\n" + " ".join(f"#{tg}" for tg in _staged_tags)
+            eid = add_history_entry(output_path, design["id"], text)
+            if _new_entry_attachments:
+                history_attach_dir.mkdir(parents=True, exist_ok=True)
+                for fp in _new_entry_attachments:
+                    src = Path(fp)
+                    dest_name = f"h{eid}_{src.name}"
+                    shutil.copy2(str(src), str(history_attach_dir / dest_name))
+                    add_history_attachment(output_path, eid, dest_name, src.name)
+            _edit_state["dirty"] = True
+            _hide_new_entry_panel()
             _refresh_history()
 
         save_entry_btn.on_click = _add_history_entry_cb
+
+        cancel_new_entry_btn = ft.IconButton(
+            icon=ft.Icons.CLOSE, icon_size=15,
+            tooltip=t("Cancel"),
+            on_click=_on_cancel_new_entry,
+            style=ft.ButtonStyle(padding=ft.padding.all(2)),
+        )
+
+        new_entry_panel = ft.Column(
+            [
+                hist_entry_toolbar,
+                new_entry_field,
+                tags_section,
+                ft.Row(
+                    [new_attach_btn, ft.Container(expand=True),
+                     cancel_new_entry_btn, save_entry_btn],
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+            ],
+            spacing=6,
+            visible=False,
+            horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+        )
+
+        add_update_btn = ft.OutlinedButton(
+            t("New update"),
+            icon=ft.Icons.ADD,
+        )
+
+        def _show_new_entry_panel(_e) -> None:
+            hist_entry_toolbar.visible = True
+            tags_section.visible       = True
+            tag_input.disabled         = False
+            add_tag_btn.disabled       = False
+            save_entry_btn.visible     = True
+            new_entry_panel.visible    = True
+            add_update_btn.visible     = False
+            _edit_state["editing"]     = True
+            if _main_btns["delete"]:
+                _main_btns["delete"].disabled = True
+            if _main_btns["save"]:
+                _main_btns["save"].disabled = True
+            _update_save_btn()
+            page.update()
+
+        add_update_btn.on_click = _show_new_entry_panel
 
         history_section = ft.Column(
             [
                 ft.Text(t("History"), size=12, weight=ft.FontWeight.W_600,
                         color=ft.Colors.GREY_600),
                 history_entries_col,
-                new_entry_field,
-                tags_section,
-                ft.Row([save_entry_btn], alignment=ft.MainAxisAlignment.END),
+                add_update_btn,
+                new_entry_panel,
             ],
             spacing=6,
             horizontal_alignment=ft.CrossAxisAlignment.STRETCH,

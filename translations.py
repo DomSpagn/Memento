@@ -169,6 +169,7 @@ ITALIAN: dict = {
     "Write an update\u2026":    "Scrivi un aggiornamento\u2026",
     # history entry button
     "Save update":              "Salva aggiornamento",
+    "New update":               "Nuovo aggiornamento",
     # relative date labels
     "Today":                    "Oggi",
     "Yesterday":                "Ieri",

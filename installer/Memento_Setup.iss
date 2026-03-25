@@ -34,7 +34,7 @@ OutputDir=Output
 OutputBaseFilename=Memento_Setup_{#MyAppVersion}
 SetupIconFile=..\.\Images\memento.ico
 SolidCompression=yes
-WizardStyle=modern
+WizardStyle=modern dynamic polar
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

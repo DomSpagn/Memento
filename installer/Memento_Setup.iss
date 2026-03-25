@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #define MyAppName "Memento"
-#define MyAppVersion "1.2"
+#define MyAppVersion "1.3"
 #define MyAppExeName "Memento.exe"
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".myp"
@@ -34,7 +34,7 @@ OutputDir=Output
 OutputBaseFilename=Memento_Setup_{#MyAppVersion}
 SetupIconFile=..\.\Images\memento.ico
 SolidCompression=yes
-WizardStyle=modern dynamic polar
+WizardStyle=modern
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

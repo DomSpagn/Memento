@@ -193,6 +193,28 @@ def remove_attachment(output_path: str, attachment_id: int) -> str | None:
     return row[0]
 
 
+def find_designs_with_attachment(output_path: str, orig_name: str) -> list[dict]:
+    """Return [{design_id, title, in_history}] for each design attachment with orig_name."""
+    with _connect(output_path) as conn:
+        rows = conn.execute(
+            "SELECT a.design_id, d.title FROM attachments a "
+            "JOIN designs d ON d.id = a.design_id WHERE a.orig_name = ?",
+            (orig_name,),
+        ).fetchall()
+        result = [{"design_id": r[0], "title": r[1], "in_history": False} for r in rows]
+        try:
+            rows2 = conn.execute(
+                "SELECT h.design_id, d.title FROM history_attachments ha "
+                "JOIN history h ON h.id = ha.history_id "
+                "JOIN designs d ON d.id = h.design_id WHERE ha.orig_name = ?",
+                (orig_name,),
+            ).fetchall()
+            result += [{"design_id": r[0], "title": r[1], "in_history": True} for r in rows2]
+        except Exception:
+            pass
+    return result
+
+
 # ── History helpers ───────────────────────────────────────────────────────────
 
 def _ensure_history_tables(conn: sqlite3.Connection) -> None:

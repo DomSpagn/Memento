@@ -151,6 +151,9 @@ ITALIAN: dict = {
     # inline error messages
     "Enter a valid number":     "Inserisci un numero valido",
     "Already added":            "Già aggiunto",
+    "File already attached":    "File già allegato",
+    "is already attached to":   "è già allegato a",
+    "update":                   "aggiornamento",
     "Task not found":           "Task non trovato",
     "Design not found":         "Design non trovato",
     "Invalid format \u2014 use YYYY-MM-DD and HH:MM":

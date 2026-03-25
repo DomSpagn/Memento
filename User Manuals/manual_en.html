@@ -522,13 +522,27 @@
     <!-- ══════════════════════════════════════════════════════ -->
     <h2 id="s1">1 · Getting Started</h2>
 
-    <h3 id="s1-1">1.1 System Requirements</h3>
+    <h3 id="s1-1">1.1 System Requirements &amp; Installation</h3>
     <table>
       <tr><th>Component</th><th>Requirement</th></tr>
       <tr><td>Operating System</td><td>Windows 10 or Windows 11 (64-bit)</td></tr>
+      <tr><td>Display</td><td>Minimum 1280 × 768 recommended</td></tr>
+    </table>
+
+    <h4>Installing from the setup wizard (recommended)</h4>
+    <p>
+      Run <code>Memento_Setup_1.3.exe</code> and follow the on-screen instructions.
+      The installer copies <code>Memento.exe</code>, <code>MementoTray.exe</code>, and all
+      required files to a folder of your choice (default: <code>%ProgramFiles%\Memento</code>)
+      and optionally creates a desktop shortcut.
+      No Python installation is required.
+    </p>
+
+    <h4>Running from source (developers)</h4>
+    <table>
+      <tr><th>Component</th><th>Requirement</th></tr>
       <tr><td>Python</td><td>3.10 or later</td></tr>
       <tr><td>Key libraries</td><td><code>flet</code>, <code>pystray</code>, <code>Pillow</code></td></tr>
-      <tr><td>Display</td><td>Minimum 1280 × 768 recommended</td></tr>
     </table>
     <p>Install dependencies with:</p>
     <p><code>pip install -r requirements.txt</code></p>
@@ -835,10 +849,16 @@
     <h4>Files</h4>
     <p>
       Click <strong>Attach File</strong> (📎) to open a file picker. The chosen file is
-      <strong>copied</strong> to <code>{InstallationPath}/Memento/TaskTracker/attachments/</code>.
-      Each attachment is listed with a clickable filename (opens with the system default
-      application) and a delete button (removes the attachment from the list and from disk).
-      Attaching a file is saved immediately — no further action is required.
+      <strong>copied</strong> to <code>{InstallationPath}/Memento/TaskTracker/attachments/</code>
+      and renamed to <code>{original_name}_Task_{id}.{ext}</code> so it is always traceable
+      to the task that owns it. Each attachment is listed with a clickable filename (opens
+      with the system default application) and a delete button (removes the attachment from
+      the list and from disk). Attaching a file is saved immediately — no further action is required.
+    </p>
+    <p>
+      If the selected file is already attached elsewhere (in another Task, Design, or any history
+      entry), a warning dialog is shown listing all the records that already contain that file.
+      The attachment is <strong>not</strong> added in that case.
     </p>
 
     <h3 id="s3-7">3.7 History Log</h3>
@@ -1023,7 +1043,9 @@
     </p>
     <p>
       Attachments are copied to
-      <code>{InstallationPath}/Memento/DesignTracker/attachments/</code>.
+      <code>{InstallationPath}/Memento/DesignTracker/attachments/</code>
+      and renamed to <code>{original_name}_Design_{id}.{ext}</code>.
+      The same duplicate-file warning applies (see <a href="#s3-6">§ 3.6</a>).
     </p>
 
     <h3 id="s4-5">4.5 History Log</h3>

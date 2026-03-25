@@ -25,12 +25,14 @@ from task_db import (
     fetch_all_task_attachments, fetch_all_history_attachments_bulk,
     fetch_all_related_task_links,
     get_pending_alarms, mark_alarm_fired,
+    find_tasks_with_attachment,
 )
 from design_db import (
     fetch_all_designs, fetch_task_design_links,
     add_task_design_link, remove_task_design_link,
     fetch_all_design_task_links_raw,
     init_db as _design_init_db,
+    find_designs_with_attachment,
 )
 
 
@@ -132,6 +134,39 @@ def build_task_tracker(page: ft.Page, config: dict,
     output_path: str = config.get("OutputPath", "")
     init_db(output_path)
     _design_init_db(output_path)
+
+    # ── Duplicate-attachment guard ────────────────────────────────────────────
+    def _get_conflicts(orig_name: str) -> str:
+        task_hits   = find_tasks_with_attachment(output_path, orig_name)
+        design_hits = find_designs_with_attachment(output_path, orig_name)
+        if not task_hits and not design_hits:
+            return ""
+        lines = []
+        for h in task_hits:
+            sfx = f" ({t('update')})" if h["in_history"] else ""
+            lines.append(f"\u2022 Task #{h['task_id']} \u2013 {h['title']}{sfx}")
+        for h in design_hits:
+            sfx = f" ({t('update')})" if h["in_history"] else ""
+            lines.append(f"\u2022 Design #{h['design_id']} \u2013 {h['title']}{sfx}")
+        return "\n".join(lines)
+
+    def _show_dup_alert(orig_name: str, conflicts: str) -> None:
+        dlg_ref: dict = {}
+        def _close_dup(_e=None):
+            dlg_ref["d"].open = False
+            page.update()
+        _dup_dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(t("File already attached"), weight=ft.FontWeight.BOLD),
+            content=ft.Text(
+                f"'{orig_name}' {t('is already attached to')}:\n\n{conflicts}",
+            ),
+            actions=[ft.TextButton("OK", on_click=_close_dup)],
+        )
+        dlg_ref["d"] = _dup_dlg
+        page.overlay.append(_dup_dlg)
+        _dup_dlg.open = True
+        page.update()
 
     # ── Selection state ───────────────────────────────────────────────────────
     _sel: dict = {"task": None}
@@ -816,7 +851,13 @@ def build_task_tracker(page: ft.Page, config: dict,
                 if not files:
                     return
                 for f in files:
+                    if not f.path:
+                        continue
                     src = Path(f.path)
+                    conflicts = _get_conflicts(src.name)
+                    if conflicts:
+                        _show_dup_alert(src.name, conflicts)
+                        continue
                     if not any(sf["name"] == src.name for sf in _staged_files):
                         _staged_files.append({"path": src, "name": src.name})
                 _new_refresh_staged_files()
@@ -869,7 +910,8 @@ def build_task_tracker(page: ft.Page, config: dict,
                     _att_dir = Path(output_path) / "Memento" / "TaskTracker" / "attachments"
                     _att_dir.mkdir(parents=True, exist_ok=True)
                     for sf in _staged_files:
-                        dest_name = f"{task_id}_{sf['name']}"
+                        _p = Path(sf["name"])
+                        dest_name = f"{_p.stem}_Task_{task_id}{_p.suffix}"
                         dest = _att_dir / dest_name
                         try:
                             shutil.copy2(str(sf["path"]), str(dest))
@@ -1998,11 +2040,20 @@ def build_task_tracker(page: ft.Page, config: dict,
                 return
             attach_dir.mkdir(parents=True, exist_ok=True)
             for f in files:
+                if not f.path:
+                    continue
                 src = Path(f.path)
-                dest_name = f"{task['id']}_{src.name}"
+                conflicts = _get_conflicts(src.name)
+                if conflicts:
+                    _show_dup_alert(src.name, conflicts)
+                    continue
+                dest_name = f"{src.stem}_Task_{task['id']}{src.suffix}"
                 dest = attach_dir / dest_name
-                shutil.copy2(str(src), str(dest))
-                add_attachment(output_path, task["id"], dest_name, src.name)
+                try:
+                    shutil.copy2(str(src), str(dest))
+                    add_attachment(output_path, task["id"], dest_name, src.name)
+                except OSError:
+                    pass
             _refresh_attach()
             _edit_state["dirty"] = True
             _update_save_btn()
@@ -2374,10 +2425,19 @@ def build_task_tracker(page: ft.Page, config: dict,
                     return
                 history_attach_dir.mkdir(parents=True, exist_ok=True)
                 for f in files:
+                    if not f.path:
+                        continue
                     src = Path(f.path)
-                    dest_name = f"h{eid}_{src.name}"
-                    shutil.copy2(str(src), str(history_attach_dir / dest_name))
-                    add_history_attachment(output_path, eid, dest_name, src.name)
+                    conflicts = _get_conflicts(src.name)
+                    if conflicts:
+                        _show_dup_alert(src.name, conflicts)
+                        continue
+                    dest_name = f"{src.stem}_Task_{task['id']}{src.suffix}"
+                    try:
+                        shutil.copy2(str(src), str(history_attach_dir / dest_name))
+                        add_history_attachment(output_path, eid, dest_name, src.name)
+                    except OSError:
+                        pass
                 _edit_state["editing"] = False
                 _edit_state["dirty"] = True
                 _refresh_history()
@@ -2687,6 +2747,13 @@ def build_task_tracker(page: ft.Page, config: dict,
             if not files:
                 return
             for f in files:
+                if not f.path:
+                    continue
+                src = Path(f.path)
+                conflicts = _get_conflicts(src.name)
+                if conflicts:
+                    _show_dup_alert(src.name, conflicts)
+                    continue
                 _new_entry_attachments.append(f.path)
             _refresh_new_staged_files()
 
@@ -2733,9 +2800,12 @@ def build_task_tracker(page: ft.Page, config: dict,
                 history_attach_dir.mkdir(parents=True, exist_ok=True)
                 for fp in _new_entry_attachments:
                     src = Path(fp)
-                    dest_name = f"h{eid}_{src.name}"
-                    shutil.copy2(str(src), str(history_attach_dir / dest_name))
-                    add_history_attachment(output_path, eid, dest_name, src.name)
+                    dest_name = f"{src.stem}_Task_{task['id']}{src.suffix}"
+                    try:
+                        shutil.copy2(str(src), str(history_attach_dir / dest_name))
+                        add_history_attachment(output_path, eid, dest_name, src.name)
+                    except OSError:
+                        pass
             _edit_state["dirty"] = True
             _hide_new_entry_panel()
             _refresh_history()
@@ -3436,7 +3506,20 @@ def build_task_tracker(page: ft.Page, config: dict,
 
     def _confirm_delete(_) -> None:
         _confirm_dlg.open = False
-        delete_task(output_path, _sel["task"]["id"])
+        _task_id = _sel["task"]["id"]
+        _att_dir = Path(output_path) / "Memento" / "TaskTracker" / "attachments"
+        for att in fetch_task_attachments(output_path, _task_id):
+            try:
+                (_att_dir / att["filename"]).unlink(missing_ok=True)
+            except OSError:
+                pass
+        for entry in fetch_history(output_path, _task_id):
+            for hatt in fetch_history_attachments(output_path, entry["id"]):
+                try:
+                    (_att_dir / hatt["filename"]).unlink(missing_ok=True)
+                except OSError:
+                    pass
+        delete_task(output_path, _task_id)
         _clear_selection()
         _refresh()
 

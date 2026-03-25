@@ -118,6 +118,7 @@
       <div class="section-title">✦ New Features</div>
       <ul>
         <li><strong>Cancel</strong> button (✕) added to each existing history entry card. The button appears when edit mode is active and restores the original text if clicked — no changes are saved to the database.</li>
+        <li><strong>Duplicate attachment prevention</strong>: attempting to attach a file whose name already exists in the attachments folder now shows a warning dialog that lists every Task and Design the file is already linked to (including history entries), instead of silently overwriting or duplicating it.</li>
       </ul>
     </div>
 
@@ -125,6 +126,7 @@
       <div class="section-title">✦ Bug Fixes</div>
       <ul>
         <li>History entry formatting toolbar and tag section now appear <strong>immediately</strong> when clicking the <kbd>Edit</kbd> button on a history card, instead of requiring at least one character to be typed first.</li>
+        <li>Deleting a task or design via the toolbar button now also <strong>removes all associated attachment files from disk</strong> (previously only the database record was deleted, leaving orphaned files in the attachments folder).</li>
       </ul>
     </div>
 
@@ -132,6 +134,8 @@
       <div class="section-title">✦ Improvements</div>
       <ul>
         <li>All header fields in the Task and Design detail pages are now <strong>auto-saved on every change</strong> — no Save button is required. Affects: <em>Title, Project, Status, Alarm</em> (Task); <em>Name, Board, Revision, Project, Category, Function, Status</em> (Design).</li>
+        <li><strong>Attachment file naming</strong> convention changed: files are now saved as <code>{original_name}_Task_{id}.{ext}</code> for task attachments and <code>{original_name}_Design_{id}.{ext}</code> for design attachments, making it easy to identify which record each file belongs to.</li>
+        <li>Installer updated to <strong>v1.3</strong>: <code>Memento_Setup_1.3.exe</code> produced by <code>build.bat</code> via PyInstaller + Inno Setup. Fixed invalid <code>WizardStyle</code> directive that prevented installer compilation.</li>
       </ul>
     </div>
   </div>

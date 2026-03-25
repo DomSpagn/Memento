@@ -182,6 +182,28 @@ def remove_attachment(output_path: str, attachment_id: int) -> str | None:
     return row[0]
 
 
+def find_tasks_with_attachment(output_path: str, orig_name: str) -> list[dict]:
+    """Return [{task_id, title, in_history}] for each task attachment with orig_name."""
+    with _connect(output_path) as conn:
+        rows = conn.execute(
+            "SELECT a.task_id, t.title FROM attachments a "
+            "JOIN tasks t ON t.id = a.task_id WHERE a.orig_name = ?",
+            (orig_name,),
+        ).fetchall()
+        result = [{"task_id": r[0], "title": r[1], "in_history": False} for r in rows]
+        try:
+            rows2 = conn.execute(
+                "SELECT h.task_id, t.title FROM history_attachments ha "
+                "JOIN history h ON h.id = ha.history_id "
+                "JOIN tasks t ON t.id = h.task_id WHERE ha.orig_name = ?",
+                (orig_name,),
+            ).fetchall()
+            result += [{"task_id": r[0], "title": r[1], "in_history": True} for r in rows2]
+        except Exception:
+            pass
+    return result
+
+
 # ── History helpers ───────────────────────────────────────────────────────────
 
 def _ensure_history_tables(conn: sqlite3.Connection) -> None:

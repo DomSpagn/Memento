@@ -118,6 +118,7 @@
       <div class="section-title">✦ Nuove funzionalità</div>
       <ul>
         <li>Aggiunto il pulsante <strong>Annulla</strong> (✕) su ogni scheda degli aggiornamenti esistenti della cronologia. Il pulsante appare quando la modalità di modifica è attiva e ripristina il testo originale se cliccato — nessuna modifica viene salvata nel database.</li>
+        <li><strong>Prevenzione allegati duplicati</strong>: se si tenta di allegare un file il cui nome è già presente nella cartella degli allegati, viene ora mostrato un avviso che elenca tutti i Task e Design a cui il file è già collegato (incluse le voci della cronologia), invece di sovrascrivere o duplicare silenziosamente il file.</li>
       </ul>
     </div>
 
@@ -125,6 +126,7 @@
       <div class="section-title">✦ Correzioni</div>
       <ul>
         <li>La barra di formattazione e la sezione tag degli aggiornamenti della cronologia appaiono ora <strong>immediatamente</strong> quando si fa clic sul pulsante <kbd>Modifica</kbd> su una scheda della cronologia, invece di richiedere la digitazione di almeno un carattere.</li>
+        <li>L'eliminazione di un Task o Design tramite il pulsante della barra degli strumenti ora <strong>rimuove anche tutti i file allegati dal disco</strong> (in precedenza veniva eliminato solo il record nel database, lasciando file orfani nella cartella degli allegati).</li>
       </ul>
     </div>
 
@@ -132,6 +134,8 @@
       <div class="section-title">✦ Miglioramenti</div>
       <ul>
         <li>Tutti i campi dell'intestazione nelle pagine di dettaglio di Task e Design vengono ora <strong>salvati automaticamente ad ogni modifica</strong> — non è necessario alcun pulsante Salva. Riguarda: <em>Titolo, Progetto, Stato, Allarme</em> (Task); <em>Nome, Scheda, Revisione, Progetto, Categoria, Funzione, Stato</em> (Design).</li>
+        <li><strong>Convenzione di denominazione degli allegati</strong> modificata: i file vengono ora salvati come <code>{nome_originale}_Task_{id}.{ext}</code> per gli allegati di un Task e <code>{nome_originale}_Design_{id}.{ext}</code> per gli allegati di un Design, rendendo immediata l'identificazione del record a cui appartiene ciascun file.</li>
+        <li>Installer aggiornato a <strong>v1.3</strong>: <code>Memento_Setup_1.3.exe</code> generato da <code>build.bat</code> tramite PyInstaller + Inno Setup. Corretta la direttiva <code>WizardStyle</code> non valida che impediva la compilazione dell'installer.</li>
       </ul>
     </div>
   </div>

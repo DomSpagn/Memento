@@ -517,10 +517,26 @@
     <h3 id="s1-1">1.1 Requisiti di sistema</h3>
     <table>
       <tr><th>Componente</th><th>Requisito</th></tr>
+    <table>
+      <tr><th>Componente</th><th>Requisito</th></tr>
       <tr><td>Sistema operativo</td><td>Windows 10 o Windows 11 (64-bit)</td></tr>
+      <tr><td>Display</td><td>Minimo 1280 × 768 consigliato</td></tr>
+    </table>
+
+    <h4>Installazione tramite programma di installazione (consigliato)</h4>
+    <p>
+      Eseguire <code>Memento_Setup_1.3.exe</code> e seguire le istruzioni visualizzate sullo schermo.
+      Il programma di installazione copia <code>Memento.exe</code>, <code>MementoTray.exe</code>
+      e tutti i file necessari nella cartella scelta (impostazione predefinita:
+      <code>%ProgramFiles%\Memento</code>) e crea facoltativamente un collegamento sul desktop.
+      Non è necessaria alcuna installazione di Python.
+    </p>
+
+    <h4>Esecuzione dal codice sorgente (sviluppatori)</h4>
+    <table>
+      <tr><th>Componente</th><th>Requisito</th></tr>
       <tr><td>Python</td><td>3.10 o versione successiva</td></tr>
       <tr><td>Librerie principali</td><td><code>flet</code>, <code>pystray</code>, <code>Pillow</code></td></tr>
-      <tr><td>Display</td><td>Minimo 1280 × 768 consigliato</td></tr>
     </table>
     <p>Installare le dipendenze con:</p>
     <p><code>pip install -r requirements.txt</code></p>
@@ -847,10 +863,17 @@
     <p>
       Fare clic su <strong>Allega file</strong> (📎) per aprire un selettore file. Il file
       scelto viene <strong>copiato</strong> in
-      <code>{PercorsoInstallazione}/Memento/TaskTracker/attachments/</code>.
-      Ogni allegato è elencato con un nome file cliccabile (apre il file con l'applicazione
-      predefinita del sistema) e un pulsante Elimina (rimuove l'allegato dall'elenco e dal disco).
+      <code>{PercorsoInstallazione}/Memento/TaskTracker/attachments/</code>
+      e rinominato come <code>{nome_originale}_Task_{id}.{ext}</code>, così da essere sempre
+      riconducibile al Task di appartenenza. Ogni allegato è elencato con un nome file
+      cliccabile (apre il file con l'applicazione predefinita del sistema) e un pulsante
+      Elimina (rimuove l'allegato dall'elenco e dal disco).
       L'allegazione di un file viene salvata immediatamente — non è richiesta alcuna ulteriore azione.
+    </p>
+    <p>
+      Se il file selezionato è già allegato altrove (in un altro Task, Design o in una qualsiasi
+      voce della cronologia), viene mostrato un avviso con l'elenco di tutti i record che contengono
+      già quel file. In tal caso l'allegato <strong>non</strong> viene aggiunto.
     </p>
 
     <h3 id="s3-7">3.7 Cronologia</h3>
@@ -1054,7 +1077,9 @@
     </p>
     <p>
       Gli allegati vengono copiati in
-      <code>{PercorsoInstallazione}/Memento/DesignTracker/attachments/</code>.
+      <code>{PercorsoInstallazione}/Memento/DesignTracker/attachments/</code>
+      e rinominati come <code>{nome_originale}_Design_{id}.{ext}</code>.
+      Vale lo stesso controllo sui file duplicati (vedere <a href="#s3-6">§ 3.6</a>).
     </p>
 
     <h3 id="s4-5">4.5 Cronologia</h3>

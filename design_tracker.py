@@ -818,6 +818,21 @@ def build_design_tracker(page: ft.Page, config: dict,
         def _update_save_btn() -> None:
             page.update()
 
+        def _autosave_headers() -> None:
+            """Immediately persist header fields to DB."""
+            update_design(output_path, design["id"],
+                title=header_title.value.strip() or design["title"],
+                board=header_board.value.strip(),
+                revision=header_revision.value.strip(),
+                project=header_project.value.strip(),
+                category=header_cat.value,
+                category_custom=header_cat_custom.value.strip() if header_cat.value == "Other" else "",
+                function=header_fn.value,
+                function_custom=header_fn_custom.value.strip() if header_fn.value == "Other" else "",
+                status=header_status.value,
+            )
+            page.update()
+
         def _mark_dirty() -> None:
             _edit_state["dirty"] = True
             _update_save_btn()
@@ -836,40 +851,40 @@ def build_design_tracker(page: ft.Page, config: dict,
                 for p in matches
             ]
             _hdr_suggestions.visible = bool(matches)
-            _update_save_btn()
+            _autosave_headers()
 
         def _pick_hdr_project(name: str) -> None:
             header_project.value = name
             _hdr_suggestions.visible = False
-            _update_save_btn()
+            _autosave_headers()
 
         header_project.on_change = _on_hdr_project_change
 
         def _on_hdr_title_change(_e) -> None:
-            _update_save_btn()
+            _autosave_headers()
 
         def _on_hdr_board_change(_e) -> None:
-            _update_save_btn()
+            _autosave_headers()
 
         def _on_hdr_revision_change(_e) -> None:
-            _update_save_btn()
+            _autosave_headers()
 
         def _on_hdr_status_change(_e) -> None:
-            _update_save_btn()
+            _autosave_headers()
 
         def _on_hdr_cat_change(_e) -> None:
             header_cat_custom.visible = (header_cat.value == "Other")
-            _update_save_btn()
+            _autosave_headers()
 
         def _on_hdr_cat_custom_change(_e) -> None:
-            _update_save_btn()
+            _autosave_headers()
 
         def _on_hdr_fn_change(_e) -> None:
             header_fn_custom.visible = (header_fn.value == "Other")
-            _update_save_btn()
+            _autosave_headers()
 
         def _on_hdr_fn_custom_change(_e) -> None:
-            _update_save_btn()
+            _autosave_headers()
 
         header_title.on_change        = _on_hdr_title_change
         header_board.on_change        = _on_hdr_board_change
@@ -1861,9 +1876,17 @@ def build_design_tracker(page: ft.Page, config: dict,
                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
             )
 
+            _original_body: dict = {"val": ""}
+
             edit_body_btn = ft.IconButton(
                 icon=ft.Icons.EDIT_NOTE, icon_size=15,
                 tooltip=t("Edit"),
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+            )
+            cancel_body_btn = ft.IconButton(
+                icon=ft.Icons.CLOSE, icon_size=15,
+                tooltip=t("Cancel"),
+                visible=False,
                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
             )
 
@@ -1872,6 +1895,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                 edit_body_btn.icon = ft.Icons.EDIT_NOTE
                 edit_body_btn.tooltip = t("Edit")
                 edit_body_btn.on_click = _on_edit_body
+                cancel_body_btn.visible = False
                 entry_edit_toolbar.visible = False
                 entry_tags_section.visible = False
                 _entry_staged_tags.clear()
@@ -1884,10 +1908,14 @@ def build_design_tracker(page: ft.Page, config: dict,
                 _update_save_btn()
 
             def _on_edit_body(_e):
+                _original_body["val"] = body_txt.value
                 body_txt.read_only = False
                 edit_body_btn.icon = ft.Icons.CHECK
                 edit_body_btn.tooltip = t("Save")
                 edit_body_btn.on_click = _on_save_body
+                cancel_body_btn.visible = True
+                entry_edit_toolbar.visible = True
+                entry_tags_section.visible = True
                 _edit_state["editing"] = True
                 if _main_btns["delete"]:
                     _main_btns["delete"].disabled = True
@@ -1896,9 +1924,6 @@ def build_design_tracker(page: ft.Page, config: dict,
                 page.update()
 
             def _on_body_change(_e):
-                has_text = bool((body_txt.value or "").strip())
-                entry_edit_toolbar.visible = has_text
-                entry_tags_section.visible = has_text
                 page.update()
 
             body_txt.on_change = _on_body_change
@@ -1914,6 +1939,13 @@ def build_design_tracker(page: ft.Page, config: dict,
                 _refresh_history()
 
             edit_body_btn.on_click = _on_edit_body
+
+            def _on_cancel_body(_e):
+                body_txt.value = _original_body["val"]
+                _entry_reset_edit_ui()
+                page.update()
+
+            cancel_body_btn.on_click = _on_cancel_body
 
             def _on_del_entry(_e, eid=entry["id"]):
                 for hatt in fetch_history_attachments(output_path, eid):
@@ -1957,6 +1989,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                                         weight=ft.FontWeight.W_600),
                                 entry_attach_btn,
                                 del_entry_btn,
+                                cancel_body_btn,
                                 edit_body_btn,
                             ],
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,

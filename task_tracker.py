@@ -986,12 +986,12 @@ def build_task_tracker(page: ft.Page, config: dict,
                 for p in matches
             ]
             _hdr_suggestions.visible = bool(matches)
-            _update_save_btn()
+            _autosave_headers()
 
         def _pick_hdr_project(name: str) -> None:
             header_project.value = name
             _hdr_suggestions.visible = False
-            _update_save_btn()
+            _autosave_headers()
 
         header_project.on_change = _on_hdr_project_change
 
@@ -1005,12 +1005,12 @@ def build_task_tracker(page: ft.Page, config: dict,
         )
 
         def _on_hdr_title_change(_e) -> None:
-            _update_save_btn()
+            _autosave_headers()
 
         header_title.on_change = _on_hdr_title_change
 
         def _on_hdr_status_change(_e) -> None:
-            _update_save_btn()
+            _autosave_headers()
 
         header_status.on_select = _on_hdr_status_change
 
@@ -1138,7 +1138,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             if _date_picker.value:
                 alarm_date_field.value = _date_picker.value.strftime("%Y-%m-%d")
                 _refresh_alarm_switch()
-                _update_save_btn()
+                _autosave_headers()
 
         _date_picker.on_change = _on_date_picked
 
@@ -1189,7 +1189,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             alarm_error_txt.visible = False
             alarm_switch.disabled   = True
             alarm_switch.value      = False
-            _update_save_btn()
+            _autosave_headers()
 
         alarm_clear_btn = ft.IconButton(
             icon=ft.Icons.ALARM_OFF,
@@ -1244,15 +1244,41 @@ def build_task_tracker(page: ft.Page, config: dict,
         def _update_save_btn() -> None:
             page.update()
 
+        def _autosave_headers() -> None:
+            """Immediately persist header + alarm fields to DB."""
+            alarm_at_val = _build_alarm_at()
+            if alarm_at_val is None:
+                alarm_error_txt.value   = "Invalid format \u2014 use YYYY-MM-DD and HH:MM"
+                alarm_error_txt.visible = True
+                update_task(output_path, task["id"],
+                    title=header_title.value.strip() or task["title"],
+                    project=header_project.value.strip(),
+                    status=header_status.value,
+                )
+                page.update()
+                return
+            alarm_error_txt.visible = False
+            alarm_before_val = int(alarm_before_dd.value or 0)
+            new_fired = 0 if (alarm_switch.value and alarm_at_val) else 1
+            update_task(output_path, task["id"],
+                title=header_title.value.strip() or task["title"],
+                project=header_project.value.strip(),
+                status=header_status.value,
+                alarm_at=alarm_at_val,
+                alarm_before=alarm_before_val,
+                alarm_fired=new_fired,
+            )
+            page.update()
+
         def _on_alarm_time_change(_e) -> None:
             _refresh_alarm_switch()
-            _update_save_btn()
+            _autosave_headers()
 
         alarm_date_field.on_change = _on_alarm_time_change
         alarm_hour_field.on_change = _on_alarm_time_change
         alarm_min_field.on_change  = _on_alarm_time_change
-        alarm_before_dd.on_select  = lambda _e: _update_save_btn()
-        alarm_switch.on_change     = lambda _e: _update_save_btn()
+        alarm_before_dd.on_select  = lambda _e: _autosave_headers()
+        alarm_switch.on_change     = lambda _e: _autosave_headers()
 
         def _build_rich_spans(raw: str) -> list:
             """Parse stored markup → list[ft.TextSpan]. Supports nested combos."""
@@ -2256,9 +2282,17 @@ def build_task_tracker(page: ft.Page, config: dict,
                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
             )
 
+            _original_body: dict = {"val": ""}
+
             edit_body_btn = ft.IconButton(
                 icon=ft.Icons.EDIT_NOTE, icon_size=15,
                 tooltip=t("Edit"),
+                style=ft.ButtonStyle(padding=ft.padding.all(2)),
+            )
+            cancel_body_btn = ft.IconButton(
+                icon=ft.Icons.CLOSE, icon_size=15,
+                tooltip=t("Cancel"),
+                visible=False,
                 style=ft.ButtonStyle(padding=ft.padding.all(2)),
             )
 
@@ -2268,6 +2302,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 edit_body_btn.icon = ft.Icons.EDIT_NOTE
                 edit_body_btn.tooltip = t("Edit")
                 edit_body_btn.on_click = _on_edit_body
+                cancel_body_btn.visible = False
                 entry_edit_toolbar.visible = False
                 entry_tags_section.visible = False
                 _entry_staged_tags.clear()
@@ -2280,10 +2315,14 @@ def build_task_tracker(page: ft.Page, config: dict,
                 _update_save_btn()
 
             def _on_edit_body(_e):
+                _original_body["val"] = body_txt.value
                 body_txt.read_only = False
                 edit_body_btn.icon = ft.Icons.CHECK
                 edit_body_btn.tooltip = t("Save")
                 edit_body_btn.on_click = _on_save_body
+                cancel_body_btn.visible = True
+                entry_edit_toolbar.visible = True
+                entry_tags_section.visible = True
                 _edit_state["editing"] = True
                 if _main_btns["delete"]:
                     _main_btns["delete"].disabled = True
@@ -2292,9 +2331,6 @@ def build_task_tracker(page: ft.Page, config: dict,
                 page.update()
 
             def _on_body_change(_e):
-                has_text = bool((body_txt.value or "").strip())
-                entry_edit_toolbar.visible = has_text
-                entry_tags_section.visible = has_text
                 page.update()
 
             body_txt.on_change = _on_body_change
@@ -2310,6 +2346,13 @@ def build_task_tracker(page: ft.Page, config: dict,
                 _refresh_history()
 
             edit_body_btn.on_click = _on_edit_body
+
+            def _on_cancel_body(_e):
+                body_txt.value = _original_body["val"]
+                _entry_reset_edit_ui()
+                page.update()
+
+            cancel_body_btn.on_click = _on_cancel_body
 
             def _on_del_entry(_e, eid=entry["id"]):
                 for hatt in fetch_history_attachments(output_path, eid):
@@ -2355,6 +2398,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                                         weight=ft.FontWeight.W_600),
                                 entry_attach_btn,
                                 del_entry_btn,
+                                cancel_body_btn,
                                 edit_body_btn,
                             ],
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,

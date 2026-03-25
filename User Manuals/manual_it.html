@@ -771,9 +771,10 @@
       <tr><td>Stato</td><td>Menu a tendina (Open / In Progress / On Hold / Closed)</td></tr>
     </table>
     <p>
-      Dopo aver apportato le modifiche, fare clic su <kbd>Salva</kbd> nella barra delle azioni
-      in fondo alla pagina. <kbd>Annulla</kbd> ripristina le modifiche non salvate.
-      <kbd>Elimina</kbd> (rosso) rimuove definitivamente il Task.
+      Ogni modifica viene <strong>salvata automaticamente</strong> nel database durante la
+      digitazione o la selezione — non è necessario alcun pulsante Salva. Per eliminare
+      definitivamente il Task, fare clic sull'icona 🗑 rossa nell'angolo in alto a destra
+      della sezione intestazione.
     </p>
 
     <h3 id="s3-4">3.4 Sezione Allarme</h3>
@@ -849,8 +850,7 @@
       <code>{PercorsoInstallazione}/Memento/TaskTracker/attachments/</code>.
       Ogni allegato è elencato con un nome file cliccabile (apre il file con l'applicazione
       predefinita del sistema) e un pulsante Elimina (rimuove l'allegato dall'elenco e dal disco).
-      L'allegazione di un file abilita immediatamente il pulsante <kbd>Salva</kbd> principale,
-      consentendo di confermare la modifica.
+      L'allegazione di un file viene salvata immediatamente — non è richiesta alcuna ulteriore azione.
     </p>
 
     <h3 id="s3-7">3.7 Cronologia</h3>
@@ -876,16 +876,15 @@
     <h4>Aggiornamenti esistenti</h4>
     <p>Ogni aggiornamento storico è visualizzato come una scheda con:</p>
     <ul>
-      <li><strong>Intestazione</strong>: data relativa (Oggi / Ieri / N giorni fa) + numero aggiornamento + pulsanti Modifica / Salva / Annulla + Elimina.</li>
-      <li><strong>Corpo</strong>: il testo dell'aggiornamento (sola lettura per impostazione predefinita; fare clic su Modifica per modificarlo).</li>
-      <li><strong>File allegati</strong>: file collegati a quell'aggiornamento specifico, con gli stessi controlli allega/apri/elimina della sezione File principale.
-          L'allegazione di un file a un aggiornamento esistente abilita il pulsante <kbd>Salva</kbd> principale.</li>
+      <li><strong>Intestazione</strong>: data relativa (Oggi / Ieri / N giorni fa) + numero aggiornamento + 📎 Allega + 🗑 Elimina + <strong>Annulla</strong> (✕, visibile durante la modifica) + pulsante <strong>Modifica / ✓ Salva</strong> alternato.</li>
+      <li><strong>Corpo</strong>: il testo dell'aggiornamento (sola lettura per impostazione predefinita). Fare clic su <kbd>Modifica</kbd> per attivare la modalità di modifica — la barra di formattazione e la sezione tag appaiono <strong>immediatamente</strong>. Fare clic su <kbd>✓</kbd> per salvare. Fare clic su <kbd>✕ Annulla</kbd> per scartare tutte le modifiche e ripristinare il testo originale.</li>
+      <li><strong>File allegati</strong>: file collegati a quell'aggiornamento specifico, con gli stessi controlli allega/apri/elimina della sezione File principale.</li>
     </ul>
 
     <h3 id="s3-8">3.8 Eliminare un Task</h3>
     <p>
-      Fare clic sul pulsante rosso <kbd>Elimina</kbd> nella barra delle azioni (in fondo alla
-      vista dettaglio), oppure selezionare una riga nella tabella e premere il pulsante Elimina
+      Fare clic sull'icona 🗑 rossa nell'angolo in alto a destra dell'intestazione del Task,
+      oppure selezionare una riga nella tabella e premere il pulsante <strong>Elimina Task</strong>
       della barra degli strumenti. Appare una finestra di dialogo di conferma:
       <em>"Sei sicuro di voler eliminare definitivamente questo Task?"</em>
     </p>
@@ -1036,8 +1035,10 @@
       <tr><td>Stato</td><td>Menu a tendina</td></tr>
     </table>
     <p>
-      Il pulsante <kbd>Salva</kbd> nella barra delle azioni diventa attivo non appena
-      un campo viene modificato. <kbd>Annulla</kbd> ripristina tutte le modifiche non salvate.
+      Ogni modifica viene <strong>salvata automaticamente</strong> nel database durante la
+      digitazione o la selezione — non è necessario alcun pulsante Salva. Per eliminare
+      definitivamente il Design, fare clic sull'icona 🗑 rossa nell'angolo in alto a destra
+      della sezione intestazione.
     </p>
     <div class="note">
       ℹ️ &nbsp;I Design non hanno una sezione Allarme. La data di chiusura viene impostata
@@ -1066,8 +1067,8 @@
 
     <h3 id="s4-6">4.6 Eliminare un Design</h3>
     <p>
-      Fare clic sul pulsante rosso <kbd>Elimina</kbd> nella barra delle azioni oppure
-      premere il pulsante Elimina Design della barra degli strumenti.
+      Fare clic sull'icona 🗑 rossa nell'angolo in alto a destra dell'intestazione del Design,
+      oppure premere il pulsante <strong>Elimina Design</strong> della barra degli strumenti.
       Appare una finestra di dialogo di conferma prima dell'eliminazione.
       Tutti i record del Design, gli aggiornamenti della cronologia e i file allegati
       sul disco vengono rimossi definitivamente.

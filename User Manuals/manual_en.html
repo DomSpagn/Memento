@@ -764,9 +764,9 @@
       <tr><td>Status</td><td>Dropdown (Open / In Progress / On Hold / Closed)</td></tr>
     </table>
     <p>
-      After making changes, click <kbd>Save</kbd> in the action bar at the bottom of the page.
-      <kbd>Cancel</kbd> reverts unsaved changes. <kbd>Delete</kbd> (red) permanently removes
-      the task.
+      Every change is <strong>saved automatically</strong> to the database as you type or
+      select — no Save button is required. To permanently remove the task, click the red 🗑
+      icon button in the top-right corner of the header section.
     </p>
 
     <h3 id="s3-4">3.4 Alarm Section</h3>
@@ -838,8 +838,7 @@
       <strong>copied</strong> to <code>{InstallationPath}/Memento/TaskTracker/attachments/</code>.
       Each attachment is listed with a clickable filename (opens with the system default
       application) and a delete button (removes the attachment from the list and from disk).
-      Attaching a file immediately enables the main <kbd>Save</kbd> button, allowing you to
-      confirm the change.
+      Attaching a file is saved immediately — no further action is required.
     </p>
 
     <h3 id="s3-7">3.7 History Log</h3>
@@ -861,16 +860,15 @@
     <h4>Existing entries</h4>
     <p>Each historical entry is shown as a card with:</p>
     <ul>
-      <li><strong>Header</strong>: relative date (Today / Yesterday / N days ago) + entry number + Edit / Save / Cancel + Delete buttons.</li>
-      <li><strong>Body</strong>: the update text (read-only by default; click Edit to modify it).</li>
-      <li><strong>Attached files</strong>: files linked to that specific entry, with the same attach/open/delete controls as the main Files section.
-          Attaching a file to an existing entry enables the main <kbd>Save</kbd> button.</li>
+      <li><strong>Header</strong>: relative date (Today / Yesterday / N days ago) + entry number + 📎 Attach + 🗑 Delete + <strong>Cancel</strong> (✕, visible during editing) + <strong>Edit / ✓ Save</strong> toggle button.</li>
+      <li><strong>Body</strong>: the update text (read-only by default). Click <kbd>Edit</kbd> to enter edit mode — the formatting toolbar and tag section appear <strong>immediately</strong>. Click <kbd>✓</kbd> to save. Click <kbd>✕ Cancel</kbd> to discard all changes and restore the original text.</li>
+      <li><strong>Attached files</strong>: files linked to that specific entry, with the same attach/open/delete controls as the main Files section.</li>
     </ul>
 
     <h3 id="s3-8">3.8 Deleting a Task</h3>
     <p>
-      Click the red <kbd>Delete</kbd> button in the action bar (bottom of the task detail view),
-      or select a row in the table and press the Delete toolbar button.
+      Click the red 🗑 icon button in the top-right corner of the task header, or select
+      a row in the table and press the <strong>Delete Task</strong> toolbar button.
       A confirmation dialog appears:
       <em>"Are you sure you want to permanently delete this task?"</em>
     </p>
@@ -1009,8 +1007,9 @@
       <tr><td>Status</td><td>Dropdown</td></tr>
     </table>
     <p>
-      The <kbd>Save</kbd> button in the action bar becomes active as soon as any field is changed.
-      <kbd>Cancel</kbd> reverts all unsaved changes.
+      Every change is <strong>saved automatically</strong> to the database as you type or
+      select — no Save button is required. To permanently remove the design, click the red 🗑
+      icon button in the top-right corner of the header section.
     </p>
     <div class="note">
       ℹ️ &nbsp;Designs do not have an alarm section. The Closed date is set automatically
@@ -1033,7 +1032,8 @@
 
     <h3 id="s4-6">4.6 Deleting a Design</h3>
     <p>
-      Click the red <kbd>Delete</kbd> button in the action bar or the Delete Design toolbar button.
+      Click the red 🗑 icon button in the top-right corner of the design header, or press
+      the <strong>Delete Design</strong> toolbar button.
       A confirmation dialog appears before deletion. All design records, history entries, and
       attachment files on disk are permanently removed.
     </p>

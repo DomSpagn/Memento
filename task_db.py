@@ -123,15 +123,14 @@ def update_task(output_path: str, task_id: int, **fields) -> None:
     safe = {k: v for k, v in fields.items() if k in _UPDATABLE_FIELDS}
     if not safe:
         return
-    # Only touch timestamps when the status is explicitly being updated
-    if "status" in safe:
-        new_status = safe["status"]
-        if new_status == "Closed":
-            safe["closed_at"]   = _now()
-            safe["modified_at"] = ""
-        else:
-            safe["modified_at"] = _now()
-            safe["closed_at"]   = None
+    new_status = safe.get("status")
+    if new_status == "Closed":
+        safe["closed_at"]   = _now()
+        safe["modified_at"] = ""
+    else:
+        safe["modified_at"] = _now()
+        if "status" in safe:
+            safe["closed_at"] = None
     set_clause = ", ".join(f"{col} = ?" for col in safe)
     values = list(safe.values()) + [task_id]
     with _connect(output_path) as conn:
@@ -165,6 +164,7 @@ def add_attachment(output_path: str, task_id: int, filename: str, orig_name: str
             "INSERT INTO attachments (task_id, filename, orig_name) VALUES (?, ?, ?)",
             (task_id, filename, orig_name),
         )
+        conn.execute("UPDATE tasks SET modified_at = ? WHERE id = ?", (_now(), task_id))
         conn.commit()
         return cur.lastrowid
 
@@ -173,13 +173,14 @@ def remove_attachment(output_path: str, attachment_id: int) -> str | None:
     """Delete attachment record and return its stored filename, or None if not found."""
     with _connect(output_path) as conn:
         row = conn.execute(
-            "SELECT filename FROM attachments WHERE id = ?", (attachment_id,)
+            "SELECT task_id, filename FROM attachments WHERE id = ?", (attachment_id,)
         ).fetchone()
         if row is None:
             return None
         conn.execute("DELETE FROM attachments WHERE id = ?", (attachment_id,))
+        conn.execute("UPDATE tasks SET modified_at = ? WHERE id = ?", (_now(), row["task_id"]))
         conn.commit()
-    return row[0]
+    return row["filename"]
 
 
 def find_tasks_with_attachment(output_path: str, orig_name: str) -> list[dict]:
@@ -251,6 +252,7 @@ def add_history_entry(output_path: str, task_id: int, body: str) -> int:
             "INSERT INTO history (task_id, body, created_at) VALUES (?, ?, ?)",
             (task_id, body, _now()),
         )
+        conn.execute("UPDATE tasks SET modified_at = ? WHERE id = ?", (_now(), task_id))
         conn.commit()
         return cur.lastrowid
 
@@ -258,14 +260,20 @@ def add_history_entry(output_path: str, task_id: int, body: str) -> int:
 def update_history_entry(output_path: str, entry_id: int, body: str) -> None:
     with _connect(output_path) as conn:
         _ensure_history_tables(conn)
+        row = conn.execute("SELECT task_id FROM history WHERE id = ?", (entry_id,)).fetchone()
         conn.execute("UPDATE history SET body = ? WHERE id = ?", (body, entry_id))
+        if row:
+            conn.execute("UPDATE tasks SET modified_at = ? WHERE id = ?", (_now(), row["task_id"]))
         conn.commit()
 
 
 def delete_history_entry(output_path: str, entry_id: int) -> None:
     with _connect(output_path) as conn:
         _ensure_history_tables(conn)
+        row = conn.execute("SELECT task_id FROM history WHERE id = ?", (entry_id,)).fetchone()
         conn.execute("DELETE FROM history WHERE id = ?", (entry_id,))
+        if row:
+            conn.execute("UPDATE tasks SET modified_at = ? WHERE id = ?", (_now(), row["task_id"]))
         conn.commit()
 
 
@@ -288,6 +296,9 @@ def add_history_attachment(output_path: str, history_id: int,
             " VALUES (?, ?, ?)",
             (history_id, filename, orig_name),
         )
+        row = conn.execute("SELECT task_id FROM history WHERE id = ?", (history_id,)).fetchone()
+        if row:
+            conn.execute("UPDATE tasks SET modified_at = ? WHERE id = ?", (_now(), row["task_id"]))
         conn.commit()
         return cur.lastrowid
 
@@ -296,13 +307,15 @@ def remove_history_attachment(output_path: str, att_id: int) -> str | None:
     with _connect(output_path) as conn:
         _ensure_history_tables(conn)
         row = conn.execute(
-            "SELECT filename FROM history_attachments WHERE id = ?", (att_id,)
+            "SELECT ha.filename, h.task_id FROM history_attachments ha"
+            " JOIN history h ON h.id = ha.history_id WHERE ha.id = ?", (att_id,)
         ).fetchone()
         if row is None:
             return None
         conn.execute("DELETE FROM history_attachments WHERE id = ?", (att_id,))
+        conn.execute("UPDATE tasks SET modified_at = ? WHERE id = ?", (_now(), row["task_id"]))
         conn.commit()
-    return row[0]
+    return row["filename"]
 
 
 def _now() -> str:

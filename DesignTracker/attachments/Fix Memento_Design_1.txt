@@ -1,0 +1,2 @@
+1. Non si aggiorna la data di modifica quando si edita un aggiornamento di un task/design
+2. Aggiungere un tasto per inserire simboli speciali (lettere greche e matematiche)

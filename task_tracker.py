@@ -1578,6 +1578,76 @@ def build_task_tracker(page: ft.Page, config: dict,
                 ),
             )
 
+        def _sym_tb_btn(label: str, tooltip: str, on_click_fn):
+            return ft.TextButton(
+                content=ft.Text(label, size=13, weight=ft.FontWeight.W_600),
+                tooltip=tooltip,
+                on_click=on_click_fn,
+                style=ft.ButtonStyle(
+                    padding=ft.padding.symmetric(horizontal=6, vertical=4),
+                    shape=ft.RoundedRectangleBorder(radius=4),
+                ),
+            )
+
+        _GREEK_UPPER_SYMS = "ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ"
+        _GREEK_LOWER_SYMS = "αβγδεζηθικλμνξοπρστυφχψω"
+        _MATH_SYMS        = "±∞≠~×÷∝≪≫≤≥∓≅≈≡∂√∪∩∅°∆∇∃∄∈∋←↑→↓↔∙⋯⟸⟹⟺"
+
+        def _open_sym_picker(title_key: str, sym_groups: list, insert_fn) -> None:
+            dlg_holder = [None]
+
+            def _close(_e):
+                dlg_holder[0].open = False
+                page.update()
+
+            def _mk_sym_handler(char):
+                async def _h(_e):
+                    dlg_holder[0].open = False
+                    page.update()
+                    await insert_fn(char)
+                return _h
+
+            group_widgets = []
+            for group_label, chars in sym_groups:
+                if group_label:
+                    group_widgets.append(
+                        ft.Text(t(group_label), size=11, weight=ft.FontWeight.W_600,
+                                color=ft.Colors.GREY_600)
+                    )
+                group_widgets.append(
+                    ft.Row(
+                        [
+                            ft.TextButton(
+                                content=ft.Text(c, size=18),
+                                tooltip=c,
+                                on_click=_mk_sym_handler(c),
+                                style=ft.ButtonStyle(
+                                    padding=ft.padding.all(4),
+                                    shape=ft.RoundedRectangleBorder(radius=4),
+                                ),
+                            )
+                            for c in chars
+                        ],
+                        wrap=True,
+                        spacing=2,
+                        run_spacing=2,
+                    )
+                )
+
+            dlg_holder[0] = ft.AlertDialog(
+                modal=True,
+                title=ft.Text(t(title_key), size=14, weight=ft.FontWeight.W_600),
+                content=ft.Container(
+                    content=ft.Column(group_widgets, spacing=6, tight=True),
+                    width=340,
+                ),
+                actions=[ft.TextButton(t("Close"), on_click=_close)],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.overlay.append(dlg_holder[0])
+            dlg_holder[0].open = True
+            page.update()
+
         _COLOR_OPTS = [
             ("#D32F2F", "Red"),
             ("#E65100", "Orange"),
@@ -1620,6 +1690,16 @@ def build_task_tracker(page: ft.Page, config: dict,
             ],
         )
 
+        async def _open_desc_greek(_e):
+            _open_sym_picker(
+                "Greek alphabet",
+                [("Uppercase", _GREEK_UPPER_SYMS), ("Lowercase", _GREEK_LOWER_SYMS)],
+                _insert_at_cursor,
+            )
+
+        async def _open_desc_math(_e):
+            _open_sym_picker("Math symbols", [("", _MATH_SYMS)], _insert_at_cursor)
+
         desc_toolbar = ft.Container(
             visible=not _desc_has_content,
             content=ft.Row(
@@ -1635,6 +1715,9 @@ def build_task_tracker(page: ft.Page, config: dict,
                     ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
                     _tb_btn(ft.Icons.FORMAT_INDENT_INCREASE, "Quote",        _on_quote),
                     _tb_btn(ft.Icons.FORMAT_INDENT_DECREASE, "Remove quote", _remove_quotes),
+                    ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
+                    _sym_tb_btn("Ω",    t("Greek alphabet"), _open_desc_greek),
+                    _sym_tb_btn("f(x)", t("Math symbols"),   _open_desc_math),
                 ],
                 spacing=0,
                 tight=True,
@@ -2212,6 +2295,16 @@ def build_task_tracker(page: ft.Page, config: dict,
                 ],
             )
 
+            async def _open_entry_greek(_e):
+                _open_sym_picker(
+                    "Greek alphabet",
+                    [("Uppercase", _GREEK_UPPER_SYMS), ("Lowercase", _GREEK_LOWER_SYMS)],
+                    _entry_insert,
+                )
+
+            async def _open_entry_math(_e):
+                _open_sym_picker("Math symbols", [("", _MATH_SYMS)], _entry_insert)
+
             entry_edit_toolbar = ft.Container(
                 visible=False,
                 content=ft.Row(
@@ -2227,6 +2320,9 @@ def build_task_tracker(page: ft.Page, config: dict,
                         ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
                         _tb_btn(ft.Icons.FORMAT_INDENT_INCREASE, "Quote",         _entry_quote),
                         _tb_btn(ft.Icons.FORMAT_INDENT_DECREASE, "Remove quote",  _entry_remove_quotes),
+                        ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
+                        _sym_tb_btn("Ω",    t("Greek alphabet"), _open_entry_greek),
+                        _sym_tb_btn("f(x)", t("Math symbols"),   _open_entry_math),
                     ],
                     spacing=0,
                     tight=True,
@@ -2450,9 +2546,19 @@ def build_task_tracker(page: ft.Page, config: dict,
                     [
                         ft.Row(
                             [
-                                ft.Text(_rel_date(entry["created_at"]),
-                                        size=11, color=ft.Colors.GREY_500,
-                                        expand=True),
+                                ft.Column(
+                                    [
+                                        ft.Text(f"{t('Created')}: {_rel_date(entry['created_at'])}",
+                                                size=11, color=ft.Colors.GREY_500),
+                                    ] + (
+                                        [ft.Text(f"{t('Modified')}: {_rel_date(entry['modified_at'])}",
+                                                 size=11, color=ft.Colors.GREY_500)]
+                                        if entry.get("modified_at") else []
+                                    ),
+                                    spacing=1,
+                                    tight=True,
+                                    expand=True,
+                                ),
                                 ft.Text(f"#{index}", size=11,
                                         color=ft.Colors.GREY_500,
                                         weight=ft.FontWeight.W_600),
@@ -2571,6 +2677,16 @@ def build_task_tracker(page: ft.Page, config: dict,
             ],
         )
 
+        async def _open_hist_greek(_e):
+            _open_sym_picker(
+                "Greek alphabet",
+                [("Uppercase", _GREEK_UPPER_SYMS), ("Lowercase", _GREEK_LOWER_SYMS)],
+                _hist_insert,
+            )
+
+        async def _open_hist_math(_e):
+            _open_sym_picker("Math symbols", [("", _MATH_SYMS)], _hist_insert)
+
         hist_entry_toolbar = ft.Container(
             visible=False,
             content=ft.Row(
@@ -2586,6 +2702,9 @@ def build_task_tracker(page: ft.Page, config: dict,
                     ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
                     _tb_btn(ft.Icons.FORMAT_INDENT_INCREASE, "Quote",         _on_hist_quote),
                     _tb_btn(ft.Icons.FORMAT_INDENT_DECREASE, "Remove quote",  _on_hist_remove_quotes),
+                    ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
+                    _sym_tb_btn("Ω",    t("Greek alphabet"), _open_hist_greek),
+                    _sym_tb_btn("f(x)", t("Math symbols"),   _open_hist_math),
                 ],
                 spacing=0,
                 tight=True,

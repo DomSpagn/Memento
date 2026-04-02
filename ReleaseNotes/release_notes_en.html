@@ -107,6 +107,34 @@
     <p>Full history of features and fixes</p>
   </header>
 
+  <!-- ═══════════════════════════════════════  v1.4 ══ -->
+  <div class="version-block">
+    <div class="version-header">
+      <span class="tag">v1.4</span>
+      <span class="date">April 2026</span>
+    </div>
+
+    <div class="section new">
+      <div class="section-title">✦ New Features</div>
+      <ul>
+        <li><strong>Special character pickers</strong>: two new buttons added to the formatting toolbar of Description and History fields in both Task Tracker and Design Tracker.
+          <ul>
+            <li><strong>Ω</strong> — opens a dialog with the full Greek alphabet (uppercase and lowercase). Click any character to insert it at the cursor position.</li>
+            <li><strong>f(x)</strong> — opens a dialog with a set of mathematical symbols: ±∞≠~×÷∝≪≫≤≥∓≅≈≡∂√∪∩∅°∆∇∃∄∈∋←↑→↓↔∙⋯⟸⟹⟺. Click any symbol to insert it at the cursor position.</li>
+          </ul>
+        </li>
+        <li><strong>History entry creation date</strong>: each history entry card now shows both the <em>Created</em> date and a <em>Modified</em> date (only displayed if the entry has been edited after creation).</li>
+      </ul>
+    </div>
+
+    <div class="section chg">
+      <div class="section-title">✦ Improvements</div>
+      <ul>
+        <li>History database schema extended: the <code>history</code> table gains a <code>modified_at</code> column, populated automatically when an entry is edited. Existing databases are migrated transparently on first run.</li>
+      </ul>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════  v1.3 ══ -->
   <div class="version-block">
     <div class="version-header">

@@ -107,6 +107,34 @@
     <p>Cronologia completa di funzionalità e correzioni</p>
   </header>
 
+  <!-- ═══════════════════════════════════════  v1.4 ══ -->
+  <div class="version-block">
+    <div class="version-header">
+      <span class="tag">v1.4</span>
+      <span class="date">Aprile 2026</span>
+    </div>
+
+    <div class="section new">
+      <div class="section-title">✦ Nuove funzionalità</div>
+      <ul>
+        <li><strong>Selettori di caratteri speciali</strong>: aggiunti due nuovi pulsanti alla barra di formattazione dei campi Descrizione e Cronologia nel Task Tracker e nel Design Tracker.
+          <ul>
+            <li><strong>Ω</strong> — apre una finestra con l'intero alfabeto greco (maiuscolo e minuscolo). Fare clic su qualsiasi carattere per inserirlo nella posizione del cursore.</li>
+            <li><strong>f(x)</strong> — apre una finestra con un insieme di simboli matematici: ±∞≠~×÷∝≪≫≤≥∓≅≈≡∂√∪∩∅°∆∇∃∄∈∋←↑→↓↔∙⋯⟸⟹⟺. Fare clic su qualsiasi simbolo per inserirlo nella posizione del cursore.</li>
+          </ul>
+        </li>
+        <li><strong>Data di creazione degli aggiornamenti della cronologia</strong>: ogni scheda della cronologia mostra ora sia la data di <em>Creazione</em> sia la data di <em>Modifica</em> (visualizzata solo se l'aggiornamento è stato modificato dopo la creazione).</li>
+      </ul>
+    </div>
+
+    <div class="section chg">
+      <div class="section-title">✦ Miglioramenti</div>
+      <ul>
+        <li>Schema del database della cronologia esteso: la tabella <code>history</code> acquisisce una colonna <code>modified_at</code>, popolata automaticamente quando una voce viene modificata. I database esistenti vengono migrati in modo trasparente al primo avvio.</li>
+      </ul>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════  v1.3 ══ -->
   <div class="version-block">
     <div class="version-header">

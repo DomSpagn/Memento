@@ -226,9 +226,15 @@ def _ensure_history_tables(conn: sqlite3.Connection) -> None:
             design_id  INTEGER NOT NULL,
             body       TEXT    NOT NULL DEFAULT '',
             created_at TEXT    NOT NULL,
+            modified_at TEXT,
             FOREIGN KEY (design_id) REFERENCES designs(id) ON DELETE CASCADE
         )
     """)
+    # migration: add modified_at to existing databases
+    try:
+        conn.execute("ALTER TABLE history ADD COLUMN modified_at TEXT")
+    except Exception:
+        pass
     conn.execute("""
         CREATE TABLE IF NOT EXISTS history_attachments (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -261,8 +267,8 @@ def add_history_entry(output_path: str, design_id: int, body: str) -> int:
     with _connect(output_path) as conn:
         _ensure_history_tables(conn)
         cur = conn.execute(
-            "INSERT INTO history (design_id, body, created_at) VALUES (?, ?, ?)",
-            (design_id, body, _now()),
+            "INSERT INTO history (design_id, body, created_at, modified_at) VALUES (?, ?, ?, ?)",
+            (design_id, body, _now(), None),
         )
         conn.execute("UPDATE designs SET modified_at = ? WHERE id = ?", (_now(), design_id))
         conn.commit()
@@ -273,7 +279,7 @@ def update_history_entry(output_path: str, entry_id: int, body: str) -> None:
     with _connect(output_path) as conn:
         _ensure_history_tables(conn)
         row = conn.execute("SELECT design_id FROM history WHERE id = ?", (entry_id,)).fetchone()
-        conn.execute("UPDATE history SET body = ? WHERE id = ?", (body, entry_id))
+        conn.execute("UPDATE history SET body = ?, modified_at = ? WHERE id = ?", (body, _now(), entry_id))
         if row:
             conn.execute("UPDATE designs SET modified_at = ? WHERE id = ?", (_now(), row["design_id"]))
         conn.commit()

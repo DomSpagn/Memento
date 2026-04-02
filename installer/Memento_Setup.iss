@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #define MyAppName "Memento"
-#define MyAppVersion "1.3"
+#define MyAppVersion "1.4"
 #define MyAppExeName "Memento.exe"
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".myp"

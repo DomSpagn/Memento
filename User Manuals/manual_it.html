@@ -316,7 +316,7 @@
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="app-name">MEMENTO</div>
-      <div class="version">Manuale Utente – v1.5</div>
+      <div class="version">Manuale Utente – v1.8</div>
     </div>
     <p class="toc-title">Indice</p>
     <nav>
@@ -480,7 +480,7 @@
           <li>
             <a href="#s5">Riferimento Impostazioni</a>
             <ul class="sub-toc">
-              <li><a href="#s5-1">Percorso d'installazione</a></li>
+              <li><a href="#s5-1">Archive Path</a></li>
               <li><a href="#s5-2">Posizione barra comandi</a></li>
               <li><a href="#s5-3">Lingua</a></li>
               <li><a href="#s5-4">Tema</a></li>
@@ -657,8 +657,9 @@
     </p>
     <ul>
       <li>
-        <strong>Percorso d'installazione…</strong> — Modifica la cartella radice in cui Memento
-        archivia i dati. Contiene un campo di testo con il percorso corrente e un pulsante
+        <strong>Archive Path…</strong> — Modifica la cartella archivio in cui Memento
+        archivia i dati. Il percorso selezionato deve terminare con una cartella di nome <code>Memento</code>.
+        Contiene un campo di testo con il percorso corrente e un pulsante
         Sfoglia…. Pulsanti: <kbd>Annulla</kbd> &nbsp;|&nbsp; <kbd>Salva</kbd>.
       </li>
       <li>
@@ -1147,17 +1148,19 @@
     <!-- ══════════════════════════════════════════════════════ -->
     <h2 id="s5">5 · Riferimento Impostazioni</h2>
 
-    <h3 id="s5-1">5.1 Percorso d'installazione</h3>
+    <h3 id="s5-1">5.1 Archive Path</h3>
     <p>
-      Accedere tramite <em>Impostazioni → Percorso d'installazione…</em>. Questa è la cartella
-      radice in cui Memento crea la sua sotto-cartella <code>Memento/</code>. La modifica di questa
-      impostazione indica a Memento dove cercare i database esistenti e dove crearne di nuovi.
+      Accedere tramite <em>Impostazioni → Archive Path…</em>. Questa è la cartella
+      <code>Memento/</code> in cui Memento archivia tutti i suoi dati. Il percorso
+      <strong>deve</strong> terminare con una cartella di nome <code>Memento</code> —
+      in caso contrario viene mostrato un popup di avviso. Il salvataggio aggiorna il percorso
+      in <code>mem_conf.json</code> e aggiorna immediatamente le tabelle di entrambi i tracker
+      senza riavviare l'applicazione.
     </p>
     <div class="warn">
-      ⚠️ &nbsp;La modifica del percorso d'installazione <strong>non</strong> sposta automaticamente
+      ⚠️ &nbsp;La modifica dell'archive path <strong>non</strong> sposta automaticamente
       i dati esistenti. Se si hanno Task o Design esistenti, spostare manualmente la cartella
-      <code>{VecchioPercorso}/Memento/</code> nella nuova posizione <em>prima</em> di fare
-      clic su Salva.
+      <code>Memento/</code> nella nuova posizione <em>prima</em> di fare clic su Salva.
     </div>
 
     <h3 id="s5-2">5.2 Posizione barra comandi</h3>
@@ -1318,7 +1321,7 @@
     <table>
       <tr><th>Chiave</th><th>Tipo</th><th>Valori</th><th>Impostato da</th></tr>
       <tr><td><code>Theme</code></td><td>stringa</td><td><code>"Dark"</code> | <code>"Light"</code></td><td>Procedura guidata, interruttore tema</td></tr>
-      <tr><td><code>OutputPath</code></td><td>stringa</td><td>Percorso assoluto cartella</td><td>Procedura guidata, Impostazioni → Percorso d'installazione…</td></tr>
+      <tr><td><code>OutputPath</code></td><td>stringa</td><td>Percorso assoluto alla cartella <code>Memento/</code></td><td>Procedura guidata, Impostazioni → Archive Path…</td></tr>
       <tr><td><code>StartWith</code></td><td>stringa</td><td><code>"TaskTracker"</code> | <code>"DesignTracker"</code></td><td>Procedura guidata, selettore modulo</td></tr>
       <tr><td><code>CmdBarPosition</code></td><td>stringa</td><td><code>"Top"</code> | <code>"Bottom"</code> | <code>"Left"</code> | <code>"Right"</code></td><td>Impostazioni → Posizione barra…</td></tr>
       <tr><td><code>Language</code></td><td>stringa</td><td><code>"en"</code> | <code>"it"</code></td><td>Impostazioni → Lingua…</td></tr>

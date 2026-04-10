@@ -326,7 +326,7 @@
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="app-name">MEMENTO</div>
-      <div class="version">User Manual – v1.5</div>
+      <div class="version">User Manual – v1.8</div>
     </div>
     <p class="toc-title">Contents</p>
     <nav>
@@ -488,7 +488,7 @@
           <li>
             <a href="#s5">Settings Reference</a>
             <ul class="sub-toc">
-              <li><a href="#s5-1">Installation Path</a></li>
+              <li><a href="#s5-1">Archive Path</a></li>
               <li><a href="#s5-2">Command Bar Position</a></li>
               <li><a href="#s5-3">Language</a></li>
               <li><a href="#s5-4">Theme</a></li>
@@ -655,7 +655,8 @@
     </p>
     <ul>
       <li>
-        <strong>Installation Path…</strong> — Change the root folder where Memento stores data.
+        <strong>Archive Path…</strong> — Change the archive folder where Memento stores data.
+        The selected path must end with a folder named <code>Memento</code>.
         Contains a text field showing the current path and a Browse… folder button.
         Buttons: <kbd>Cancel</kbd> &nbsp;|&nbsp; <kbd>Save</kbd>.
       </li>
@@ -1110,16 +1111,18 @@
     <!-- ══════════════════════════════════════════════════════ -->
     <h2 id="s5">5 · Settings Reference</h2>
 
-    <h3 id="s5-1">5.1 Installation Path</h3>
+    <h3 id="s5-1">5.1 Archive Path</h3>
     <p>
-      Access via <em>Settings → Installation Path…</em>. This is the root folder where Memento
-      creates its <code>Memento/</code> sub-folder. Changing this setting tells Memento where to look
-      for existing databases and where to create new ones.
+      Access via <em>Settings → Archive Path…</em>. This is the <code>Memento/</code> folder
+      where Memento stores all its data. The path <strong>must</strong> end with a folder named
+      <code>Memento</code> — a validation popup is shown if it does not.
+      Saving updates the path in <code>mem_conf.json</code> and immediately refreshes both
+      tracker tables without restarting the application.
     </p>
     <div class="warn">
-      ⚠️ &nbsp;Changing the installation path does <strong>not</strong> automatically move your existing
-      data. If you have existing tasks or designs, manually move the
-      <code>{OldPath}/Memento/</code> folder to the new location <em>before</em> clicking Save.
+      ⚠️ &nbsp;Changing the archive path does <strong>not</strong> automatically move your existing
+      data. If you have existing tasks or designs, manually move your <code>Memento/</code>
+      folder to the new location <em>before</em> clicking Save.
     </div>
 
     <h3 id="s5-2">5.2 Command Bar Position</h3>
@@ -1270,7 +1273,7 @@
     <table>
       <tr><th>Key</th><th>Type</th><th>Values</th><th>Set by</th></tr>
       <tr><td><code>Theme</code></td><td>string</td><td><code>"Dark"</code> | <code>"Light"</code></td><td>Wizard, theme toggle</td></tr>
-      <tr><td><code>OutputPath</code></td><td>string</td><td>Absolute folder path</td><td>Wizard, Settings → Installation Path…</td></tr>
+      <tr><td><code>OutputPath</code></td><td>string</td><td>Absolute path to the <code>Memento/</code> folder</td><td>Wizard, Settings → Archive Path…</td></tr>
       <tr><td><code>StartWith</code></td><td>string</td><td><code>"TaskTracker"</code> | <code>"DesignTracker"</code></td><td>Wizard, tracker switcher</td></tr>
       <tr><td><code>CmdBarPosition</code></td><td>string</td><td><code>"Top"</code> | <code>"Bottom"</code> | <code>"Left"</code> | <code>"Right"</code></td><td>Settings → Command Bar…</td></tr>
       <tr><td><code>Language</code></td><td>string</td><td><code>"en"</code> | <code>"it"</code></td><td>Settings → Language…</td></tr>

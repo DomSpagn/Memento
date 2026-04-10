@@ -107,6 +107,30 @@
     <p>Cronologia completa di funzionalità e correzioni</p>
   </header>
 
+  <!-- ═══════════════════════════════════════  v1.8 ══ -->
+  <div class="version-block">
+    <div class="version-header">
+      <span class="tag">v1.8</span>
+      <span class="date">Aprile 2026</span>
+    </div>
+
+    <div class="section new">
+      <div class="section-title">✦ Nuove funzionalità</div>
+      <ul>
+        <li><strong>Archive Path</strong>: il concetto di <em>Percorso d'installazione</em> è stato ridisegnato. Il terzo step della procedura guidata chiede ora una cartella padre; Memento crea automaticamente una sottocartella <code>Memento/</code> al suo interno (con le directory <code>TaskTracker/</code> e <code>DesignTracker/</code>). Il percorso risultante <code>…/Memento</code> viene salvato come <code>OutputPath</code> in <code>mem_conf.json</code>.</li>
+        <li><strong>Archive Path nelle Impostazioni</strong>: la voce <em>Impostazioni → Percorso d'installazione…</em> è stata rinominata in <strong>Archive Path…</strong>. Il dialog richiede ora che il percorso selezionato termini con una cartella di nome <code>Memento</code> (in caso contrario viene mostrato un popup di avviso). Il salvataggio aggiorna solo <code>OutputPath</code> — non vengono create nuove cartelle — e aggiorna automaticamente le tabelle di entrambi i tracker.</li>
+        <li><strong>Campo Stato bloccato in presenza di aggiornamenti</strong>: il menu a tendina <em>Stato</em> nell'intestazione di Task e Design diventa <strong>non modificabile</strong> non appena il record ha almeno un aggiornamento nella cronologia. Lo stato viene quindi derivato esclusivamente dagli stati degli aggiornamenti tramite il calcolo automatico.</li>
+      </ul>
+    </div>
+
+    <div class="section fix">
+      <div class="section-title">✦ Correzioni</div>
+      <ul>
+        <li><strong>Stato non aggiornato all'aggiunta di un aggiornamento Open</strong>: l'aggiunta di un nuovo aggiornamento con stato <em>Open</em> (il valore predefinito) non attivava il ricalcolo automatico dello stato del padre. Lo stato viene ora sempre ricalcolato immediatamente dopo il salvataggio di qualsiasi nuovo aggiornamento, indipendentemente dal suo valore.</li>
+      </ul>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════  v1.7 ══ -->
   <div class="version-block">
     <div class="version-header">

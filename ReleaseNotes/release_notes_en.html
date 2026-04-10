@@ -107,6 +107,30 @@
     <p>Full history of features and fixes</p>
   </header>
 
+  <!-- ═══════════════════════════════════════  v1.8 ══ -->
+  <div class="version-block">
+    <div class="version-header">
+      <span class="tag">v1.8</span>
+      <span class="date">April 2026</span>
+    </div>
+
+    <div class="section new">
+      <div class="section-title">✦ New Features</div>
+      <ul>
+        <li><strong>Archive Path</strong>: the <em>Installation Path</em> concept has been redesigned. The wizard step 3 now asks for a parent folder; Memento automatically creates a <code>Memento/</code> subfolder inside it (with <code>TaskTracker/</code> and <code>DesignTracker/</code> sub-directories). The resulting <code>…/Memento</code> path is saved as <code>OutputPath</code> in <code>mem_conf.json</code>.</li>
+        <li><strong>Archive Path in Settings</strong>: the <em>Settings → Installation Path…</em> menu item has been renamed to <strong>Archive Path…</strong>. The dialog now requires the selected path to end with a folder named <code>Memento</code> (validation popup shown otherwise). Saving updates <code>OutputPath</code> only — no new folders are created — and automatically refreshes both tracker tables.</li>
+        <li><strong>Status field locked when history exists</strong>: the <em>Status</em> dropdown in the Task and Design header becomes <strong>read-only</strong> as soon as the record has at least one history entry. Status is then derived exclusively from the history entry statuses via automatic computation.</li>
+      </ul>
+    </div>
+
+    <div class="section fix">
+      <div class="section-title">✦ Bug Fixes</div>
+      <ul>
+        <li><strong>Status not updated when adding an Open history entry</strong>: adding a new history entry with status <em>Open</em> (the default) did not trigger automatic parent-status recomputation. The status is now always recomputed immediately after saving any new entry, regardless of its status value.</li>
+      </ul>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════  v1.7 ══ -->
   <div class="version-block">
     <div class="version-header">

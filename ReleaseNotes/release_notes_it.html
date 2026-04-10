@@ -107,6 +107,29 @@
     <p>Cronologia completa di funzionalità e correzioni</p>
   </header>
 
+  <!-- ═══════════════════════════════════════  v1.6 ══ -->
+  <div class="version-block">
+    <div class="version-header">
+      <span class="tag">v1.6</span>
+      <span class="date">Aprile 2026</span>
+    </div>
+
+    <div class="section chg">
+      <div class="section-title">❆ Miglioramenti</div>
+      <ul>
+        <li><strong>Grafico stati: rimosso filtro periodo</strong>: il menu a tendina <em>Periodo</em> (Ultimo giorno / Ultima settimana / Ultimo mese / Ultimo anno) è stato rimosso dal grafico Distribuzione stati in entrambi i tracker. Il grafico mostra ora sempre la distribuzione su <strong>tutti i record</strong>, filtrata solo per progetto.</li>
+        <li><strong>Calcolo automatico stato padre aggiornato</strong>: la logica che deriva lo stato di un Task/Design dagli stati degli aggiornamenti della cronologia è stata rivista. <em>Open</em> ora prevale su <em>Closed</em> quando almeno un aggiornamento è Open (in precedenza la combinazione Open + Closed lasciava lo stato invariato). Nuove regole di priorità:
+          <ol>
+            <li>Almeno un aggiornamento <em>In Progress</em> → il padre diventa <em>In Progress</em>.</li>
+            <li>Almeno un aggiornamento <em>On Hold</em> → il padre diventa <em>On Hold</em>.</li>
+            <li>Almeno un aggiornamento <em>Open</em> → il padre diventa <em>Open</em>.</li>
+            <li>Tutti gli aggiornamenti <em>Closed</em> → il padre diventa <em>Closed</em>.</li>
+          </ol>
+        </li>
+      </ul>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════  v1.5 ══ -->
   <div class="version-block">
     <div class="version-header">

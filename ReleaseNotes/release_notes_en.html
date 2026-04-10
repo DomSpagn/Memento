@@ -107,6 +107,29 @@
     <p>Full history of features and fixes</p>
   </header>
 
+  <!-- ═══════════════════════════════════════  v1.6 ══ -->
+  <div class="version-block">
+    <div class="version-header">
+      <span class="tag">v1.6</span>
+      <span class="date">April 2026</span>
+    </div>
+
+    <div class="section chg">
+      <div class="section-title">❆ Improvements</div>
+      <ul>
+        <li><strong>Status chart: period filter removed</strong>: the <em>Period</em> dropdown (Last Day / Last Week / Last Month / Last Year) has been removed from the Status Distribution chart in both Task Tracker and Design Tracker. The chart now always shows the distribution across <strong>all records</strong>, filtered only by project.</li>
+        <li><strong>Revised automatic parent-status computation</strong>: the rule set that derives a task/design status from its history entries has been updated. <em>Open</em> now wins over <em>Closed</em> whenever at least one entry is Open (previously a mix of Open + Closed left the status unchanged). Updated priority rules:
+          <ol>
+            <li>At least one <em>In Progress</em> → parent becomes <em>In Progress</em>.</li>
+            <li>At least one <em>On Hold</em> → parent becomes <em>On Hold</em>.</li>
+            <li>At least one <em>Open</em> → parent becomes <em>Open</em>.</li>
+            <li>All <em>Closed</em> → parent becomes <em>Closed</em>.</li>
+          </ol>
+        </li>
+      </ul>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════  v1.5 ══ -->
   <div class="version-block">
     <div class="version-header">

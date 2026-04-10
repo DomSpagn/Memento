@@ -13,6 +13,3 @@ mem_conf.json
 # PyInstaller intermediate build artefacts
 build/
 dist/
-
-# Inno Setup compiler output (generated installer executable)
-installer/Output/

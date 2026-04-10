@@ -2754,7 +2754,7 @@ def build_design_tracker(page: ft.Page, config: dict,
             eid = add_history_entry(output_path, design["id"], text)
             if new_entry_status_dd.value and new_entry_status_dd.value != "Open":
                 update_history_entry_status(output_path, eid, new_entry_status_dd.value)
-                _recompute_and_sync_status()
+            _recompute_and_sync_status()
             if _new_entry_attachments:
                 history_attach_dir.mkdir(parents=True, exist_ok=True)
                 for fp in _new_entry_attachments:

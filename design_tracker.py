@@ -1270,6 +1270,167 @@ def build_design_tracker(page: ft.Page, config: dict,
             dlg_holder[0].open = True
             page.update()
 
+        _EQ_TEMPLATES = [
+            ("Algebra", [
+                "a/b", "(a+b)/(c+d)", "x²", "x³", "xⁿ", "x⁻¹",
+                "√x", "∛x", "ⁿ√x", "x₀", "xₙ",
+            ]),
+            ("Calculus", [
+                "dy/dx", "∂y/∂x", "∫f(x)dx", "∫₀¹f(x)dx",
+                "lim(x→a) f(x)", "Σᵢ₌₁ⁿ aᵢ", "∏ᵢ₌₁ⁿ aᵢ", "∇f", "∇²f",
+            ]),
+            ("Trigonometry", [
+                "sin(x)", "cos(x)", "tan(x)",
+                "arcsin(x)", "arccos(x)", "arctan(x)",
+                "sin²(x)+cos²(x)=1",
+            ]),
+            ("Notable formulas", [
+                "a²+b²=c²", "x=(-b±√(b²-4ac))/2a",
+                "E=mc²", "F=ma", "V=IR",
+            ]),
+        ]
+
+        def _open_math_eq_picker(insert_fn) -> None:
+            dlg_holder = [None]
+
+            def _close(_e):
+                dlg_holder[0].open = False
+                page.update()
+
+            def _mk_handler(text):
+                async def _h(_e):
+                    dlg_holder[0].open = False
+                    page.update()
+                    await insert_fn(text)
+                return _h
+
+            # ── Math symbols pane ─────────────────────────────────────────
+            math_pane = ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Row(
+                            [
+                                ft.TextButton(
+                                    content=ft.Text(c, size=18),
+                                    tooltip=c,
+                                    on_click=_mk_handler(c),
+                                    style=ft.ButtonStyle(
+                                        padding=ft.padding.all(4),
+                                        shape=ft.RoundedRectangleBorder(radius=4),
+                                    ),
+                                )
+                                for c in _MATH_SYMS
+                            ],
+                            wrap=True, spacing=2, run_spacing=2,
+                        )
+                    ],
+                    spacing=6, tight=True, scroll=ft.ScrollMode.AUTO,
+                ),
+                visible=True,
+                height=300,
+            )
+
+            # ── Equations pane ────────────────────────────────────────────
+            eq_groups = []
+            for group_label, formulas in _EQ_TEMPLATES:
+                eq_groups.append(
+                    ft.Text(t(group_label), size=11, weight=ft.FontWeight.W_600,
+                            color=ft.Colors.GREY_600)
+                )
+                eq_groups.append(
+                    ft.Row(
+                        [
+                            ft.TextButton(
+                                content=ft.Text(f, size=12),
+                                tooltip=f,
+                                on_click=_mk_handler(f),
+                                style=ft.ButtonStyle(
+                                    padding=ft.padding.symmetric(horizontal=6, vertical=3),
+                                    shape=ft.RoundedRectangleBorder(radius=4),
+                                ),
+                            )
+                            for f in formulas
+                        ],
+                        wrap=True, spacing=4, run_spacing=2,
+                    )
+                )
+            eq_pane = ft.Container(
+                content=ft.Column(eq_groups, spacing=8, tight=True,
+                                  scroll=ft.ScrollMode.AUTO),
+                visible=False,
+                height=300,
+            )
+
+            # ── Tab header buttons ────────────────────────────────────────
+            _ACTIVE_CLR   = ft.Colors.PRIMARY
+            _INACTIVE_CLR = ft.Colors.ON_SURFACE_VARIANT
+            _ACTIVE_BORDER   = ft.border.only(bottom=ft.BorderSide(2, ft.Colors.PRIMARY))
+            _INACTIVE_BORDER = ft.border.only(bottom=ft.BorderSide(1, ft.Colors.OUTLINE_VARIANT))
+
+            tab_math_label = ft.Container(
+                content=ft.Text(t("Math symbols"), size=13, weight=ft.FontWeight.W_600,
+                                color=_ACTIVE_CLR),
+                border=_ACTIVE_BORDER,
+                padding=ft.padding.symmetric(horizontal=12, vertical=6),
+            )
+            tab_eq_label = ft.Container(
+                content=ft.Text(t("Equations"), size=13, weight=ft.FontWeight.W_600,
+                                color=_INACTIVE_CLR),
+                border=_INACTIVE_BORDER,
+                padding=ft.padding.symmetric(horizontal=12, vertical=6),
+            )
+
+            def _select_math(_e=None):
+                math_pane.visible = True
+                eq_pane.visible   = False
+                tab_math_label.border = _ACTIVE_BORDER
+                tab_math_label.content.color = _ACTIVE_CLR
+                tab_eq_label.border = _INACTIVE_BORDER
+                tab_eq_label.content.color = _INACTIVE_CLR
+                page.update()
+
+            def _select_eq(_e=None):
+                math_pane.visible = False
+                eq_pane.visible   = True
+                tab_math_label.border = _INACTIVE_BORDER
+                tab_math_label.content.color = _INACTIVE_CLR
+                tab_eq_label.border = _ACTIVE_BORDER
+                tab_eq_label.content.color = _ACTIVE_CLR
+                page.update()
+
+            tab_bar = ft.Row(
+                [
+                    ft.GestureDetector(content=tab_math_label, on_tap=_select_math),
+                    ft.GestureDetector(content=tab_eq_label,   on_tap=_select_eq),
+                ],
+                spacing=0,
+            )
+
+            body = ft.Container(
+                content=ft.Column(
+                    [
+                        tab_bar,
+                        ft.Divider(height=1),
+                        math_pane,
+                        eq_pane,
+                    ],
+                    spacing=4,
+                    tight=True,
+                ),
+                width=500,
+                height=380,
+            )
+
+            dlg_holder[0] = ft.AlertDialog(
+                modal=True,
+                content=body,
+                actions=[ft.TextButton(t("Close"), on_click=_close)],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.overlay.append(dlg_holder[0])
+            dlg_holder[0].open = True
+            page.update()
+
         _COLOR_OPTS = [
             ("#D32F2F", "Red"), ("#E65100", "Orange"), ("#F57F17", "Yellow"),
             ("#2E7D32", "Green"), ("#1565C0", "Blue"), ("#6A1B9A", "Purple"),
@@ -1311,8 +1472,8 @@ def build_design_tracker(page: ft.Page, config: dict,
                 _insert_at_cursor,
             )
 
-        async def _open_desc_math(_e):
-            _open_sym_picker("Math symbols", [("", _MATH_SYMS)], _insert_at_cursor)
+        async def _open_desc_sym_eq(_e):
+            _open_math_eq_picker(_insert_at_cursor)
 
         desc_toolbar = ft.Container(
             visible=not _desc_has_content,
@@ -1330,8 +1491,8 @@ def build_design_tracker(page: ft.Page, config: dict,
                     _tb_btn(ft.Icons.FORMAT_INDENT_INCREASE, "Quote",        _on_quote),
                     _tb_btn(ft.Icons.FORMAT_INDENT_DECREASE, "Remove quote", _remove_quotes),
                     ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
-                    _sym_tb_btn("Ω",    t("Greek alphabet"), _open_desc_greek),
-                    _sym_tb_btn("f(x)", t("Math symbols"),   _open_desc_math),
+                    _sym_tb_btn("Ω",    t("Greek alphabet"),     _open_desc_greek),
+                    _sym_tb_btn("Σ",    t("Symbols & Equations"), _open_desc_sym_eq),
                 ],
                 spacing=0,
                 tight=True,
@@ -1903,8 +2064,8 @@ def build_design_tracker(page: ft.Page, config: dict,
                     _entry_insert,
                 )
 
-            async def _open_entry_math(_e):
-                _open_sym_picker("Math symbols", [("", _MATH_SYMS)], _entry_insert)
+            async def _open_entry_sym_eq(_e):
+                _open_math_eq_picker(_entry_insert)
 
             entry_edit_toolbar = ft.Container(
                 visible=False,
@@ -1922,8 +2083,8 @@ def build_design_tracker(page: ft.Page, config: dict,
                         _tb_btn(ft.Icons.FORMAT_INDENT_INCREASE, "Quote",         _entry_quote),
                         _tb_btn(ft.Icons.FORMAT_INDENT_DECREASE, "Remove quote",  _entry_remove_quotes),
                         ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
-                        _sym_tb_btn("Ω",    t("Greek alphabet"), _open_entry_greek),
-                        _sym_tb_btn("f(x)", t("Math symbols"),   _open_entry_math),
+                        _sym_tb_btn("Ω",    t("Greek alphabet"),     _open_entry_greek),
+                        _sym_tb_btn("Σ",    t("Symbols & Equations"), _open_entry_sym_eq),
                     ],
                     spacing=0,
                     tight=True,
@@ -2294,8 +2455,8 @@ def build_design_tracker(page: ft.Page, config: dict,
                 _hist_insert,
             )
 
-        async def _open_hist_math(_e):
-            _open_sym_picker("Math symbols", [("", _MATH_SYMS)], _hist_insert)
+        async def _open_hist_sym_eq(_e):
+            _open_math_eq_picker(_hist_insert)
 
         hist_entry_toolbar = ft.Container(
             visible=False,
@@ -2313,8 +2474,8 @@ def build_design_tracker(page: ft.Page, config: dict,
                     _tb_btn(ft.Icons.FORMAT_INDENT_INCREASE, "Quote",         _on_hist_quote),
                     _tb_btn(ft.Icons.FORMAT_INDENT_DECREASE, "Remove quote",  _on_hist_remove_quotes),
                     ft.VerticalDivider(width=8, color=ft.Colors.OUTLINE_VARIANT),
-                    _sym_tb_btn("Ω",    t("Greek alphabet"), _open_hist_greek),
-                    _sym_tb_btn("f(x)", t("Math symbols"),   _open_hist_math),
+                    _sym_tb_btn("Ω",    t("Greek alphabet"),     _open_hist_greek),
+                    _sym_tb_btn("Σ",    t("Symbols & Equations"), _open_hist_sym_eq),
                 ],
                 spacing=0,
                 tight=True,

@@ -23,6 +23,7 @@ from design_db import (
     fetch_all_design_attachments, fetch_all_history_attachments_bulk,
     fetch_all_related_design_links, fetch_all_design_task_links_raw,
     find_designs_with_attachment,
+    update_history_entry_status, compute_status_from_history,
 )
 from task_db import fetch_all_tasks, find_tasks_with_attachment
 
@@ -874,6 +875,13 @@ def build_design_tracker(page: ft.Page, config: dict,
             )
             page.update()
 
+        def _recompute_and_sync_status() -> None:
+            derived = compute_status_from_history(output_path, design["id"])
+            if derived and derived != header_status.value:
+                header_status.value = derived
+                update_design(output_path, design["id"], status=derived)
+                page.update()
+
         def _mark_dirty() -> None:
             _edit_state["dirty"] = True
             _update_save_btn()
@@ -1358,7 +1366,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                 content=ft.Column(eq_groups, spacing=8, tight=True,
                                   scroll=ft.ScrollMode.AUTO),
                 visible=False,
-                height=300,
+                height=430,
             )
 
             # ── Tab header buttons ────────────────────────────────────────
@@ -1418,7 +1426,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                     tight=True,
                 ),
                 width=500,
-                height=380,
+                height=490,
             )
 
             dlg_holder[0] = ft.AlertDialog(
@@ -2279,6 +2287,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                             pass
                 delete_history_entry(output_path, eid)
                 _refresh_history()
+                _recompute_and_sync_status()
 
             del_entry_btn.on_click = _on_del_entry
 
@@ -2308,6 +2317,31 @@ def build_design_tracker(page: ft.Page, config: dict,
                 _update_save_btn()
 
             entry_attach_btn.on_click = _attach_to_history
+
+            _ENTRY_STATUS_PALETTE = {
+                "Open":        ft.Colors.CYAN_400,
+                "In Progress": ft.Colors.YELLOW_400,
+                "On Hold":     ft.Colors.PURPLE_400,
+                "Closed":      ft.Colors.GREEN_400,
+            }
+            _cur_estatus = entry.get("entry_status") or "Open"
+            entry_status_dd = ft.Dropdown(
+                value=_cur_estatus,
+                options=[ft.dropdown.Option(s) for s in STATUSES],
+                width=130,
+                dense=True,
+                border=ft.InputBorder.UNDERLINE,
+                color=_ENTRY_STATUS_PALETTE.get(_cur_estatus, ft.Colors.ON_SURFACE),
+                content_padding=ft.padding.symmetric(horizontal=4, vertical=2),
+                text_size=12,
+                on_select=lambda _e, eid=entry["id"]: _on_entry_status_change(eid, entry_status_dd),
+            )
+
+            def _on_entry_status_change(eid: int, dd: ft.Dropdown) -> None:
+                dd.color = _ENTRY_STATUS_PALETTE.get(dd.value, ft.Colors.ON_SURFACE)
+                update_history_entry_status(output_path, eid, dd.value)
+                _recompute_and_sync_status()
+                page.update()
 
             return ft.Container(
                 content=ft.Column(
@@ -2341,6 +2375,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                         body_txt,
                         h_att_col,
                         entry_tags_section,
+                        ft.Row([entry_status_dd], alignment=ft.MainAxisAlignment.END),
                     ],
                     spacing=4,
                     horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
@@ -2659,6 +2694,30 @@ def build_design_tracker(page: ft.Page, config: dict,
             style=ft.ButtonStyle(padding=ft.padding.all(2)),
         )
 
+        _NEW_STATUS_PALETTE = {
+            "Open":        ft.Colors.CYAN_400,
+            "In Progress": ft.Colors.YELLOW_400,
+            "On Hold":     ft.Colors.PURPLE_400,
+            "Closed":      ft.Colors.GREEN_400,
+        }
+        new_entry_status_dd = ft.Dropdown(
+            value="Open",
+            options=[ft.dropdown.Option(s) for s in STATUSES],
+            width=130,
+            dense=True,
+            border=ft.InputBorder.UNDERLINE,
+            color=ft.Colors.CYAN_400,
+            content_padding=ft.padding.symmetric(horizontal=4, vertical=2),
+            text_size=12,
+        )
+
+        def _on_new_status_change(_e) -> None:
+            new_entry_status_dd.color = _NEW_STATUS_PALETTE.get(
+                new_entry_status_dd.value, ft.Colors.ON_SURFACE)
+            new_entry_status_dd.update()
+
+        new_entry_status_dd.on_select = _on_new_status_change
+
         def _hide_new_entry_panel() -> None:
             new_entry_field.value = ""
             _staged_tags.clear()
@@ -2673,6 +2732,8 @@ def build_design_tracker(page: ft.Page, config: dict,
             add_tag_btn.disabled       = True
             new_entry_panel.visible    = False
             add_update_btn.visible     = True
+            new_entry_status_dd.value  = "Open"
+            new_entry_status_dd.color  = ft.Colors.CYAN_400
             _edit_state["editing"]     = False
             if _main_btns["delete"]:
                 _main_btns["delete"].disabled = False
@@ -2691,6 +2752,9 @@ def build_design_tracker(page: ft.Page, config: dict,
             if _staged_tags:
                 text = text.rstrip() + "\n" + " ".join(f"#{tg}" for tg in _staged_tags)
             eid = add_history_entry(output_path, design["id"], text)
+            if new_entry_status_dd.value and new_entry_status_dd.value != "Open":
+                update_history_entry_status(output_path, eid, new_entry_status_dd.value)
+                _recompute_and_sync_status()
             if _new_entry_attachments:
                 history_attach_dir.mkdir(parents=True, exist_ok=True)
                 for fp in _new_entry_attachments:
@@ -2722,7 +2786,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                 tags_section,
                 ft.Row(
                     [new_attach_btn, ft.Container(expand=True),
-                     cancel_new_entry_btn, save_entry_btn],
+                     new_entry_status_dd, cancel_new_entry_btn, save_entry_btn],
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
             ],

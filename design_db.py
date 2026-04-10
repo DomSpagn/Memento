@@ -244,6 +244,11 @@ def _ensure_history_tables(conn: sqlite3.Connection) -> None:
             FOREIGN KEY (history_id) REFERENCES history(id) ON DELETE CASCADE
         )
     """)
+    # migration: add entry_status to existing databases
+    try:
+        conn.execute("ALTER TABLE history ADD COLUMN entry_status TEXT NOT NULL DEFAULT 'Open'")
+    except Exception:
+        pass
 
 
 def fetch_history(output_path: str, design_id: int) -> list[dict]:
@@ -283,6 +288,41 @@ def update_history_entry(output_path: str, entry_id: int, body: str) -> None:
         if row:
             conn.execute("UPDATE designs SET modified_at = ? WHERE id = ?", (_now(), row["design_id"]))
         conn.commit()
+
+
+def update_history_entry_status(output_path: str, entry_id: int, status: str) -> None:
+    """Update only the entry_status of a history entry."""
+    with _connect(output_path) as conn:
+        _ensure_history_tables(conn)
+        row = conn.execute("SELECT design_id FROM history WHERE id = ?", (entry_id,)).fetchone()
+        conn.execute("UPDATE history SET entry_status = ? WHERE id = ?", (status, entry_id))
+        if row:
+            conn.execute("UPDATE designs SET modified_at = ? WHERE id = ?", (_now(), row["design_id"]))
+        conn.commit()
+
+
+def compute_status_from_history(output_path: str, design_id: int) -> str | None:
+    """Derive design status from all history entry_status values.
+    Rules (in priority order):
+      1. At least one 'In Progress' → 'In Progress'
+      2. At least one 'On Hold'     → 'On Hold'
+      3. All 'Closed'               → 'Closed'
+      4. All 'Open'                 → 'Open'
+      Otherwise None (no change).
+    """
+    entries = fetch_history(output_path, design_id)
+    if not entries:
+        return None
+    statuses = [e.get("entry_status") or "Open" for e in entries]
+    if any(s == "In Progress" for s in statuses):
+        return "In Progress"
+    if any(s == "On Hold" for s in statuses):
+        return "On Hold"
+    if all(s == "Closed" for s in statuses):
+        return "Closed"
+    if all(s == "Open" for s in statuses):
+        return "Open"
+    return None
 
 
 def delete_history_entry(output_path: str, entry_id: int) -> None:

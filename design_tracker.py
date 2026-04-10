@@ -1157,6 +1157,7 @@ def build_design_tracker(page: ft.Page, config: dict,
             desc_field.selection = ft.TextSelection(base_offset=new_pos, extent_offset=new_pos)
             _cursor["pos"] = new_pos
             page.update()
+            await desc_field.focus()
 
         async def _apply_format(prefix: str, suffix: str, placeholder: str) -> None:
             await _insert_at_cursor(f"{prefix}{placeholder}{suffix}")
@@ -1173,6 +1174,7 @@ def build_design_tracker(page: ft.Page, config: dict,
             desc_field.selection = ft.TextSelection(base_offset=new_pos, extent_offset=new_pos)
             _cursor["pos"] = new_pos
             page.update()
+            await desc_field.focus()
 
         async def _apply_numbered(_e) -> None:
             cur = desc_field.value or ""
@@ -1184,6 +1186,7 @@ def build_design_tracker(page: ft.Page, config: dict,
             lines = [ln[4:] if ln.startswith("    ") else ln for ln in cur.splitlines()]
             desc_field.value = "\n".join(lines)
             page.update()
+            await desc_field.focus()
 
         def _tb_btn(icon, tooltip, on_click):
             return ft.IconButton(
@@ -1831,6 +1834,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                 body_txt.selection = ft.TextSelection(base_offset=new_pos, extent_offset=new_pos)
                 _body_cursor["pos"] = new_pos
                 page.update()
+                await body_txt.focus()
 
             async def _entry_fmt(prefix: str, suffix: str, placeholder: str) -> None:
                 await _entry_insert(f"{prefix}{placeholder}{suffix}")
@@ -1845,6 +1849,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                 ls = cur.rfind('\n', 0, pos) + 1
                 body_txt.value = cur[:ls] + "\u2022 " + cur[ls:]
                 page.update()
+                await body_txt.focus()
 
             async def _entry_numbered(_e) -> None:
                 cur = body_txt.value or ""
@@ -1853,6 +1858,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                 ls = cur.rfind('\n', 0, pos) + 1
                 body_txt.value = cur[:ls] + f"{count + 1}. " + cur[ls:]
                 page.update()
+                await body_txt.focus()
 
             async def _entry_quote(_e) -> None:
                 cur = body_txt.value or ""
@@ -1860,12 +1866,14 @@ def build_design_tracker(page: ft.Page, config: dict,
                 ls = cur.rfind('\n', 0, pos) + 1
                 body_txt.value = cur[:ls] + "    " + cur[ls:]
                 page.update()
+                await body_txt.focus()
 
             async def _entry_remove_quotes(_e) -> None:
                 cur = body_txt.value or ""
                 lines = [ln[4:] if ln.startswith("    ") else ln for ln in cur.splitlines()]
                 body_txt.value = "\n".join(lines)
                 page.update()
+                await body_txt.focus()
 
             def _make_entry_color_handler(hex_color):
                 async def _h(_e): await _entry_fmt(f"[color={hex_color}]", "[/color]", "text")
@@ -2210,6 +2218,7 @@ def build_design_tracker(page: ft.Page, config: dict,
             )
             _cursor_hist["pos"] = new_pos
             page.update()
+            await new_entry_field.focus()
 
         async def _hist_fmt(prefix: str, suffix: str, placeholder: str) -> None:
             await _hist_insert(f"{prefix}{placeholder}{suffix}")
@@ -2224,6 +2233,7 @@ def build_design_tracker(page: ft.Page, config: dict,
             ls = cur.rfind('\n', 0, pos) + 1
             new_entry_field.value = cur[:ls] + "\u2022 " + cur[ls:]
             page.update()
+            await new_entry_field.focus()
 
         async def _on_hist_numbered(_e) -> None:
             cur = new_entry_field.value or ""
@@ -2232,6 +2242,7 @@ def build_design_tracker(page: ft.Page, config: dict,
             ls = cur.rfind('\n', 0, pos) + 1
             new_entry_field.value = cur[:ls] + f"{count + 1}. " + cur[ls:]
             page.update()
+            await new_entry_field.focus()
 
         async def _on_hist_quote(_e) -> None:
             cur = new_entry_field.value or ""
@@ -2239,12 +2250,14 @@ def build_design_tracker(page: ft.Page, config: dict,
             ls = cur.rfind('\n', 0, pos) + 1
             new_entry_field.value = cur[:ls] + "    " + cur[ls:]
             page.update()
+            await new_entry_field.focus()
 
         async def _on_hist_remove_quotes(_e) -> None:
             cur = new_entry_field.value or ""
             lines = [ln[4:] if ln.startswith("    ") else ln for ln in cur.splitlines()]
             new_entry_field.value = "\n".join(lines)
             page.update()
+            await new_entry_field.focus()
 
         def _make_hist_color_handler(hex_color):
             async def _h(_e): await _hist_fmt(f"[color={hex_color}]", "[/color]", "text")

@@ -2807,6 +2807,7 @@ def build_task_tracker(page: ft.Page, config: dict,
                 _build_history_entry_widget(e, i + 1)
                 for i, e in enumerate(entries)
             ]
+            header_status.disabled = bool(entries)
             page.update()
 
         def _del_h_att(att: dict, _history_id: int) -> None:

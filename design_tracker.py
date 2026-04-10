@@ -3165,8 +3165,11 @@ def build_design_tracker(page: ft.Page, config: dict,
                 # history attachments
                 h_atts = fetch_history_attachments(output_path, h["id"])
                 if h_atts:
-                    names = ", ".join(a.get("orig_name") or Path(a["path"]).name for a in h_atts)
-                    story.append(Paragraph(f"  📎 {names}", mono_style))
+                    for a in h_atts:
+                        aname = a.get("orig_name") or Path(a["path"]).name
+                        story.append(Paragraph(
+                            f'  <font name="ZapfDingbats" size="9" color="#1565C0">&#x2709;</font> {aname}',
+                            mono_style))
                 story.append(Spacer(1, 4))
 
         doc.build(story)

@@ -22,7 +22,7 @@ from design_tracker import build_design_tracker
 import translations
 from translations import t
 
-APP_VERSION = "v1.6"
+APP_VERSION = "v1.7"
 _mtime_src  = sys.executable if getattr(sys, 'frozen', False) else __file__
 BUILD_DATE  = datetime.fromtimestamp(os.path.getmtime(_mtime_src)).strftime("%d/%m/%Y")
 APP_AUTHOR  = "Domenico Spagnuolo"

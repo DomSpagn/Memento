@@ -306,8 +306,8 @@ def compute_status_from_history(output_path: str, design_id: int) -> str | None:
     Rules (in priority order):
       1. At least one 'In Progress' → 'In Progress'
       2. At least one 'On Hold'     → 'On Hold'
-      3. All 'Closed'               → 'Closed'
-      4. All 'Open'                 → 'Open'
+      3. At least one 'Open' and all others 'Closed' → 'Open'
+      4. All 'Closed'               → 'Closed'
       Otherwise None (no change).
     """
     entries = fetch_history(output_path, design_id)
@@ -318,10 +318,10 @@ def compute_status_from_history(output_path: str, design_id: int) -> str | None:
         return "In Progress"
     if any(s == "On Hold" for s in statuses):
         return "On Hold"
+    if any(s == "Open" for s in statuses) and all(s in ("Open", "Closed") for s in statuses):
+        return "Open"
     if all(s == "Closed" for s in statuses):
         return "Closed"
-    if all(s == "Open" for s in statuses):
-        return "Open"
     return None
 
 

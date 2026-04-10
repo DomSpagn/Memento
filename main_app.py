@@ -208,29 +208,62 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             tooltip=label,
         )
 
+    # ── File picker for Archive Path dialog (created once at page level) ─────
+    _archive_picker = ft.FilePicker()
+
     # ── Output path dialog ───────────────────────────────────────────────────
     def show_output_path(_) -> None:
         from pathlib import Path as _Path
 
+        _err_msg = t('The selected path must end with a folder named "Memento".')
+
+        def _validate(value: str) -> bool:
+            if _Path(value).name != "Memento":
+                path_field.error_text = _err_msg
+                page.update()
+                return False
+            path_field.error_text = None
+            page.update()
+            return True
+
         path_field = ft.TextField(
-            label=t("Installation Path"),
+            label=t("Load Archive"),
             value=config.get("OutputPath", ""),
             expand=True,
+            on_change=lambda e: _validate(e.data) if e.data else None,
         )
-        dir_picker = ft.FilePicker()
 
         async def browse(_) -> None:
-            path = await dir_picker.get_directory_path(dialog_title=t("Select Installation Folder"))
+            dlg.open = False
+            page.update()
+            path = await _archive_picker.get_directory_path(dialog_title=t("Select Archive Path"))
             if path:
                 path_field.value = path
-                page.update()
+                _validate(path)
+            dlg.open = True
+            page.update()
 
         def save_path(_) -> None:
+            if _Path(path_field.value).name != "Memento":
+                warn = ft.AlertDialog(
+                    modal=True,
+                    title=ft.Row(
+                        [ft.Icon(ft.Icons.WARNING_AMBER_ROUNDED, color=ft.Colors.ORANGE_400),
+                         ft.Text(t("Invalid Path"), weight=ft.FontWeight.BOLD)],
+                        spacing=10,
+                    ),
+                    content=ft.Text(
+                        t('The selected path must end with a folder named "Memento".'),
+                        width=360,
+                    ),
+                    actions=[ft.FilledButton(t("OK"), on_click=lambda _: close_dlg(warn))],
+                    actions_alignment=ft.MainAxisAlignment.END,
+                )
+                page.overlay.append(warn)
+                warn.open = True
+                page.update()
+                return
             config["OutputPath"] = path_field.value
-            root = _Path(path_field.value) / "Memento"
-            for tracker in ("TaskTracker", "DesignTracker"):
-                for sub in ("db", "attachments"):
-                    (root / tracker / sub).mkdir(parents=True, exist_ok=True)
             save_config(config)
             close_dlg(dlg)
 
@@ -238,13 +271,18 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             modal=True,
             title=ft.Row(
                 [ft.Icon(ft.Icons.FOLDER_OPEN, color=ft.Colors.BLUE_400),
-                 ft.Text(t("Installation Path"), weight=ft.FontWeight.BOLD)],
+                 ft.Text(t("Archive Path"), weight=ft.FontWeight.BOLD)],
                 spacing=10,
             ),
-            content=ft.Row(
-                [path_field,
-                 ft.IconButton(icon=ft.Icons.FOLDER_OPEN, tooltip=t("Browse…"), on_click=browse)],
+            content=ft.Column(
+                [
+                    ft.Row(
+                        [path_field,
+                         ft.IconButton(icon=ft.Icons.FOLDER_OPEN, tooltip=t("Browse…"), on_click=browse)],
+                    ),
+                ],
                 width=460,
+                tight=True,
             ),
             actions=[
                 ft.TextButton(t("Cancel"), on_click=lambda _: close_dlg(dlg)),
@@ -456,7 +494,7 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             # ── Settings menu ────────────────────────────────────
             _popup(ft.Icons.SETTINGS_OUTLINED, t("Settings"), [
                 ft.PopupMenuItem(
-                    content=ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN, size=16), ft.Text(t("Installation Path…"))], spacing=8),
+                    content=ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN, size=16), ft.Text(t("Archive Path…"))], spacing=8),
                     on_click=show_output_path,
                 ),
                 ft.PopupMenuItem(

@@ -26,6 +26,11 @@ ITALIAN: dict = {
     "Release notes not found.": "File note di rilascio non trovato.",
     "Installation Path":         "Percorso d'installazione",
     "Installation Path…":        "Percorso d'installazione…",
+    "Archive Path…":             "Percorso archivio…",
+    "Load Archive":              "Carica archivio",
+    "Select Archive Path":       "Seleziona archivio",
+    'The selected path must end with a folder named "Memento".':
+        'Il percorso selezionato deve terminare con una cartella chiamata "Memento".',
     "Browse…":                  "Sfoglia…",
     "Cancel":                   "Annulla",
     "Save":                     "Salva",
@@ -216,11 +221,11 @@ ITALIAN: dict = {
         "Scegli la modalit\u00e0 di visualizzazione preferita",
     "Dark Mode  \U0001f319":    "Modalit\u00e0 scura  \U0001f319",
     "Light Mode  \u2600\ufe0f": "Modalit\u00e0 chiara  \u2600\ufe0f",
-    "Installation Folder":      "Cartella d'installazione",
+    "Archive Path":              "Percorso archivio",
     "Select where Memento will save its files":
-        "Seleziona dove Memento salver\u00e0 i suoi file",
+        "Seleziona dove Memento salverà i suoi file",
     "A \"Memento\" folder will be created at the chosen path, containing TaskTracker and DesignTracker subfolders.":
-        "Una cartella \"Memento\" verr\u00e0 creata nel percorso scelto, contenente le sottocartelle TaskTracker e DesignTracker.",
+        "Una cartella \"Memento\" verrà creata nel percorso scelto, contenente le sottocartelle TaskTracker e DesignTracker.",
     "Starting Application":     "Applicazione di avvio",
     "Choose which tracker to open at startup":
         "Scegli quale modulo aprire all'avvio",

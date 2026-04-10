@@ -3,7 +3,7 @@ task_db.py
 SQLite data-access layer for the Task Tracker.
 
 Database location:
-    <OutputPath>/Memento/TaskTracker/db/tasks.db
+    <OutputPath>/TaskTracker/db/tasks.db
 """
 
 import sqlite3
@@ -23,7 +23,7 @@ _UPDATABLE_FIELDS = {
 
 
 def _db_path(output_path: str) -> Path:
-    return Path(output_path) / "Memento" / "TaskTracker" / "db" / DB_FILENAME
+    return Path(output_path) / "TaskTracker" / "db" / DB_FILENAME
 
 
 def _connect(output_path: str) -> sqlite3.Connection:
@@ -35,7 +35,7 @@ def _connect(output_path: str) -> sqlite3.Connection:
 
 
 def _attachments_path(output_path: str) -> Path:
-    return Path(output_path) / "Memento" / "TaskTracker" / "attachments"
+    return Path(output_path) / "TaskTracker" / "attachments"
 
 
 def init_db(output_path: str) -> None:

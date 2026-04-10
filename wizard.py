@@ -141,7 +141,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
 
     def _make_step_path() -> ft.Column:
         path_field = ft.TextField(
-            label=t("Installation Path"),
+            label=t("Archive Path"),
             value=config["OutputPath"],
             expand=True,
             on_change=lambda e: config.update({"OutputPath": e.data}),
@@ -149,7 +149,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
 
         async def browse(_) -> None:
             path = await dir_picker.get_directory_path(
-                dialog_title=t("Select Installation Folder")
+                dialog_title=t("Select Archive Path")
             )
             if path:
                 config["OutputPath"] = path
@@ -158,7 +158,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
 
         return ft.Column(
             [
-                ft.Text(t("Installation Folder"), size=20, weight=ft.FontWeight.BOLD),
+                ft.Text(t("Archive Path"), size=20, weight=ft.FontWeight.BOLD),
                 ft.Text(
                     f"{t('Step')} 3 {t('of')} {TOTAL}  \u2014  {t('Select where Memento will save its files')}",
                     size=12,
@@ -407,6 +407,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
 
     def on_finish(_) -> None:
         _create_structure(config["OutputPath"])
+        config["OutputPath"] = str(Path(config["OutputPath"]) / "Memento")
         if config.get("AutoStart", False):
             if getattr(sys, 'frozen', False):
                 # Packaged: launch the installed MementoTray.exe

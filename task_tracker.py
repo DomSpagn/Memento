@@ -2398,7 +2398,8 @@ def build_task_tracker(page: ft.Page, config: dict,
                 if not raw:
                     return
                 tag = raw.split()[0].lower()
-                if tag and tag not in _entry_staged_tags:
+                _existing = {w.lstrip('#').lower() for w in (body_txt.value or "").split() if w.startswith('#')}
+                if tag and tag not in _entry_staged_tags and tag not in _existing:
                     _entry_staged_tags.append(tag)
                     _entry_refresh_chips()
                 entry_tag_input.value = ""
@@ -2493,7 +2494,13 @@ def build_task_tracker(page: ft.Page, config: dict,
             def _on_save_body(_e, eid=entry["id"]):
                 text = body_txt.value or ""
                 if _entry_staged_tags:
-                    text = text.rstrip() + "\n" + " ".join(f"#{tg}" for tg in _entry_staged_tags)
+                    tag_str = " ".join(f"#{tg}" for tg in _entry_staged_tags)
+                    stripped = text.rstrip()
+                    last_line = stripped.split('\n')[-1] if stripped else ''
+                    last_is_tags = bool(last_line.strip()) and all(
+                        w.startswith('#') for w in last_line.split()
+                    )
+                    text = (stripped + " " + tag_str) if last_is_tags else (stripped + "\n" + tag_str)
                     body_txt.value = text
                 update_history_entry(output_path, eid, text)
                 _edit_state["dirty"] = True
@@ -2813,7 +2820,8 @@ def build_task_tracker(page: ft.Page, config: dict,
             if not raw:
                 return
             tag = raw.split()[0].lower()
-            if tag and tag not in _staged_tags:
+            _existing = {w.lstrip('#').lower() for w in (new_entry_field.value or "").split() if w.startswith('#')}
+            if tag and tag not in _staged_tags and tag not in _existing:
                 _staged_tags.append(tag)
                 _refresh_tag_chips()
             tag_input.value = ""

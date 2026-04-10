@@ -3644,25 +3644,16 @@ def build_task_tracker(page: ft.Page, config: dict,
         _R      = _SIZE / 2 - 6   # outer radius (leave a small margin)
         _HOLE_R = _R * 0.32        # inner hole radius for donut look
 
-        _filter        = {"period": "day", "project": ""}
+        _filter        = {"project": ""}
         all_tasks_snap = fetch_all_tasks(output_path)
         pie_canvas     = cv.Canvas([], width=_SIZE, height=_SIZE)
         pie_area       = ft.Container(content=pie_canvas, width=_SIZE, height=_SIZE)
         legend_col     = ft.Column([], spacing=10, tight=True)
 
-        def _parse_dt(val) -> datetime:
-            try:
-                return datetime.fromisoformat(val)
-            except (TypeError, ValueError):
-                return datetime.min
-
-        def _compute(period: str, project: str):
-            days_map = {"day": 1, "week": 7, "month": 30, "year": 365}
-            cutoff   = datetime.now() - timedelta(days=days_map[period])
+        def _compute(project: str):
             filtered = [
                 t for t in all_tasks_snap
                 if (not project or t["project"] == project)
-                and _parse_dt(t["opened_at"]) >= cutoff
             ]
             counts = {s: 0 for s in STATUSES}
             for t in filtered:
@@ -3704,7 +3695,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             )
 
         def _update() -> None:
-            counts, total = _compute(_filter["period"], _filter["project"])
+            counts, total = _compute(_filter["project"])
             if total == 0:
                 pie_canvas.shapes = [
                     cv.Circle(_CX, _CY, _R,
@@ -3791,26 +3782,9 @@ def build_task_tracker(page: ft.Page, config: dict,
                 legend_col.controls = legend_items
             page.update()
 
-        def _on_period_change(e) -> None:
-            _filter["period"] = e.data
-            _update()
-
         def _on_project_change(e) -> None:
             _filter["project"] = e.data or ""
             _update()
-
-        period_dd = ft.Dropdown(
-            label=t("Period"),
-            value="day",
-            width=165,
-            options=[
-                ft.DropdownOption(key="day",   text=t("Last Day")),
-                ft.DropdownOption(key="week",  text=t("Last Week")),
-                ft.DropdownOption(key="month", text=t("Last Month")),
-                ft.DropdownOption(key="year",  text=t("Last Year")),
-            ],
-            on_select=_on_period_change,
-        )
 
         project_dd = ft.Dropdown(
             label=t("Project"),
@@ -3839,7 +3813,7 @@ def build_task_tracker(page: ft.Page, config: dict,
             ),
             content=ft.Column(
                 [
-                    ft.Row([period_dd, project_dd], spacing=12),
+                    project_dd,
                     ft.Divider(height=6),
                     ft.Row(
                         [

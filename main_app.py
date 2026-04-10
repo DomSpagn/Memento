@@ -266,6 +266,9 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             config["OutputPath"] = path_field.value
             save_config(config)
             close_dlg(dlg)
+            work_area.content = _build_tracker_view(_state["tracker"])
+            _restore_appbar()
+            page.update()
 
         dlg = ft.AlertDialog(
             modal=True,

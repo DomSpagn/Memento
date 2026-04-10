@@ -326,7 +326,7 @@
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="app-name">MEMENTO</div>
-      <div class="version">User Manual – v1.4</div>
+      <div class="version">User Manual – v1.5</div>
     </div>
     <p class="toc-title">Contents</p>
     <nav>
@@ -822,7 +822,7 @@
       <tr><td>Indent in</td><td>4 leading spaces</td><td>Quote / nested block</td></tr>
       <tr><td>Indent out</td><td>Removes 4 leading spaces</td><td>Un-indent block</td></tr>
       <tr><td>&#937; Greek</td><td>Character inserted at cursor</td><td>Opens picker with full Greek alphabet (uppercase &amp; lowercase)</td></tr>
-      <tr><td>f(x) Math</td><td>Symbol inserted at cursor</td><td>Opens picker with mathematical symbols (±∞≠×÷∝≤≥≅≈≡∂√∪∩∅∆∇∃∄∈∋↔⟸⟹⟺ …)</td></tr>
+      <tr><td>Σ Math &amp; Eq.</td><td>Symbol / formula inserted at cursor</td><td>Opens a two-tab dialog: <strong>Math symbols</strong> (±∞≠×÷∝≤≥≅≈≡∂√∪∩∅∆∇∃∄∈∋↔⟸⟹⟺ …) and <strong>Equations</strong> (Algebra, Calculus, Trigonometry, Notable formulas templates)</td></tr>
     </table>
     <div class="tip">
       💡 &nbsp;Select text before clicking a formatting button to wrap the selection.
@@ -871,13 +871,20 @@
 
     <h4>Adding a new entry</h4>
     <ol>
-      <li>Type your update in the <em>Write an update…</em> text field (blue-tinted, 2–4 lines).</li>
+      <li>Click <strong>+ New update</strong> to expand the compose form.</li>
+      <li>Type your update in the text field (blue-tinted, 2–4 lines).</li>
       <li>Optionally add <strong>hashtags</strong>: enter a tag in the <code>#tag</code> field and
           click the + button. Tag chips appear below the field; click × to remove one.</li>
       <li>Optionally click the 📎 attach button to add one or more files to the entry.</li>
-      <li>Click <strong>Save update</strong> (blue button). Tags are appended to the entry body
-          automatically. You can save with just file attachments even if no text has been typed.</li>
+      <li>Optionally set the <strong>entry status</strong> using the colour-coded dropdown next to
+          the attach button (default: <em>Open</em>).</li>
+      <li>Click <strong>Save update</strong>. Tags are appended to the entry body automatically.
+          You can save with just file attachments even if no text has been typed.</li>
     </ol>
+    <div class="tip">
+      💡 &nbsp;Setting the entry status may automatically update the parent task status — see
+      <em>Automatic status computation</em> below.
+    </div>
 
     <h4>Existing entries</h4>
     <p>Each historical entry is shown as a card with:</p>
@@ -885,7 +892,21 @@
       <li><strong>Header</strong>: <em>Created:</em> relative date + <em>Modified:</em> relative date (only shown if the entry was edited after creation) + entry number + 📎 Attach + 🗑 Delete + <strong>Cancel</strong> (✕, visible during editing) + <strong>Edit / ✓ Save</strong> toggle button.</li>
       <li><strong>Body</strong>: the update text (read-only by default). Click <kbd>Edit</kbd> to enter edit mode — the formatting toolbar and tag section appear <strong>immediately</strong>. Click <kbd>✓</kbd> to save. Click <kbd>✕ Cancel</kbd> to discard all changes and restore the original text.</li>
       <li><strong>Attached files</strong>: files linked to that specific entry, with the same attach/open/delete controls as the main Files section.</li>
+      <li><strong>Entry status dropdown</strong>: a compact colour-coded dropdown in the bottom-right corner of the card. Changing it saves the new status immediately and triggers automatic parent-status computation.</li>
     </ul>
+
+    <h4>Automatic status computation</h4>
+    <p>
+      Whenever a history entry status changes or an entry is deleted, the parent task's
+      <strong>Status</strong> field is recomputed automatically using these priority rules:
+    </p>
+    <ol>
+      <li>Any entry <em>In Progress</em> → task becomes <span class="chip chip-prog">In Progress</span>.</li>
+      <li>Any entry <em>On Hold</em> → task becomes <span class="chip chip-hold">On Hold</span>.</li>
+      <li>All entries <em>Closed</em> → task becomes <span class="chip chip-closed">Closed</span>.</li>
+      <li>All entries <em>Open</em> → task becomes <span class="chip chip-open">Open</span>.</li>
+      <li>Mixed states → task status is left unchanged.</li>
+    </ol>
 
     <h3 id="s3-8">3.8 Deleting a Task</h3>
     <p>
@@ -1051,8 +1072,9 @@
     </p>
 
     <h3 id="s4-5">4.5 History Log</h3>
-    <p>Identical in behaviour to the Task Tracker history log (see <a href="#s3-7">§ 3.7</a>).
-    Write updates, attach hashtag, attach files per entry.</p>
+    <p>Identical in behaviour to the Task Tracker history log (see <a href="#s3-7">§ 3.7</a>),
+    including per-entry status dropdown and automatic parent-status computation.
+    Write updates, add hashtags, attach files per entry.</p>
 
     <h3 id="s4-6">4.6 Deleting a Design</h3>
     <p>
@@ -1276,7 +1298,7 @@
 
     <!-- ── Footer ── -->
     <div class="footer">
-      <p>Memento User Manual &nbsp;·&nbsp; English &nbsp;·&nbsp; March 2026</p>
+      <p>Memento User Manual &nbsp;·&nbsp; English &nbsp;·&nbsp; April 2026</p>
       <p style="margin-top:6px;">
         <a href="manual_it.html">🇮🇹 Versione italiana</a>
         &nbsp;&nbsp;|&nbsp;&nbsp;

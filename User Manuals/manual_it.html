@@ -316,7 +316,7 @@
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="app-name">MEMENTO</div>
-      <div class="version">Manuale Utente – v1.4</div>
+      <div class="version">Manuale Utente – v1.5</div>
     </div>
     <p class="toc-title">Indice</p>
     <nav>
@@ -835,7 +835,7 @@
       <tr><td>Aumenta rientro</td><td>4 spazi iniziali</td><td>Blocco citazione / annidato</td></tr>
       <tr><td>Riduci rientro</td><td>Rimuove 4 spazi iniziali</td><td>Rimuove il rientro</td></tr>
       <tr><td>&#937; Greco</td><td>Carattere inserito al cursore</td><td>Apre il selettore con l'alfabeto greco completo (maiuscolo e minuscolo)</td></tr>
-      <tr><td>f(x) Matematica</td><td>Simbolo inserito al cursore</td><td>Apre il selettore con simboli matematici (±∞≠×÷∝≤≥≅≈≡∂√∪∩∅∆∇∃∄∈∋↔⟸⟹⟺ …)</td></tr>
+      <tr><td>Σ Sim. &amp; Eq.</td><td>Simbolo / formula inseriti al cursore</td><td>Apre una finestra con due schede: <strong>Simboli matematici</strong> (±∞≠×÷∝≤≥≅≈≡∂√∪∩∅∆∇∃∄∈∋↔⟸⟹⟺ …) e <strong>Formule</strong> (template di Algebra, Calcolo, Trigonometria, Formule notevoli)</td></tr>
     </table>
     <div class="tip">
       💡 &nbsp;Selezionare il testo prima di fare clic su un pulsante di formattazione per
@@ -887,16 +887,19 @@
 
     <h4>Aggiunta di un nuovo aggiornamento</h4>
     <ol>
-      <li>Digitare l'aggiornamento nel campo di testo <em>Scrivi un aggiornamento…</em>
-          (sfondo bluastro, 2–4 righe).</li>
+      <li>Fare clic su <strong>+ Nuovo aggiornamento</strong> per espandere il form di composizione.</li>
+      <li>Digitare l'aggiornamento nel campo di testo (sfondo bluastro, 2–4 righe).</li>
       <li>Aggiungere facoltativamente <strong>hashtag</strong>: inserire un tag nel campo
           <code>#tag</code> e fare clic sul pulsante +. I chip del tag appaiono sotto il campo;
           fare clic su × per rimuoverne uno.</li>
       <li>Fare clic facoltativamente sull'icona 📎 per allegare uno o più file all'aggiornamento.</li>
-      <li>Fare clic su <strong>Salva aggiornamento</strong> (pulsante blu).
-          I tag vengono aggiunti automaticamente al corpo dell'aggiornamento.
-          È possibile salvare anche con soli allegati, senza inserire testo.</li>
+      <li>Impostare facoltativamente lo <strong>stato dell'aggiornamento</strong> tramite il menu a tendina colorato accanto al pulsante di allegato (predefinito: <em>Open</em>).</li>
+      <li>Fare clic su <strong>Salva aggiornamento</strong>. I tag vengono aggiunti automaticamente
+          al corpo dell'aggiornamento. È possibile salvare anche con soli allegati, senza inserire testo.</li>
     </ol>
+    <div class="tip">
+      💡 &nbsp;Impostare lo stato di un aggiornamento può aggiornare automaticamente lo stato del Task padre — vedere <em>Calcolo automatico dello stato</em> di seguito.
+    </div>
 
     <h4>Aggiornamenti esistenti</h4>
     <p>Ogni aggiornamento storico è visualizzato come una scheda con:</p>
@@ -904,7 +907,21 @@
       <li><strong>Intestazione</strong>: <em>Creato:</em> data relativa + <em>Modificato:</em> data relativa (visualizzata solo se la voce è stata modificata dopo la creazione) + numero aggiornamento + 📎 Allega + 🗑 Elimina + <strong>Annulla</strong> (✕, visibile durante la modifica) + pulsante <strong>Modifica / ✓ Salva</strong> alternato.</li>
       <li><strong>Corpo</strong>: il testo dell'aggiornamento (sola lettura per impostazione predefinita). Fare clic su <kbd>Modifica</kbd> per attivare la modalità di modifica — la barra di formattazione e la sezione tag appaiono <strong>immediatamente</strong>. Fare clic su <kbd>✓</kbd> per salvare. Fare clic su <kbd>✕ Annulla</kbd> per scartare tutte le modifiche e ripristinare il testo originale.</li>
       <li><strong>File allegati</strong>: file collegati a quell'aggiornamento specifico, con gli stessi controlli allega/apri/elimina della sezione File principale.</li>
+      <li><strong>Menu a tendina dello stato</strong>: un menu a tendina compatto con testo colorato nell'angolo in basso a destra della scheda. La modifica salva immediatamente il nuovo stato e avvia il calcolo automatico dello stato padre.</li>
     </ul>
+
+    <h4>Calcolo automatico dello stato</h4>
+    <p>
+      Ogni volta che lo stato di un aggiornamento cambia o un aggiornamento viene eliminato,
+      lo stato del Task padre viene ricalcolato automaticamente con le seguenti regole di priorità:
+    </p>
+    <ol>
+      <li>Almeno un aggiornamento <em>In Progress</em> → Task diventa <span class="chip chip-prog">In Progress</span>.</li>
+      <li>Almeno un aggiornamento <em>On Hold</em> → Task diventa <span class="chip chip-hold">On Hold</span>.</li>
+      <li>Tutti gli aggiornamenti <em>Closed</em> → Task diventa <span class="chip chip-closed">Closed</span>.</li>
+      <li>Tutti gli aggiornamenti <em>Open</em> → Task diventa <span class="chip chip-open">Open</span>.</li>
+      <li>Stati misti → lo stato del Task rimane invariato.</li>
+    </ol>
 
     <h3 id="s3-8">3.8 Eliminare un Task</h3>
     <p>
@@ -1087,7 +1104,9 @@
     <h3 id="s4-5">4.5 Cronologia</h3>
     <p>
       Il comportamento è identico alla cronologia del Task Tracker (vedere
-      <a href="#s3-7">§ 3.7</a>).
+      <a href="#s3-7">§ 3.7</a>), incluso il menu a tendina dello stato per aggiornamento
+      e il calcolo automatico dello stato padre.
+      Scrivere aggiornamenti, aggiungere hashtag e allegare file a ogni voce.</p>
       È possibile scrivere aggiornamenti, aggiungere hashtag e allegare file per ogni
       aggiornamento.
     </p>
@@ -1328,7 +1347,7 @@
 
     <!-- ── Footer ── -->
     <div class="footer">
-      <p>Manuale Utente Memento &nbsp;·&nbsp; Italiano &nbsp;·&nbsp; Marzo 2026</p>
+      <p>Manuale Utente Memento &nbsp;·&nbsp; Italiano &nbsp;·&nbsp; Aprile 2026</p>
       <p style="margin-top:6px;">
         <a href="manual_en.html">🇬🇧 English version</a>
         &nbsp;&nbsp;|&nbsp;&nbsp;

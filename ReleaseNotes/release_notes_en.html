@@ -107,6 +107,54 @@
     <p>Full history of features and fixes</p>
   </header>
 
+  <!-- ═══════════════════════════════════════  v1.5 ══ -->
+  <div class="version-block">
+    <div class="version-header">
+      <span class="tag">v1.5</span>
+      <span class="date">April 2026</span>
+    </div>
+
+    <div class="section new">
+      <div class="section-title">✦ New Features</div>
+      <ul>
+        <li><strong>Per-entry status in History</strong>: each history entry card now has a compact status dropdown in the bottom-right corner. Available values: <em>Open</em>, <em>In Progress</em>, <em>On Hold</em>, <em>Closed</em>. The selected status is shown with a colour-coded text label matching the palette of the main table chips.</li>
+        <li><strong>Status dropdown on new update form</strong>: when composing a new history entry the status dropdown appears immediately next to the file-attach button, defaulting to <em>Open</em>. The selected status is saved together with the entry.</li>
+        <li><strong>Automatic parent-status computation</strong>: after any history entry status is set or an entry is deleted, the parent task / design status is recomputed automatically according to the following priority rules:
+          <ol>
+            <li>If any entry is <em>In Progress</em> → parent becomes <em>In Progress</em>.</li>
+            <li>Else if any entry is <em>On Hold</em> → parent becomes <em>On Hold</em>.</li>
+            <li>Else if all entries are <em>Closed</em> → parent becomes <em>Closed</em>.</li>
+            <li>Else if all entries are <em>Open</em> → parent becomes <em>Open</em>.</li>
+            <li>Mixed states (some Open, some Closed) → parent status is left unchanged.</li>
+          </ol>
+        </li>
+        <li><strong>Σ combined Math &amp; Equations button</strong>: the previous separate <strong>f(x)</strong> (Math symbols) button has been replaced by a single <strong>Σ</strong> button that opens a two-tab dialog:
+          <ul>
+            <li><strong>Math symbols</strong> tab — same symbol set as before (±∞≠~×÷∝≪≫≤≥∓≅≈≡∂√∪∩∅°∆∇∃∄∈∋←↑→↓↔∙⋯⟸⟹⟺).</li>
+            <li><strong>Equations</strong> tab — ready-made equation templates grouped by category: <em>Algebra</em>, <em>Calculus</em>, <em>Trigonometry</em>, <em>Notable formulas</em>.</li>
+          </ul>
+          The button is present in all six toolbars (Description + new entry + existing entry, in both trackers).
+        </li>
+      </ul>
+    </div>
+
+    <div class="section fix">
+      <div class="section-title">✦ Bug Fixes</div>
+      <ul>
+        <li><strong>Cursor focus after toolbar actions</strong>: clicking any formatting button (Bold, Italic, Underline, bullet list, indent, Greek / Math / Equations pickers, etc.) no longer moves input focus away from the text field. The cursor remains on the active line and the insertion point is preserved.</li>
+      </ul>
+    </div>
+
+    <div class="section chg">
+      <div class="section-title">✦ Improvements</div>
+      <ul>
+        <li><strong>Tag deduplication</strong>: adding a hashtag that already exists in the same history entry is silently ignored — no duplicate tags are appended.</li>
+        <li><strong>Tag same-line append</strong>: when a tag is added to an already-saved history entry that ends with a tag-only line, the new tag is appended on the same line instead of on a new line.</li>
+        <li>History database schema extended: the <code>history</code> table gains an <code>entry_status TEXT NOT NULL DEFAULT 'Open'</code> column. Existing databases are migrated transparently on first run.</li>
+      </ul>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════  v1.4 ══ -->
   <div class="version-block">
     <div class="version-header">

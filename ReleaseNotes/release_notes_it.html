@@ -107,6 +107,54 @@
     <p>Cronologia completa di funzionalità e correzioni</p>
   </header>
 
+  <!-- ═══════════════════════════════════════  v1.5 ══ -->
+  <div class="version-block">
+    <div class="version-header">
+      <span class="tag">v1.5</span>
+      <span class="date">Aprile 2026</span>
+    </div>
+
+    <div class="section new">
+      <div class="section-title">✦ Nuove funzionalità</div>
+      <ul>
+        <li><strong>Stato per ogni aggiornamento della Cronologia</strong>: ogni scheda della cronologia ha ora un menu a tendina compatto nell'angolo in basso a destra. Valori disponibili: <em>Open</em>, <em>In Progress</em>, <em>On Hold</em>, <em>Closed</em>. Lo stato selezionato è mostrato con un'etichetta di testo colorata che corrisponde alla palette dei chip della tabella principale.</li>
+        <li><strong>Menu a tendina nel form di nuovo aggiornamento</strong>: durante la composizione di un nuovo aggiornamento, il menu a tendina dello stato appare immediatamente accanto al pulsante di allegato file, con valore predefinito <em>Open</em>. Lo stato selezionato viene salvato insieme all'aggiornamento.</li>
+        <li><strong>Calcolo automatico dello stato del Task/Design padre</strong>: dopo ogni modifica allo stato di un aggiornamento o dopo l'eliminazione di un aggiornamento, lo stato del Task / Design padre viene ricalcolato automaticamente secondo le seguenti regole di priorità:
+          <ol>
+            <li>Se almeno un aggiornamento è <em>In Progress</em> → il padre diventa <em>In Progress</em>.</li>
+            <li>Altrimenti se almeno un aggiornamento è <em>On Hold</em> → il padre diventa <em>On Hold</em>.</li>
+            <li>Altrimenti se tutti gli aggiornamenti sono <em>Closed</em> → il padre diventa <em>Closed</em>.</li>
+            <li>Altrimenti se tutti gli aggiornamenti sono <em>Open</em> → il padre diventa <em>Open</em>.</li>
+            <li>Stati misti (alcuni Open, alcuni Closed) → lo stato del padre rimane invariato.</li>
+          </ol>
+        </li>
+        <li><strong>Pulsante Σ combinato Simboli &amp; Equazioni</strong>: il precedente pulsante separato <strong>f(x)</strong> (simboli matematici) è stato sostituito da un unico pulsante <strong>Σ</strong> che apre una finestra con due schede:
+          <ul>
+            <li>Scheda <strong>Simboli matematici</strong> — stesso insieme di simboli di prima (±∞≠~×÷∝≪≫≤≥∓≅≈≡∂√∪∩∅°∆∇∃∄∈∋←↑→↓↔∙⋯⟸⟹⟺).</li>
+            <li>Scheda <strong>Formule</strong> — template di equazioni predefiniti raggruppati per categoria: <em>Algebra</em>, <em>Calcolo</em>, <em>Trigonometria</em>, <em>Formule notevoli</em>.</li>
+          </ul>
+          Il pulsante è presente in tutte e sei le barre degli strumenti (Descrizione + nuovo aggiornamento + aggiornamento esistente, in entrambi i tracker).
+        </li>
+      </ul>
+    </div>
+
+    <div class="section fix">
+      <div class="section-title">✦ Correzioni</div>
+      <ul>
+        <li><strong>Fuoco del cursore dopo le azioni della barra di formattazione</strong>: fare clic su qualsiasi pulsante di formattazione (Grassetto, Corsivo, Sottolineato, elenchi, rientro, selettori Greco/Matematica/Equazioni, ecc.) non sposta più il fuoco di inserimento lontano dal campo di testo. Il cursore rimane sulla riga attiva e la posizione di inserimento viene preservata.</li>
+      </ul>
+    </div>
+
+    <div class="section chg">
+      <div class="section-title">✦ Miglioramenti</div>
+      <ul>
+        <li><strong>Deduplicazione dei tag</strong>: l'aggiunta di un hashtag già presente nello stesso aggiornamento della cronologia viene ignorata silenziosamente — nessun tag duplicato viene aggiunto.</li>
+        <li><strong>Aggiunta tag sulla stessa riga</strong>: quando si aggiunge un tag a un aggiornamento già salvato che termina con una riga di soli tag, il nuovo tag viene aggiunto sulla stessa riga anziché su una nuova riga.</li>
+        <li>Schema del database della cronologia esteso: la tabella <code>history</code> acquisisce una colonna <code>entry_status TEXT NOT NULL DEFAULT 'Open'</code>. I database esistenti vengono migrati in modo trasparente al primo avvio.</li>
+      </ul>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════  v1.4 ══ -->
   <div class="version-block">
     <div class="version-header">

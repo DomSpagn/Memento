@@ -1993,7 +1993,13 @@ def build_design_tracker(page: ft.Page, config: dict,
                 border=ft.InputBorder.NONE,
                 content_padding=ft.padding.symmetric(horizontal=8, vertical=6),
                 expand=True,
+                visible=False,
                 on_selection_change=_on_body_sel_change,
+            )
+            body_display = ft.Text(
+                spans=_build_rich_spans(entry["body"]),
+                selectable=True,
+                size=14,
             )
 
             async def _entry_insert(text: str) -> None:
@@ -2217,6 +2223,9 @@ def build_design_tracker(page: ft.Page, config: dict,
             )
 
             def _entry_reset_edit_ui():
+                body_display.spans = _build_rich_spans(body_txt.value)
+                body_display.visible = True
+                body_txt.visible = False
                 body_txt.read_only = True
                 edit_body_btn.icon = ft.Icons.EDIT_NOTE
                 edit_body_btn.tooltip = t("Edit")
@@ -2235,6 +2244,8 @@ def build_design_tracker(page: ft.Page, config: dict,
 
             def _on_edit_body(_e):
                 _original_body["val"] = body_txt.value
+                body_display.visible = False
+                body_txt.visible = True
                 body_txt.read_only = False
                 edit_body_btn.icon = ft.Icons.CHECK
                 edit_body_btn.tooltip = t("Save")
@@ -2374,6 +2385,7 @@ def build_design_tracker(page: ft.Page, config: dict,
                             spacing=2,
                         ),
                         entry_edit_toolbar,
+                        body_display,
                         body_txt,
                         h_att_col,
                         entry_tags_section,

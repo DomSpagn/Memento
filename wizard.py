@@ -166,7 +166,7 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
                 ),
                 ft.Divider(height=16),
                 ft.Text(
-                    t('A "Memento" folder will be created at the chosen path, containing TaskTracker and DesignTracker subfolders.'),
+                    t('A "MementoOut" folder will be created at the chosen path, containing TaskTracker and DesignTracker subfolders.'),
                     size=12,
                     color=ft.Colors.GREY_500,
                 ),
@@ -400,14 +400,14 @@ def show_wizard(page: ft.Page, on_complete: Callable[[dict], None]) -> None:
         navigate_to(state["step"] - 1)
 
     def _create_structure(base: str) -> None:
-        root = Path(base) / "Memento"
+        root = Path(base) / "MementoOut"
         for tracker in ("TaskTracker", "DesignTracker"):
             for sub in ("db", "attachments"):
                 (root / tracker / sub).mkdir(parents=True, exist_ok=True)
 
     def on_finish(_) -> None:
         _create_structure(config["OutputPath"])
-        config["OutputPath"] = str(Path(config["OutputPath"]) / "Memento")
+        config["OutputPath"] = str(Path(config["OutputPath"]) / "MementoOut")
         if config.get("AutoStart", False):
             if getattr(sys, 'frozen', False):
                 # Packaged: launch the installed MementoTray.exe

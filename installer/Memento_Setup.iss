@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #define MyAppName "Memento"
-#define MyAppVersion "1.9"
+#define MyAppVersion "1.10"
 #define MyAppExeName "Memento.exe"
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".myp"
@@ -44,9 +44,9 @@ Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "C:\Users\ITDOSPA\Desktop\Memento\dist\Memento\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\Users\ITDOSPA\Desktop\Memento\dist\Memento\MementoTray.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\Users\ITDOSPA\Desktop\Memento\dist\Memento\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "C:\Users\ITDOSPA\Desktop\Memento\dist\MementoOut\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\Users\ITDOSPA\Desktop\Memento\dist\MementoOut\MementoTray.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\Users\ITDOSPA\Desktop\Memento\dist\MementoOut\_internal\*"; DestDir: "{app}\_internal"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Registry]

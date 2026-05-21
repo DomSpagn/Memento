@@ -46,17 +46,17 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM -- Copia MementoTray nella cartella di Memento -------------
-REM    L'installer Inno Setup usa dist\Memento\ come sorgente
+REM -- Copia MementoTray nella cartella di MementoOut -----------
+REM    L'installer Inno Setup usa dist\MementoOut\ come sorgente
 REM    unica; MementoTray.exe deve trovarsi nella stessa dir.
 echo.
-echo Copia MementoTray.exe in dist\Memento\ ...
-xcopy /s /y /i "dist\MementoTray\*" "dist\Memento\" >nul
+echo Copia MementoTray.exe in dist\MementoOut\ ...
+xcopy /s /y /i "dist\MementoTray\*" "dist\MementoOut\" >nul
 
 REM -- Patch icona flet (per il pin sulla barra applicazioni) --
 echo.
 echo Patch icona in flet_desktop\app\flet\flet.exe ...
-python patch_icon.py "dist\Memento\_internal\flet_desktop\app\flet\flet.exe" "Images\memento.ico"
+python patch_icon.py "dist\MementoOut\_internal\flet_desktop\app\flet\flet.exe" "Images\memento.ico"
 if errorlevel 1 (
     echo [AVVISO] Patch icona flet fallita, ma la build continua.
 )
@@ -64,8 +64,8 @@ if errorlevel 1 (
 echo.
 echo ============================================================
 echo  Build completata.
-echo  Eseguibile principale : dist\Memento\Memento.exe
-echo  Eseguibile tray        : dist\Memento\MementoTray.exe
+echo  Eseguibile principale : dist\MementoOut\Memento.exe
+  echo  Eseguibile tray        : dist\MementoOut\MementoTray.exe
 echo ============================================================
 
 REM -- Compilazione installer Inno Setup ----------------------

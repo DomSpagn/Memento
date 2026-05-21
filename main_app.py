@@ -22,7 +22,7 @@ from design_tracker import build_design_tracker
 import translations
 from translations import t
 
-APP_VERSION = "v1.9"
+APP_VERSION = "v1.10"
 _mtime_src  = sys.executable if getattr(sys, 'frozen', False) else __file__
 BUILD_DATE  = datetime.fromtimestamp(os.path.getmtime(_mtime_src)).strftime("%d/%m/%Y")
 APP_AUTHOR  = "Domenico Spagnuolo"
@@ -215,22 +215,15 @@ def show_main_app(page: ft.Page, config: dict) -> None:
     def show_output_path(_) -> None:
         from pathlib import Path as _Path
 
-        _err_msg = t('The selected path must end with a folder named "Memento".')
-
-        def _validate(value: str) -> bool:
-            if _Path(value).name != "Memento":
-                path_field.error_text = _err_msg
-                page.update()
-                return False
-            path_field.error_text = None
-            page.update()
-            return True
+        # Show the parent folder: strip the trailing "MementoOut" if already set
+        current = config.get("OutputPath", "")
+        _cp = _Path(current)
+        initial_parent = str(_cp.parent) if _cp.name == "MementoOut" else current
 
         path_field = ft.TextField(
-            label=t("Load Archive"),
-            value=config.get("OutputPath", ""),
+            label=t("Archive Path"),
+            value=initial_parent,
             expand=True,
-            on_change=lambda e: _validate(e.data) if e.data else None,
         )
 
         async def browse(_) -> None:
@@ -239,32 +232,14 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             path = await _archive_picker.get_directory_path(dialog_title=t("Select Archive Path"))
             if path:
                 path_field.value = path
-                _validate(path)
+                page.update()
             dlg.open = True
             page.update()
 
         def save_path(_) -> None:
-            if _Path(path_field.value).name != "Memento":
-                warn = ft.AlertDialog(
-                    modal=True,
-                    title=ft.Row(
-                        [ft.Icon(ft.Icons.WARNING_AMBER_ROUNDED, color=ft.Colors.ORANGE_400),
-                         ft.Text(t("Invalid Path"), weight=ft.FontWeight.BOLD)],
-                        spacing=10,
-                    ),
-                    content=ft.Text(
-                        t('The selected path must end with a folder named "Memento".'),
-                        width=360,
-                    ),
-                    actions=[ft.FilledButton(t("OK"), on_click=lambda _: close_dlg(warn))],
-                    actions_alignment=ft.MainAxisAlignment.END,
-                )
-                page.overlay.append(warn)
-                warn.open = True
-                page.update()
-                return
-            config["OutputPath"] = path_field.value
-            save_config(config)
+            if path_field.value:
+                config["OutputPath"] = str(_Path(path_field.value) / "MementoOut")
+                save_config(config)
             close_dlg(dlg)
             work_area.content = _build_tracker_view(_state["tracker"])
             _restore_appbar()
@@ -279,6 +254,11 @@ def show_main_app(page: ft.Page, config: dict) -> None:
             ),
             content=ft.Column(
                 [
+                    ft.Text(
+                        t('A "MementoOut" folder will be created at the chosen path, containing TaskTracker and DesignTracker subfolders.'),
+                        size=12,
+                        color=ft.Colors.GREY_500,
+                    ),
                     ft.Row(
                         [path_field,
                          ft.IconButton(icon=ft.Icons.FOLDER_OPEN, tooltip=t("Browse…"), on_click=browse)],

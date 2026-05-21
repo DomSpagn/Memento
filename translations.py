@@ -224,8 +224,8 @@ ITALIAN: dict = {
     "Archive Path":              "Percorso archivio",
     "Select where Memento will save its files":
         "Seleziona dove Memento salverà i suoi file",
-    "A \"Memento\" folder will be created at the chosen path, containing TaskTracker and DesignTracker subfolders.":
-        "Una cartella \"Memento\" verrà creata nel percorso scelto, contenente le sottocartelle TaskTracker e DesignTracker.",
+    'A "MementoOut" folder will be created at the chosen path, containing TaskTracker and DesignTracker subfolders.':
+        "Una cartella \"MementoOut\" verrà creata nel percorso scelto, contenente le sottocartelle TaskTracker e DesignTracker.",
     "Starting Application":     "Applicazione di avvio",
     "Choose which tracker to open at startup":
         "Scegli quale modulo aprire all'avvio",

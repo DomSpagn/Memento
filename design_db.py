@@ -304,10 +304,10 @@ def update_history_entry_status(output_path: str, entry_id: int, status: str) ->
 def compute_status_from_history(output_path: str, design_id: int) -> str | None:
     """Derive design status from all history entry_status values.
     Rules (in priority order):
-      1. At least one 'In Progress' → 'In Progress'
-      2. At least one 'On Hold'     → 'On Hold'
-      3. At least one 'Open' and all others 'Closed' → 'Open'
-      4. All 'Closed'               → 'Closed'
+      1. At least one 'In Progress'                          → 'In Progress'
+      2. At least one 'Open' (others may be On Hold/Closed)  → 'Open'
+      3. At least one 'On Hold', all in {On Hold, Closed}    → 'On Hold'
+      4. All 'Closed'                                        → 'Closed'
       Otherwise None (no change).
     """
     entries = fetch_history(output_path, design_id)
@@ -316,10 +316,10 @@ def compute_status_from_history(output_path: str, design_id: int) -> str | None:
     statuses = [e.get("entry_status") or "Open" for e in entries]
     if any(s == "In Progress" for s in statuses):
         return "In Progress"
-    if any(s == "On Hold" for s in statuses):
-        return "On Hold"
-    if any(s == "Open" for s in statuses) and all(s in ("Open", "Closed") for s in statuses):
+    if any(s == "Open" for s in statuses):
         return "Open"
+    if any(s == "On Hold" for s in statuses) and all(s in ("On Hold", "Closed") for s in statuses):
+        return "On Hold"
     if all(s == "Closed" for s in statuses):
         return "Closed"
     return None

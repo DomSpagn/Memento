@@ -107,6 +107,22 @@
     <p>Cronologia completa di funzionalità e correzioni</p>
   </header>
 
+  <!-- ═══════════════════════════════════════  v1.10 ══ -->
+  <div class="version-block">
+    <div class="version-header">
+      <span class="tag">v1.10</span>
+      <span class="date">Maggio 2026</span>
+    </div>
+
+    <div class="section chg">
+      <div class="section-title">❆ Miglioramenti</div>
+      <ul>
+        <li><strong>Cartella archivio rinominata in <code>MementoOut</code></strong>: la cartella dati creata dalla procedura guidata (step 3) e referenziata da <em>Impostazioni → Archive Path…</em> si chiama ora <code>MementoOut/</code> anziché <code>Memento/</code>. Sia il wizard che il dialog Impostazioni chiedono ora una cartella <em>padre</em>; Memento aggiunge automaticamente <code>MementoOut/</code>. La vecchia validazione che richiedeva al percorso di terminare con <code>Memento</code> è stata rimossa.</li>
+        <li><strong>Calcolo stato — Open ha priorità su On Hold</strong>: il calcolo automatico dello stato dagli aggiornamenti è stato corretto. Un Task o Design viene ora marcato <span class="chip chip-open">Open</span> ogni volta che almeno un aggiornamento è <em>Open</em>, anche se altri aggiornamenti sono <em>On Hold</em>. <span class="chip chip-hold">On Hold</span> viene impostato solo quando <em>tutti</em> gli aggiornamenti sono <em>On Hold</em>, oppure quando gli aggiornamenti sono un misto di <em>On Hold</em> e <em>Closed</em> senza nessun <em>Open</em> o <em>In Progress</em>.</li>
+      </ul>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════  v1.9 ══ -->
   <div class="version-block">
     <div class="version-header">

@@ -903,8 +903,8 @@
     </p>
     <ol>
       <li>Any entry <em>In Progress</em> → task becomes <span class="chip chip-prog">In Progress</span>.</li>
-      <li>Any entry <em>On Hold</em> → task becomes <span class="chip chip-hold">On Hold</span>.</li>
-      <li>At least one entry <em>Open</em> → task becomes <span class="chip chip-open">Open</span>.</li>
+      <li>At least one entry <em>Open</em> (others may be On Hold or Closed) → task becomes <span class="chip chip-open">Open</span>.</li>
+      <li>At least one entry <em>On Hold</em> and all entries in {On Hold, Closed} → task becomes <span class="chip chip-hold">On Hold</span>.</li>
       <li>All entries <em>Closed</em> → task becomes <span class="chip chip-closed">Closed</span>.</li>
     </ol>
 
@@ -1113,15 +1113,14 @@
 
     <h3 id="s5-1">5.1 Archive Path</h3>
     <p>
-      Access via <em>Settings → Archive Path…</em>. This is the <code>Memento/</code> folder
-      where Memento stores all its data. The path <strong>must</strong> end with a folder named
-      <code>Memento</code> — a validation popup is shown if it does not.
-      Saving updates the path in <code>mem_conf.json</code> and immediately refreshes both
-      tracker tables without restarting the application.
+      Access via <em>Settings → Archive Path…</em>. Select a <em>parent</em> folder using the
+      browse button; Memento will use a <code>MementoOut/</code> subfolder inside it to store
+      all its data. The path is saved in <code>mem_conf.json</code> and both tracker tables
+      are refreshed immediately without restarting the application.
     </p>
     <div class="warn">
       ⚠️ &nbsp;Changing the archive path does <strong>not</strong> automatically move your existing
-      data. If you have existing tasks or designs, manually move your <code>Memento/</code>
+      data. If you have existing tasks or designs, manually move your <code>MementoOut/</code>
       folder to the new location <em>before</em> clicking Save.
     </div>
 
@@ -1273,7 +1272,7 @@
     <table>
       <tr><th>Key</th><th>Type</th><th>Values</th><th>Set by</th></tr>
       <tr><td><code>Theme</code></td><td>string</td><td><code>"Dark"</code> | <code>"Light"</code></td><td>Wizard, theme toggle</td></tr>
-      <tr><td><code>OutputPath</code></td><td>string</td><td>Absolute path to the <code>Memento/</code> folder</td><td>Wizard, Settings → Archive Path…</td></tr>
+      <tr><td><code>OutputPath</code></td><td>string</td><td>Absolute path to the <code>MementoOut/</code> folder</td><td>Wizard, Settings → Archive Path…</td></tr>
       <tr><td><code>StartWith</code></td><td>string</td><td><code>"TaskTracker"</code> | <code>"DesignTracker"</code></td><td>Wizard, tracker switcher</td></tr>
       <tr><td><code>CmdBarPosition</code></td><td>string</td><td><code>"Top"</code> | <code>"Bottom"</code> | <code>"Left"</code> | <code>"Right"</code></td><td>Settings → Command Bar…</td></tr>
       <tr><td><code>Language</code></td><td>string</td><td><code>"en"</code> | <code>"it"</code></td><td>Settings → Language…</td></tr>

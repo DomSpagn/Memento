@@ -107,6 +107,22 @@
     <p>Full history of features and fixes</p>
   </header>
 
+  <!-- ═══════════════════════════════════════  v1.10 ══ -->
+  <div class="version-block">
+    <div class="version-header">
+      <span class="tag">v1.10</span>
+      <span class="date">May 2026</span>
+    </div>
+
+    <div class="section chg">
+      <div class="section-title">❆ Improvements</div>
+      <ul>
+        <li><strong>Archive folder renamed to <code>MementoOut</code></strong>: the data folder created by the wizard (step 3) and referenced by <em>Settings → Archive Path…</em> is now called <code>MementoOut/</code> instead of <code>Memento/</code>. Both the wizard and the Settings dialog now ask for a <em>parent</em> folder; Memento appends <code>MementoOut/</code> automatically. The old validation requiring the path to end with <code>Memento</code> has been removed.</li>
+        <li><strong>Status computation — Open takes priority over On Hold</strong>: the automatic status derivation from history entries has been corrected. A task or design is now marked <span class="chip chip-open">Open</span> whenever at least one update is <em>Open</em>, even if other updates are <em>On Hold</em>. <span class="chip chip-hold">On Hold</span> is set only when <em>all</em> updates are <em>On Hold</em>, or when updates are a mix of <em>On Hold</em> and <em>Closed</em> with no <em>Open</em> or <em>In Progress</em> entries.</li>
+      </ul>
+    </div>
+  </div>
+
   <!-- ═══════════════════════════════════════  v1.9 ══ -->
   <div class="version-block">
     <div class="version-header">

@@ -918,8 +918,8 @@
     </p>
     <ol>
       <li>Almeno un aggiornamento <em>In Progress</em> → Task diventa <span class="chip chip-prog">In Progress</span>.</li>
-      <li>Almeno un aggiornamento <em>On Hold</em> → Task diventa <span class="chip chip-hold">On Hold</span>.</li>
-      <li>Almeno un aggiornamento <em>Open</em> → Task diventa <span class="chip chip-open">Open</span>.</li>
+      <li>Almeno un aggiornamento <em>Open</em> (gli altri possono essere On Hold o Closed) → Task diventa <span class="chip chip-open">Open</span>.</li>
+      <li>Almeno un aggiornamento <em>On Hold</em> e tutti gli aggiornamenti in {On Hold, Closed} → Task diventa <span class="chip chip-hold">On Hold</span>.</li>
       <li>Tutti gli aggiornamenti <em>Closed</em> → Task diventa <span class="chip chip-closed">Closed</span>.</li>
     </ol>
 
@@ -1150,17 +1150,16 @@
 
     <h3 id="s5-1">5.1 Archive Path</h3>
     <p>
-      Accedere tramite <em>Impostazioni → Archive Path…</em>. Questa è la cartella
-      <code>Memento/</code> in cui Memento archivia tutti i suoi dati. Il percorso
-      <strong>deve</strong> terminare con una cartella di nome <code>Memento</code> —
-      in caso contrario viene mostrato un popup di avviso. Il salvataggio aggiorna il percorso
-      in <code>mem_conf.json</code> e aggiorna immediatamente le tabelle di entrambi i tracker
-      senza riavviare l'applicazione.
+      Accedere tramite <em>Impostazioni → Archive Path…</em>. Selezionare una cartella
+      <em>padre</em> tramite il pulsante sfoglia; Memento utilizzerà una sottocartella
+      <code>MementoOut/</code> al suo interno per archiviare tutti i dati. Il percorso viene
+      salvato in <code>mem_conf.json</code> e le tabelle di entrambi i tracker vengono
+      aggiornate immediatamente senza riavviare l'applicazione.
     </p>
     <div class="warn">
       ⚠️ &nbsp;La modifica dell'archive path <strong>non</strong> sposta automaticamente
       i dati esistenti. Se si hanno Task o Design esistenti, spostare manualmente la cartella
-      <code>Memento/</code> nella nuova posizione <em>prima</em> di fare clic su Salva.
+      <code>MementoOut/</code> nella nuova posizione <em>prima</em> di fare clic su Salva.
     </div>
 
     <h3 id="s5-2">5.2 Posizione barra comandi</h3>
@@ -1321,7 +1320,7 @@
     <table>
       <tr><th>Chiave</th><th>Tipo</th><th>Valori</th><th>Impostato da</th></tr>
       <tr><td><code>Theme</code></td><td>stringa</td><td><code>"Dark"</code> | <code>"Light"</code></td><td>Procedura guidata, interruttore tema</td></tr>
-      <tr><td><code>OutputPath</code></td><td>stringa</td><td>Percorso assoluto alla cartella <code>Memento/</code></td><td>Procedura guidata, Impostazioni → Archive Path…</td></tr>
+      <tr><td><code>OutputPath</code></td><td>stringa</td><td>Percorso assoluto alla cartella <code>MementoOut/</code></td><td>Procedura guidata, Impostazioni → Archive Path…</td></tr>
       <tr><td><code>StartWith</code></td><td>stringa</td><td><code>"TaskTracker"</code> | <code>"DesignTracker"</code></td><td>Procedura guidata, selettore modulo</td></tr>
       <tr><td><code>CmdBarPosition</code></td><td>stringa</td><td><code>"Top"</code> | <code>"Bottom"</code> | <code>"Left"</code> | <code>"Right"</code></td><td>Impostazioni → Posizione barra…</td></tr>
       <tr><td><code>Language</code></td><td>stringa</td><td><code>"en"</code> | <code>"it"</code></td><td>Impostazioni → Lingua…</td></tr>
